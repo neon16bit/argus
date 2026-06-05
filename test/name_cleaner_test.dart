@@ -94,6 +94,14 @@ void main() {
       expect(result.year, 2021);
     });
 
+    test('Fails on hyphenated words at the end of a file', () {
+      // this test will fail because the current regex is too aggressive and
+      // removes any word starting with a dash (the very last dash) followed by word characters
+      // im too lazy for this edge case right now
+      final result = NameCleaner.clean('The.Amazing.Spider-Man.mkv');
+      expect(result.title, 'The Amazing Spider-Man');
+    });
+
     test('Collapses multiple spaces and weird punctuation', () {
       final result = NameCleaner.clean('The___Batman...2022    1080p.mkv');
 

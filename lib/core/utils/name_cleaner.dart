@@ -47,19 +47,26 @@ class NameCleaner {
   // noise patterns to strip
   static final _noisePatterns = [
     // resolution and quality
-    RegExp(r'\b\d{3,4}[pi]\b', caseSensitive: false),
-    RegExp(r'\b4[kK]\b'),
-    RegExp(r'\b(?:HD|FHD|UHD|SD)\b', caseSensitive: false),
+    RegExp(
+      r'\b(?:(?:480|720|1080|1440|2160)[pi]?|[248]k|\d{3,4}x\d{3,4}|F?HD|UHD|SD)\b',
+      caseSensitive: false,
+    ),
     // codecs and encoders
     RegExp(r'\b[xXhH]\.?26[45]\b'),
-    RegExp(r'\b(?:HEVC|AVC|AAC|AC3|DTS|FLAC|MP3|OPUS)\b', caseSensitive: false),
+    RegExp(
+      r'\b(?:HEVC|AVC|AAC|E?AC3|DTS(?:-HD)?|FLAC|MP3|OPUS)(?:[\.\s\-]*[1-7]\.[01])?\b',
+      caseSensitive: false,
+    ),
     // source tags
     RegExp(
       r'\b(?:BluRay|BDRip|BRRip|HDRip|WEBRip|WEB-DL|DVDRip|HDTV|PDTV)\b',
       caseSensitive: false,
     ),
     // audio tags
-    RegExp(r'\b(?:5\.1|7\.1|Atmos|TrueHD|DDP?5\.1)\b', caseSensitive: false),
+    RegExp(
+      r'\b(?:5\.1|7\.1|Atmos|TrueHD|DDP?(?:5\.1|2\.0))\b',
+      caseSensitive: false,
+    ),
     // hdr, remux,
     RegExp(r'\b(?:HDR10|HDR|SDR|DV|DoVi|Remux)\b', caseSensitive: false),
     // common streaming service tags
