@@ -48,3 +48,39 @@ String? extensionFromFilename(String filename) {
   if (dotIndex == -1 || dotIndex == filename.length - 1) return null;
   return filename.substring(dotIndex + 1).toLowerCase();
 }
+
+bool isSameDomain(Uri baseUrl, Uri targetUrl) {
+  // extract the hosts and force lowercase
+  String baseHost = baseUrl.host.toLowerCase();
+  String targetHost = targetUrl.host.toLowerCase();
+
+  // strip 'www.' so 'www.example.com' and 'example.com' are treated as identical
+  if (baseHost.startsWith('www.')) baseHost = baseHost.substring(4);
+  if (targetHost.startsWith('www.')) targetHost = targetHost.substring(4);
+
+  // strict match
+  return baseHost == targetHost;
+}
+
+bool isSystemFile(String filename) {
+  final lower = filename.toLowerCase().trim();
+
+  // matches for useless system files/folders
+  const exactMatches = {
+    'thumbs.db', // windows thumbnail cache
+    'desktop.ini', // windows folder customization
+    '.ds_store', // macOS folder metadata
+    '@eadir', // synology NAS indexing folders
+    '\$recycle.bin', // windows trash
+  };
+
+  if (exactMatches.contains(lower)) return true;
+
+  // Prefix matches for variable system files
+  if (lower.startsWith('._')) return true; // macOS AppleDouble files
+  if (lower.startsWith('.trash')) return true; // trash directories
+  if (lower.startsWith('.spotlight-')) return true; // macOS Spotlight indexing
+  if (lower.startsWith('.fseventsd')) return true; // macOS filesystem events
+
+  return false;
+}
