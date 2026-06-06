@@ -2,6 +2,7 @@ import 'package:argus/core/constants.dart';
 import 'package:argus/core/utils/name_cleaner.dart';
 import 'package:argus/core/utils/url_utils.dart';
 import 'package:argus/data/scrapers/scrape_result.dart';
+import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
@@ -23,17 +24,17 @@ class DirectoryScraper {
 
       try {
         final uri = Uri.parse(url);
-        print('Fetching: $url');
+        debugPrint('Fetching: $url');
 
         final response = await http.get(uri).timeout(kScrapeTimeout);
         if (response.statusCode != 200) {
-          print('Bad Status: ${response.statusCode} on $url');
+          debugPrint('Bad Status: ${response.statusCode} on $url');
           continue;
         }
 
         final document = html_parser.parse(response.body);
         final links = document.querySelectorAll('a[href]');
-        print('Found ${links.length} raw links on this page');
+        debugPrint('Found ${links.length} raw links on this page');
 
         for (final link in links) {
           final href = link.attributes['href'];
@@ -74,7 +75,7 @@ class DirectoryScraper {
           }
         }
       } catch (e) {
-        print('Error fetching $url: $e');
+        debugPrint('Error fetching $url: $e');
         continue;
       }
     }

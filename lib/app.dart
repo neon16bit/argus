@@ -12,7 +12,7 @@ class ArgusApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreenAccent),
       ),
-      home: const HomeScreen(),
+      home: HomeScreen(),
     );
   }
 }
