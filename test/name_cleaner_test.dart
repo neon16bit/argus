@@ -94,18 +94,12 @@ void main() {
       expect(result.year, 2021);
     });
 
-    test('Fails on hyphenated words at the end of a file', () {
-      // this test will fail because the current regex is too aggressive and
-      // removes any word starting with a dash (the very last dash) followed by word characters
-      // TODO: im too lazy for this edge case right now
+    test('Handles hyphenated words at the end of a file', () {
       final result = NameCleaner.clean('The.Amazing.Spider-Man.mkv');
       expect(result.title, 'The Amazing Spider-Man');
     });
 
     test('Group name has .com/.net etc', () {
-      // TODO: this test currently fails release groups with .com/.net
-      // in their name are not being stripped correctly, related to
-      // last occurrance of dash in the filename
       final result = NameCleaner.clean(
         'The.Fool.2026.S01E12.1080p.DSNP.WEB-DL.AAC2.0.H.264-Evernight.Com.mkv',
       );

@@ -77,8 +77,8 @@ class NameCleaner {
     // brackets content [SubGroup], {info}
     RegExp(r'\[.*?\]'),
     RegExp(r'\{.*?\}'),
-    // release group after last dash
-    RegExp(r'\s*-\s*\w+$'),
+    // release group after last dash (must have space before dash so hyphenated words arent stripped)
+    RegExp(r'\s+-\s*[\w\.]+$'),
     // common tags
     RegExp(
       r'\b(?:PROPER|REPACK|INTERNAL|EXTENDED|UNRATED|DIRECTORS\.?CUT)\b',
@@ -132,8 +132,8 @@ class NameCleaner {
 
     // replace dots, underscores, brackets with spaces
     rawName = rawName.replaceAll(RegExp(r'[._\[\]\(\)]'), ' ');
-    // remove standalone dashes
-    rawName = rawName.replaceAll(RegExp(r'\s+-\s+'), ' ');
+    // remove standalone dashes and dash+word tags
+    rawName = rawName.replaceAll(RegExp(r'\s+-(?:\s+|\w+)'), ' ');
     // collapse multiple spaces
     rawName = rawName.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
     // title case
