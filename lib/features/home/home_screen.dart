@@ -8,6 +8,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('Argus')),
+      extendBody: true,
       body: const Center(child: Text('Hello, Argus!')),
     );
   }

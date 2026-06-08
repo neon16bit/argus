@@ -1,4 +1,4 @@
-import 'package:argus/features/home/home_screen.dart';
+import 'package:argus/features/shell/app_shell.dart';
 import 'package:flutter/material.dart';
 
 class ArgusApp extends StatelessWidget {
@@ -12,7 +12,7 @@ class ArgusApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreenAccent),
       ),
-      home: HomeScreen(),
+      home: const AppShell(),
     );
   }
 }
