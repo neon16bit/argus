@@ -30,7 +30,7 @@ class ScrapeResult {
     final details = [
       if (season != null) 'S${season.toString().padLeft(2, '0')}',
       if (episode != null) 'E${episode.toString().padLeft(2, '0')}',
-    ].join(' | ');
+    ].join('|');
 
     return 'FILE: $cleanTitle ${details.isNotEmpty ? '[$details]' : ''}';
   }

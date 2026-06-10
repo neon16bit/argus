@@ -127,8 +127,10 @@ void main() {
       final result = NameCleaner.clean(
         '[Cleopatra]The_Return_Of_The_Great_Mage_II_-_01_(Dual Audio_10bit_BD1080p_x265).mkv',
       );
-      // removing audio might cause false positives
-      expect(result.title, 'The Return Of The Great Mage II 01 Audio');
+      // 'II' is parsed as season 2. '01' is parsed as episode 1.
+      expect(result.title, 'The Return Of The Great Mage Audio');
+      expect(result.season, 2);
+      expect(result.episode, 1);
     });
   });
 }

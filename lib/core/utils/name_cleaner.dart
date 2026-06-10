@@ -39,6 +39,12 @@ class NameCleaner {
     RegExp(r'\b[Ee]p(?:isode)?\.?\s*(\d{1,3})(?!\d)', caseSensitive: false),
     // E02 (episode only)
     RegExp(r'\b[Ee](\d{2,3})(?!\d)'),
+    // format: title roman_numeral episode (e.g. Index II 01, Overlord III 05)
+    // the number should not be followed by resolution/codec letters like 'p', 'k', or 'bit'
+    // TODO: could be prone to false positives need to do more checks
+    RegExp(
+      r'(?<![a-zA-Z])(II|III|IV|V|VI|VII|VIII|IX|X)[\s_.-]+(\d{2,3})(?!\d|[pk]\b|bit\b)',
+    ),
   ];
 
   // Year pattern(2026), [2026], 2026
@@ -102,7 +108,8 @@ class NameCleaner {
       final match = pattern.firstMatch(rawName);
       if (match != null) {
         if (match.groupCount >= 2) {
-          season = int.tryParse(match.group(1)!);
+          final sGroup = match.group(1)!;
+          season = int.tryParse(sGroup) ?? _parseRoman(sGroup);
           episode = int.tryParse(match.group(2)!);
         } else if (match.groupCount == 1) {
           // episode only pattern
@@ -167,5 +174,20 @@ class NameCleaner {
           return word[0].toUpperCase() + word.substring(1).toLowerCase();
         })
         .join(' ');
+  }
+
+  static int? _parseRoman(String roman) {
+    const map = {
+      'II': 2,
+      'III': 3,
+      'IV': 4,
+      'V': 5,
+      'VI': 6,
+      'VII': 7,
+      'VIII': 8,
+      'IX': 9,
+      'X': 10,
+    };
+    return map[roman.toUpperCase()];
   }
 }
