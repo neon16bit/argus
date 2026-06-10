@@ -41,6 +41,7 @@ const Set<String> kSubtitleExtensions = {'srt', 'ass', 'ssa', 'sub', 'vtt'};
 const Duration kPingTimeout = Duration(seconds: 3);
 const Duration kScrapeTimeout = Duration(seconds: 10);
 const int kMaxConcurrentRequests = 5;
+const int kInsertBatchSize = 100;
 
 const String kSimklBaseUrl = 'https://api.simkl.com';
 const String kSimklImageBase = 'https://wsrv.nl/?url=https://simkl.in';

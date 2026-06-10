@@ -12,48 +12,22 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
-  String _searchQuery = '';
-  bool _isLoading = false;
-  List<SearchResult> _results = [];
+  final _debounce = ValueNotifier<String>('');
 
   @override
   void dispose() {
     _controller.dispose();
+    _debounce.dispose();
     super.dispose();
   }
 
-  void _onSearch(String query) async {
-    setState(() {
-      _searchQuery = query;
-      _isLoading = true;
-    });
-
-    final resultsMap = <String, SearchResult>{};
-    if (query.isNotEmpty) {
-      final lowerQuery = query.toLowerCase();
-      final sources = ref.read(sourcesProvider);
-      for (final source in sources) {
-        for (final item in source.items) {
-          if (item.cleanTitle.toLowerCase().contains(lowerQuery)) {
-            final title = item.cleanTitle;
-            if (!resultsMap.containsKey(title)) {
-              resultsMap[title] = SearchResult(cleanTitle: title, items: []);
-            }
-            resultsMap[title]!.items.add(item);
-          }
-        }
-      }
-    }
-
-    setState(() {
-      _results = resultsMap.values.toList()
-        ..sort((a, b) => a.cleanTitle.compareTo(b.cleanTitle));
-      _isLoading = false;
-    });
+  void _onSearch(String query) {
+    ref.read(searchQueryProvider.notifier).set(query);
   }
 
   @override
   Widget build(BuildContext context) {
+    final resultsAsync = ref.watch(searchResultsProvider);
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -78,54 +52,52 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
         ],
       ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_searchQuery.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search_rounded, size: 64, color: Colors.grey[700]),
-            const SizedBox(height: 16),
-            const Text(
-              'Search your indexed sources',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_results.isEmpty) {
-      return const Center(child: Text('No results found'));
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _results.length,
-      itemBuilder: (context, index) {
-        final result = _results[index];
-        return _SearchResultCard(result: result);
-      },
+      body: resultsAsync.when(
+        data: (results) {
+          if (ref.read(searchQueryProvider).isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.search_rounded, size: 64, color: Colors.grey[700]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Search your indexed sources',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (results.isEmpty) {
+            return const Center(child: Text('No results found'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: results.length,
+            itemBuilder: (context, index) {
+              final result = results[index];
+              return _SearchResultCard(result: result);
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
     );
   }
 }
 
-class _SearchResultCard extends StatelessWidget {
+class _SearchResultCard extends ConsumerWidget {
   final SearchResult result;
 
   const _SearchResultCard({required this.result});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final localCount = result.items.length;
+    // trigger Simkl metadata fetch for this search result
+    final metadataAsync = ref.watch(metadataProvider(result.cleanTitle));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -139,8 +111,24 @@ class _SearchResultCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // poster thumbnail
-              SizedBox(width: 60, child: _defaultPoster(context)),
+              // Poster thumbnail
+              SizedBox(
+                width: 60,
+                child: metadataAsync.when(
+                  data: (meta) {
+                    if (meta?.posterUrl != null) {
+                      return Image.network(
+                        meta!.posterUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _defaultPoster(context),
+                      );
+                    }
+                    return _defaultPoster(context);
+                  },
+                  loading: () => Container(color: Colors.grey[800]),
+                  error: (_, _) => _defaultPoster(context),
+                ),
+              ),
 
               // result details
               Expanded(

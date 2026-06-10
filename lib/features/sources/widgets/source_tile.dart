@@ -1,24 +1,24 @@
+import 'package:argus/core/providers/providers.dart';
+import 'package:argus/data/database/app_database.dart';
+import 'package:argus/features/sources/widgets/scrape_progress_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:argus/data/scrapers/directory_scraper.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SourceTile extends StatefulWidget {
-  final dynamic source;
-  final VoidCallback onDelete;
-
-  const SourceTile({super.key, required this.source, required this.onDelete});
+class SourceTile extends ConsumerStatefulWidget {
+  final Source source;
+  const SourceTile({super.key, required this.source});
 
   @override
-  State<SourceTile> createState() => _SourceTileState();
+  ConsumerState<SourceTile> createState() => _SourceTileState();
 }
 
-class _SourceTileState extends State<SourceTile> {
+class _SourceTileState extends ConsumerState<SourceTile> {
   bool _isScraping = false;
-  bool _isPinging = false;
 
   @override
   Widget build(BuildContext context) {
     final source = widget.source;
+    final itemCountAsync = ref.watch(mediaItemsBySourceProvider(source.id));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -41,7 +41,11 @@ class _SourceTileState extends State<SourceTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${source.items.length} items indexed'),
+                itemCountAsync.when(
+                  data: (items) => Text('${items.length} items indexed'),
+                  loading: () => const Text('Loading...'),
+                  error: (e, st) => const Text('0 items'),
+                ),
                 if (source.lastScraped != null)
                   Text(
                     'Last scraped: ${_formatDate(source.lastScraped!)}',
@@ -51,88 +55,29 @@ class _SourceTileState extends State<SourceTile> {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: _isPinging
-                          ? null
-                          : () async {
-                              setState(() => _isPinging = true);
-                              try {
-                                final res = await http
-                                    .get(Uri.parse(source.baseUrl))
-                                    .timeout(const Duration(seconds: 5));
-                                setState(() {
-                                  source.isOnline = res.statusCode == 200;
-                                });
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${source.name} is ${source.isOnline ? "online" : "offline"}',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                setState(() => source.isOnline = false);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${source.name} is offline (timeout)',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } finally {
-                                if (mounted) setState(() => _isPinging = false);
-                              }
-                            },
-                      icon: _isPinging
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.wifi_find_rounded, size: 18),
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final actions = ref.read(sourceActionsProvider);
+                        final online = await actions.pingSource(source);
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${source.name} is ${online ? "online" : "offline"}',
+                              ),
+                            ),
+                          );
+                        }
+                        ref.invalidate(sourcesProvider);
+                      },
+                      icon: const Icon(Icons.wifi_find_rounded, size: 18),
                       label: const Text('Ping'),
                     ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: _isScraping
                           ? null
-                          : () async {
-                              setState(() => _isScraping = true);
-                              try {
-                                final results =
-                                    await DirectoryScraper.scrapeDirectory(
-                                      source.baseUrl,
-                                    );
-                                if (mounted) {
-                                  setState(() {
-                                    source.items = results;
-                                    source.lastScraped = DateTime.now();
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Scraped ${results.length} items from ${source.name}',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Scrape failed: $e'),
-                                    ),
-                                  );
-                                }
-                              } finally {
-                                if (mounted) {
-                                  setState(() => _isScraping = false);
-                                }
-                              }
-                            },
+                          : () => _scrapeWithProgress(source),
                       icon: _isScraping
                           ? const SizedBox(
                               width: 16,
@@ -157,7 +102,7 @@ class _SourceTileState extends State<SourceTile> {
     );
   }
 
-  void _confirmDelete(dynamic source) async {
+  void _confirmDelete(Source source) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -177,8 +122,47 @@ class _SourceTileState extends State<SourceTile> {
       ),
     );
     if (confirm == true) {
-      widget.onDelete();
+      final actions = ref.read(sourceActionsProvider);
+      await actions.deleteSource(source.id);
+      ref.invalidate(sourcesProvider);
+      ref.invalidate(mediaItemCountProvider);
     }
+  }
+
+  void _scrapeWithProgress(Source source) {
+    setState(() => _isScraping = true);
+    final actions = ref.read(sourceActionsProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (ctx) => ScrapeProgressSheet(
+        sourceActions: actions,
+        source: source,
+        onDone: (count) {
+          Navigator.pop(ctx);
+          setState(() => _isScraping = false);
+          ref.invalidate(sourcesProvider);
+          ref.invalidate(mediaItemCountProvider);
+          ref.invalidate(mediaItemsBySourceProvider(source.id));
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Indexed $count items')));
+          }
+        },
+        onError: (error) {
+          Navigator.pop(ctx);
+          setState(() => _isScraping = false);
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error: $error')));
+          }
+        },
+      ),
+    );
   }
 
   String _formatDate(DateTime dt) {

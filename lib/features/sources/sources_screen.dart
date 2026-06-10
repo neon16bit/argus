@@ -13,11 +13,13 @@ class SourcesScreen extends ConsumerStatefulWidget {
 class _SourcesScreenState extends ConsumerState<SourcesScreen> {
   @override
   Widget build(BuildContext context) {
-    final sources = ref.watch(sourcesProvider);
+    final sourcesAsync = ref.watch(sourcesProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Sources')),
-      body: sources.isEmpty
-          ? Center(
+      body: sourcesAsync.when(
+        data: (sources) {
+          if (sources.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -31,19 +33,17 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
                   ),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: sources.length,
-              itemBuilder: (context, index) {
-                return SourceTile(
-                  source: sources[index],
-                  onDelete: () {
-                    ref.read(sourcesProvider.notifier).removeSourceAt(index);
-                  },
-                );
-              },
-            ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: sources.length,
+            itemBuilder: (context, index) => SourceTile(source: sources[index]),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context),
         child: const Icon(Icons.add_rounded),
@@ -88,15 +88,20 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               final name = nameController.text.trim();
               final url = urlController.text.trim();
               if (name.isEmpty || url.isEmpty) return;
 
               Navigator.pop(ctx);
-              ref
-                  .read(sourcesProvider.notifier)
-                  .addSource(Source(name: name, baseUrl: url));
+              final messenger = ScaffoldMessenger.of(context);
+              final actions = ref.read(sourceActionsProvider);
+              final warning = await actions.addSource(name, url);
+              if (mounted && warning != null) {
+                messenger.showSnackBar(SnackBar(content: Text(warning)));
+              }
+              ref.invalidate(sourcesProvider);
+              ref.invalidate(mediaItemCountProvider);
             },
             child: const Text('Add'),
           ),
