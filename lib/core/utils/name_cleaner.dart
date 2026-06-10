@@ -48,7 +48,7 @@ class NameCleaner {
   static final _noisePatterns = [
     // resolution and quality
     RegExp(
-      r'\b(?:(?:480|720|1080|1440|2160)[pi]?|[248]k|\d{3,4}x\d{3,4}|F?HD|UHD|SD)\b',
+      r'\b(?:BD|HD|WEB)?(?:(?:480|720|1080|1440|2160)[pi]?|[248]k|\d{3,4}x\d{3,4}|F?HD|UHD|SD)\b',
       caseSensitive: false,
     ),
     // codecs and encoders
@@ -74,9 +74,6 @@ class NameCleaner {
       r'\b(?:NF|AMZN|DSNP|ATVP|HMAX|MAX|PEACOCK|CRAV)\b',
       caseSensitive: false,
     ),
-    // brackets content [SubGroup], {info}
-    RegExp(r'\[.*?\]'),
-    RegExp(r'\{.*?\}'),
     // release group after last dash (must have space before dash so hyphenated words arent stripped)
     RegExp(r'\s+-\s*[\w\.]+$'),
     // common tags
@@ -125,13 +122,21 @@ class NameCleaner {
       rawName = rawName.replaceFirst(yearMatch.group(0)!, ' ');
     }
 
+    // strip entire brackets content [SubGroup], {info}
+    rawName = rawName.replaceAll(RegExp(r'\[.*?\]'), ' ');
+    rawName = rawName.replaceAll(RegExp(r'\{.*?\}'), ' ');
+
+    // replace underscores and remaining brackets/parentheses with spaces
+    rawName = rawName.replaceAll(RegExp(r'[_\[\]\(\)]'), ' ');
+
     // strip noise
     for (final pattern in _noisePatterns) {
       rawName = rawName.replaceAll(pattern, ' ');
     }
 
-    // replace dots, underscores, brackets with spaces
-    rawName = rawName.replaceAll(RegExp(r'[._\[\]\(\)]'), ' ');
+    // replace dots with spaces
+    rawName = rawName.replaceAll('.', ' ');
+
     // remove standalone dashes and dash+word tags
     rawName = rawName.replaceAll(RegExp(r'\s+-(?:\s+|\w+)'), ' ');
     // collapse multiple spaces

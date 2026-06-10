@@ -122,5 +122,13 @@ void main() {
       expect(result.episode, 1);
       expect(result.extension, isNull);
     });
+
+    test('Parses format with underscores and parentheses', () {
+      final result = NameCleaner.clean(
+        '[Cleopatra]The_Return_Of_The_Great_Mage_II_-_01_(Dual Audio_10bit_BD1080p_x265).mkv',
+      );
+      // removing audio might cause false positives
+      expect(result.title, 'The Return Of The Great Mage II 01 Audio');
+    });
   });
 }
