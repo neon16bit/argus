@@ -89,7 +89,16 @@ class SourceActions {
   }
 
   Future<int> scrapeSource(Source source) async {
-    final results = await DirectoryScraper.scrapeDirectory(source.baseUrl);
+    List<ScrapeResult> results = [];
+    await for (final progress in DirectoryScraper.scrapeWithProgress(
+      source.baseUrl,
+    )) {
+      if (progress.isDone) {
+        results = progress.results;
+        break;
+      }
+    }
+
     if (results.isEmpty) return 0;
 
     await db.deleteMediaItemsBySource(source.id);

@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 // this is a simple test script to run the scraper and print results to console it does not save anything to disk
+import 'package:argus/data/scrapers/scrape_result.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
 import 'dart:io';
 
@@ -18,7 +19,19 @@ void main(List<String> args) async {
   final stopwatch = Stopwatch()..start();
 
   try {
-    final results = await DirectoryScraper.scrapeDirectory(targetUrl);
+    var results = <ScrapeResult>[];
+    await for (final progress in DirectoryScraper.scrapeWithProgress(
+      targetUrl,
+    )) {
+      if (progress.isDone) {
+        results = progress.results;
+        break;
+      }
+      stdout.write(
+        '\r${progress.message}                                     ',
+      );
+    }
+    print('');
 
     print('Scraping Complete in ${stopwatch.elapsed.inSeconds}s');
     print('Found ${results.length} files:\n');
