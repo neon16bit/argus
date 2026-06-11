@@ -35,6 +35,7 @@ MediaItemsCompanion _toCompanion(ScrapeResult r, int sourceId) {
     sourceId: Value(sourceId),
     rawName: Value(r.rawName),
     cleanTitle: Value(r.cleanTitle),
+    groupTitle: Value(r.groupTitle),
     directUrl: Value(r.directUrl),
     type: Value(r.type),
     season: Value(r.season),
@@ -45,7 +46,6 @@ MediaItemsCompanion _toCompanion(ScrapeResult r, int sourceId) {
 }
 
 // source actions
-
 class SourceActions {
   final AppDatabase db;
   SourceActions(this.db);

@@ -461,6 +461,17 @@ class $MediaItemsTable extends MediaItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _groupTitleMeta = const VerificationMeta(
+    'groupTitle',
+  );
+  @override
+  late final GeneratedColumn<String> groupTitle = GeneratedColumn<String>(
+    'group_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _directUrlMeta = const VerificationMeta(
     'directUrl',
   );
@@ -541,6 +552,7 @@ class $MediaItemsTable extends MediaItems
     sourceId,
     rawName,
     cleanTitle,
+    groupTitle,
     directUrl,
     type,
     season,
@@ -587,6 +599,14 @@ class $MediaItemsTable extends MediaItems
       );
     } else if (isInserting) {
       context.missing(_cleanTitleMeta);
+    }
+    if (data.containsKey('group_title')) {
+      context.handle(
+        _groupTitleMeta,
+        groupTitle.isAcceptableOrUnknown(data['group_title']!, _groupTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupTitleMeta);
     }
     if (data.containsKey('direct_url')) {
       context.handle(
@@ -654,6 +674,10 @@ class $MediaItemsTable extends MediaItems
         DriftSqlType.string,
         data['${effectivePrefix}clean_title'],
       )!,
+      groupTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_title'],
+      )!,
       directUrl: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}direct_url'],
@@ -701,6 +725,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
   final int sourceId;
   final String rawName;
   final String cleanTitle;
+  final String groupTitle;
   final String directUrl;
   final ScrapeItemType type;
   final int? season;
@@ -713,6 +738,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
     required this.sourceId,
     required this.rawName,
     required this.cleanTitle,
+    required this.groupTitle,
     required this.directUrl,
     required this.type,
     this.season,
@@ -728,6 +754,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
     map['source_id'] = Variable<int>(sourceId);
     map['raw_name'] = Variable<String>(rawName);
     map['clean_title'] = Variable<String>(cleanTitle);
+    map['group_title'] = Variable<String>(groupTitle);
     map['direct_url'] = Variable<String>(directUrl);
     {
       map['type'] = Variable<String>(
@@ -756,6 +783,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
       sourceId: Value(sourceId),
       rawName: Value(rawName),
       cleanTitle: Value(cleanTitle),
+      groupTitle: Value(groupTitle),
       directUrl: Value(directUrl),
       type: Value(type),
       season: season == null && nullToAbsent
@@ -784,6 +812,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
       sourceId: serializer.fromJson<int>(json['sourceId']),
       rawName: serializer.fromJson<String>(json['rawName']),
       cleanTitle: serializer.fromJson<String>(json['cleanTitle']),
+      groupTitle: serializer.fromJson<String>(json['groupTitle']),
       directUrl: serializer.fromJson<String>(json['directUrl']),
       type: $MediaItemsTable.$convertertype.fromJson(
         serializer.fromJson<String>(json['type']),
@@ -803,6 +832,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
       'sourceId': serializer.toJson<int>(sourceId),
       'rawName': serializer.toJson<String>(rawName),
       'cleanTitle': serializer.toJson<String>(cleanTitle),
+      'groupTitle': serializer.toJson<String>(groupTitle),
       'directUrl': serializer.toJson<String>(directUrl),
       'type': serializer.toJson<String>(
         $MediaItemsTable.$convertertype.toJson(type),
@@ -820,6 +850,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
     int? sourceId,
     String? rawName,
     String? cleanTitle,
+    String? groupTitle,
     String? directUrl,
     ScrapeItemType? type,
     Value<int?> season = const Value.absent(),
@@ -832,6 +863,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
     sourceId: sourceId ?? this.sourceId,
     rawName: rawName ?? this.rawName,
     cleanTitle: cleanTitle ?? this.cleanTitle,
+    groupTitle: groupTitle ?? this.groupTitle,
     directUrl: directUrl ?? this.directUrl,
     type: type ?? this.type,
     season: season.present ? season.value : this.season,
@@ -850,6 +882,9 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
       cleanTitle: data.cleanTitle.present
           ? data.cleanTitle.value
           : this.cleanTitle,
+      groupTitle: data.groupTitle.present
+          ? data.groupTitle.value
+          : this.groupTitle,
       directUrl: data.directUrl.present ? data.directUrl.value : this.directUrl,
       type: data.type.present ? data.type.value : this.type,
       season: data.season.present ? data.season.value : this.season,
@@ -869,6 +904,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
           ..write('sourceId: $sourceId, ')
           ..write('rawName: $rawName, ')
           ..write('cleanTitle: $cleanTitle, ')
+          ..write('groupTitle: $groupTitle, ')
           ..write('directUrl: $directUrl, ')
           ..write('type: $type, ')
           ..write('season: $season, ')
@@ -886,6 +922,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
     sourceId,
     rawName,
     cleanTitle,
+    groupTitle,
     directUrl,
     type,
     season,
@@ -902,6 +939,7 @@ class MediaItem extends DataClass implements Insertable<MediaItem> {
           other.sourceId == this.sourceId &&
           other.rawName == this.rawName &&
           other.cleanTitle == this.cleanTitle &&
+          other.groupTitle == this.groupTitle &&
           other.directUrl == this.directUrl &&
           other.type == this.type &&
           other.season == this.season &&
@@ -916,6 +954,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
   final Value<int> sourceId;
   final Value<String> rawName;
   final Value<String> cleanTitle;
+  final Value<String> groupTitle;
   final Value<String> directUrl;
   final Value<ScrapeItemType> type;
   final Value<int?> season;
@@ -928,6 +967,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
     this.sourceId = const Value.absent(),
     this.rawName = const Value.absent(),
     this.cleanTitle = const Value.absent(),
+    this.groupTitle = const Value.absent(),
     this.directUrl = const Value.absent(),
     this.type = const Value.absent(),
     this.season = const Value.absent(),
@@ -941,6 +981,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
     required int sourceId,
     required String rawName,
     required String cleanTitle,
+    required String groupTitle,
     required String directUrl,
     required ScrapeItemType type,
     this.season = const Value.absent(),
@@ -951,6 +992,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
   }) : sourceId = Value(sourceId),
        rawName = Value(rawName),
        cleanTitle = Value(cleanTitle),
+       groupTitle = Value(groupTitle),
        directUrl = Value(directUrl),
        type = Value(type);
   static Insertable<MediaItem> custom({
@@ -958,6 +1000,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
     Expression<int>? sourceId,
     Expression<String>? rawName,
     Expression<String>? cleanTitle,
+    Expression<String>? groupTitle,
     Expression<String>? directUrl,
     Expression<String>? type,
     Expression<int>? season,
@@ -971,6 +1014,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
       if (sourceId != null) 'source_id': sourceId,
       if (rawName != null) 'raw_name': rawName,
       if (cleanTitle != null) 'clean_title': cleanTitle,
+      if (groupTitle != null) 'group_title': groupTitle,
       if (directUrl != null) 'direct_url': directUrl,
       if (type != null) 'type': type,
       if (season != null) 'season': season,
@@ -986,6 +1030,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
     Value<int>? sourceId,
     Value<String>? rawName,
     Value<String>? cleanTitle,
+    Value<String>? groupTitle,
     Value<String>? directUrl,
     Value<ScrapeItemType>? type,
     Value<int?>? season,
@@ -999,6 +1044,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
       sourceId: sourceId ?? this.sourceId,
       rawName: rawName ?? this.rawName,
       cleanTitle: cleanTitle ?? this.cleanTitle,
+      groupTitle: groupTitle ?? this.groupTitle,
       directUrl: directUrl ?? this.directUrl,
       type: type ?? this.type,
       season: season ?? this.season,
@@ -1023,6 +1069,9 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
     }
     if (cleanTitle.present) {
       map['clean_title'] = Variable<String>(cleanTitle.value);
+    }
+    if (groupTitle.present) {
+      map['group_title'] = Variable<String>(groupTitle.value);
     }
     if (directUrl.present) {
       map['direct_url'] = Variable<String>(directUrl.value);
@@ -1057,6 +1106,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
           ..write('sourceId: $sourceId, ')
           ..write('rawName: $rawName, ')
           ..write('cleanTitle: $cleanTitle, ')
+          ..write('groupTitle: $groupTitle, ')
           ..write('directUrl: $directUrl, ')
           ..write('type: $type, ')
           ..write('season: $season, ')
@@ -1069,16 +1119,1079 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItem> {
   }
 }
 
+class $MediaShowsTable extends MediaShows
+    with TableInfo<$MediaShowsTable, MediaShow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MediaShowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupTitleMeta = const VerificationMeta(
+    'groupTitle',
+  );
+  @override
+  late final GeneratedColumn<String> groupTitle = GeneratedColumn<String>(
+    'group_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _resolvedTitleMeta = const VerificationMeta(
+    'resolvedTitle',
+  );
+  @override
+  late final GeneratedColumn<String> resolvedTitle = GeneratedColumn<String>(
+    'resolved_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mediaTypeMeta = const VerificationMeta(
+    'mediaType',
+  );
+  @override
+  late final GeneratedColumn<String> mediaType = GeneratedColumn<String>(
+    'media_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _animeTypeMeta = const VerificationMeta(
+    'animeType',
+  );
+  @override
+  late final GeneratedColumn<String> animeType = GeneratedColumn<String>(
+    'anime_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalEpisodesMeta = const VerificationMeta(
+    'totalEpisodes',
+  );
+  @override
+  late final GeneratedColumn<int> totalEpisodes = GeneratedColumn<int>(
+    'total_episodes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _posterPathMeta = const VerificationMeta(
+    'posterPath',
+  );
+  @override
+  late final GeneratedColumn<String> posterPath = GeneratedColumn<String>(
+    'poster_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fanartPathMeta = const VerificationMeta(
+    'fanartPath',
+  );
+  @override
+  late final GeneratedColumn<String> fanartPath = GeneratedColumn<String>(
+    'fanart_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _overviewMeta = const VerificationMeta(
+    'overview',
+  );
+  @override
+  late final GeneratedColumn<String> overview = GeneratedColumn<String>(
+    'overview',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _simklIdMeta = const VerificationMeta(
+    'simklId',
+  );
+  @override
+  late final GeneratedColumn<int> simklId = GeneratedColumn<int>(
+    'simkl_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _simklSlugMeta = const VerificationMeta(
+    'simklSlug',
+  );
+  @override
+  late final GeneratedColumn<String> simklSlug = GeneratedColumn<String>(
+    'simkl_slug',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _imdbIdMeta = const VerificationMeta('imdbId');
+  @override
+  late final GeneratedColumn<String> imdbId = GeneratedColumn<String>(
+    'imdb_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tmdbIdMeta = const VerificationMeta('tmdbId');
+  @override
+  late final GeneratedColumn<String> tmdbId = GeneratedColumn<String>(
+    'tmdb_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _malIdMeta = const VerificationMeta('malId');
+  @override
+  late final GeneratedColumn<int> malId = GeneratedColumn<int>(
+    'mal_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _anilistIdMeta = const VerificationMeta(
+    'anilistId',
+  );
+  @override
+  late final GeneratedColumn<int> anilistId = GeneratedColumn<int>(
+    'anilist_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tvdbIdMeta = const VerificationMeta('tvdbId');
+  @override
+  late final GeneratedColumn<int> tvdbId = GeneratedColumn<int>(
+    'tvdb_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _anidbIdMeta = const VerificationMeta(
+    'anidbId',
+  );
+  @override
+  late final GeneratedColumn<String> anidbId = GeneratedColumn<String>(
+    'anidb_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupTitle,
+    resolvedTitle,
+    mediaType,
+    animeType,
+    year,
+    totalEpisodes,
+    posterPath,
+    fanartPath,
+    overview,
+    simklId,
+    simklSlug,
+    imdbId,
+    tmdbId,
+    malId,
+    anilistId,
+    tvdbId,
+    anidbId,
+    resolvedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'media_shows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MediaShow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_title')) {
+      context.handle(
+        _groupTitleMeta,
+        groupTitle.isAcceptableOrUnknown(data['group_title']!, _groupTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupTitleMeta);
+    }
+    if (data.containsKey('resolved_title')) {
+      context.handle(
+        _resolvedTitleMeta,
+        resolvedTitle.isAcceptableOrUnknown(
+          data['resolved_title']!,
+          _resolvedTitleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('media_type')) {
+      context.handle(
+        _mediaTypeMeta,
+        mediaType.isAcceptableOrUnknown(data['media_type']!, _mediaTypeMeta),
+      );
+    }
+    if (data.containsKey('anime_type')) {
+      context.handle(
+        _animeTypeMeta,
+        animeType.isAcceptableOrUnknown(data['anime_type']!, _animeTypeMeta),
+      );
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('total_episodes')) {
+      context.handle(
+        _totalEpisodesMeta,
+        totalEpisodes.isAcceptableOrUnknown(
+          data['total_episodes']!,
+          _totalEpisodesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('poster_path')) {
+      context.handle(
+        _posterPathMeta,
+        posterPath.isAcceptableOrUnknown(data['poster_path']!, _posterPathMeta),
+      );
+    }
+    if (data.containsKey('fanart_path')) {
+      context.handle(
+        _fanartPathMeta,
+        fanartPath.isAcceptableOrUnknown(data['fanart_path']!, _fanartPathMeta),
+      );
+    }
+    if (data.containsKey('overview')) {
+      context.handle(
+        _overviewMeta,
+        overview.isAcceptableOrUnknown(data['overview']!, _overviewMeta),
+      );
+    }
+    if (data.containsKey('simkl_id')) {
+      context.handle(
+        _simklIdMeta,
+        simklId.isAcceptableOrUnknown(data['simkl_id']!, _simklIdMeta),
+      );
+    }
+    if (data.containsKey('simkl_slug')) {
+      context.handle(
+        _simklSlugMeta,
+        simklSlug.isAcceptableOrUnknown(data['simkl_slug']!, _simklSlugMeta),
+      );
+    }
+    if (data.containsKey('imdb_id')) {
+      context.handle(
+        _imdbIdMeta,
+        imdbId.isAcceptableOrUnknown(data['imdb_id']!, _imdbIdMeta),
+      );
+    }
+    if (data.containsKey('tmdb_id')) {
+      context.handle(
+        _tmdbIdMeta,
+        tmdbId.isAcceptableOrUnknown(data['tmdb_id']!, _tmdbIdMeta),
+      );
+    }
+    if (data.containsKey('mal_id')) {
+      context.handle(
+        _malIdMeta,
+        malId.isAcceptableOrUnknown(data['mal_id']!, _malIdMeta),
+      );
+    }
+    if (data.containsKey('anilist_id')) {
+      context.handle(
+        _anilistIdMeta,
+        anilistId.isAcceptableOrUnknown(data['anilist_id']!, _anilistIdMeta),
+      );
+    }
+    if (data.containsKey('tvdb_id')) {
+      context.handle(
+        _tvdbIdMeta,
+        tvdbId.isAcceptableOrUnknown(data['tvdb_id']!, _tvdbIdMeta),
+      );
+    }
+    if (data.containsKey('anidb_id')) {
+      context.handle(
+        _anidbIdMeta,
+        anidbId.isAcceptableOrUnknown(data['anidb_id']!, _anidbIdMeta),
+      );
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MediaShow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MediaShow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_title'],
+      )!,
+      resolvedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolved_title'],
+      ),
+      mediaType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_type'],
+      ),
+      animeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}anime_type'],
+      ),
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      ),
+      totalEpisodes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_episodes'],
+      ),
+      posterPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_path'],
+      ),
+      fanartPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fanart_path'],
+      ),
+      overview: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}overview'],
+      ),
+      simklId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}simkl_id'],
+      ),
+      simklSlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}simkl_slug'],
+      ),
+      imdbId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}imdb_id'],
+      ),
+      tmdbId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tmdb_id'],
+      ),
+      malId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mal_id'],
+      ),
+      anilistId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}anilist_id'],
+      ),
+      tvdbId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tvdb_id'],
+      ),
+      anidbId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}anidb_id'],
+      ),
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      ),
+    );
+  }
+
+  @override
+  $MediaShowsTable createAlias(String alias) {
+    return $MediaShowsTable(attachedDatabase, alias);
+  }
+}
+
+class MediaShow extends DataClass implements Insertable<MediaShow> {
+  final int id;
+  final String groupTitle;
+  final String? resolvedTitle;
+  final String? mediaType;
+  final String? animeType;
+  final int? year;
+  final int? totalEpisodes;
+  final String? posterPath;
+  final String? fanartPath;
+  final String? overview;
+  final int? simklId;
+  final String? simklSlug;
+  final String? imdbId;
+  final String? tmdbId;
+  final int? malId;
+  final int? anilistId;
+  final int? tvdbId;
+  final String? anidbId;
+  final DateTime? resolvedAt;
+  const MediaShow({
+    required this.id,
+    required this.groupTitle,
+    this.resolvedTitle,
+    this.mediaType,
+    this.animeType,
+    this.year,
+    this.totalEpisodes,
+    this.posterPath,
+    this.fanartPath,
+    this.overview,
+    this.simklId,
+    this.simklSlug,
+    this.imdbId,
+    this.tmdbId,
+    this.malId,
+    this.anilistId,
+    this.tvdbId,
+    this.anidbId,
+    this.resolvedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_title'] = Variable<String>(groupTitle);
+    if (!nullToAbsent || resolvedTitle != null) {
+      map['resolved_title'] = Variable<String>(resolvedTitle);
+    }
+    if (!nullToAbsent || mediaType != null) {
+      map['media_type'] = Variable<String>(mediaType);
+    }
+    if (!nullToAbsent || animeType != null) {
+      map['anime_type'] = Variable<String>(animeType);
+    }
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
+    if (!nullToAbsent || totalEpisodes != null) {
+      map['total_episodes'] = Variable<int>(totalEpisodes);
+    }
+    if (!nullToAbsent || posterPath != null) {
+      map['poster_path'] = Variable<String>(posterPath);
+    }
+    if (!nullToAbsent || fanartPath != null) {
+      map['fanart_path'] = Variable<String>(fanartPath);
+    }
+    if (!nullToAbsent || overview != null) {
+      map['overview'] = Variable<String>(overview);
+    }
+    if (!nullToAbsent || simklId != null) {
+      map['simkl_id'] = Variable<int>(simklId);
+    }
+    if (!nullToAbsent || simklSlug != null) {
+      map['simkl_slug'] = Variable<String>(simklSlug);
+    }
+    if (!nullToAbsent || imdbId != null) {
+      map['imdb_id'] = Variable<String>(imdbId);
+    }
+    if (!nullToAbsent || tmdbId != null) {
+      map['tmdb_id'] = Variable<String>(tmdbId);
+    }
+    if (!nullToAbsent || malId != null) {
+      map['mal_id'] = Variable<int>(malId);
+    }
+    if (!nullToAbsent || anilistId != null) {
+      map['anilist_id'] = Variable<int>(anilistId);
+    }
+    if (!nullToAbsent || tvdbId != null) {
+      map['tvdb_id'] = Variable<int>(tvdbId);
+    }
+    if (!nullToAbsent || anidbId != null) {
+      map['anidb_id'] = Variable<String>(anidbId);
+    }
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    }
+    return map;
+  }
+
+  MediaShowsCompanion toCompanion(bool nullToAbsent) {
+    return MediaShowsCompanion(
+      id: Value(id),
+      groupTitle: Value(groupTitle),
+      resolvedTitle: resolvedTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedTitle),
+      mediaType: mediaType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaType),
+      animeType: animeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animeType),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      totalEpisodes: totalEpisodes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalEpisodes),
+      posterPath: posterPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterPath),
+      fanartPath: fanartPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fanartPath),
+      overview: overview == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overview),
+      simklId: simklId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(simklId),
+      simklSlug: simklSlug == null && nullToAbsent
+          ? const Value.absent()
+          : Value(simklSlug),
+      imdbId: imdbId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imdbId),
+      tmdbId: tmdbId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbId),
+      malId: malId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(malId),
+      anilistId: anilistId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anilistId),
+      tvdbId: tvdbId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tvdbId),
+      anidbId: anidbId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anidbId),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
+    );
+  }
+
+  factory MediaShow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MediaShow(
+      id: serializer.fromJson<int>(json['id']),
+      groupTitle: serializer.fromJson<String>(json['groupTitle']),
+      resolvedTitle: serializer.fromJson<String?>(json['resolvedTitle']),
+      mediaType: serializer.fromJson<String?>(json['mediaType']),
+      animeType: serializer.fromJson<String?>(json['animeType']),
+      year: serializer.fromJson<int?>(json['year']),
+      totalEpisodes: serializer.fromJson<int?>(json['totalEpisodes']),
+      posterPath: serializer.fromJson<String?>(json['posterPath']),
+      fanartPath: serializer.fromJson<String?>(json['fanartPath']),
+      overview: serializer.fromJson<String?>(json['overview']),
+      simklId: serializer.fromJson<int?>(json['simklId']),
+      simklSlug: serializer.fromJson<String?>(json['simklSlug']),
+      imdbId: serializer.fromJson<String?>(json['imdbId']),
+      tmdbId: serializer.fromJson<String?>(json['tmdbId']),
+      malId: serializer.fromJson<int?>(json['malId']),
+      anilistId: serializer.fromJson<int?>(json['anilistId']),
+      tvdbId: serializer.fromJson<int?>(json['tvdbId']),
+      anidbId: serializer.fromJson<String?>(json['anidbId']),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupTitle': serializer.toJson<String>(groupTitle),
+      'resolvedTitle': serializer.toJson<String?>(resolvedTitle),
+      'mediaType': serializer.toJson<String?>(mediaType),
+      'animeType': serializer.toJson<String?>(animeType),
+      'year': serializer.toJson<int?>(year),
+      'totalEpisodes': serializer.toJson<int?>(totalEpisodes),
+      'posterPath': serializer.toJson<String?>(posterPath),
+      'fanartPath': serializer.toJson<String?>(fanartPath),
+      'overview': serializer.toJson<String?>(overview),
+      'simklId': serializer.toJson<int?>(simklId),
+      'simklSlug': serializer.toJson<String?>(simklSlug),
+      'imdbId': serializer.toJson<String?>(imdbId),
+      'tmdbId': serializer.toJson<String?>(tmdbId),
+      'malId': serializer.toJson<int?>(malId),
+      'anilistId': serializer.toJson<int?>(anilistId),
+      'tvdbId': serializer.toJson<int?>(tvdbId),
+      'anidbId': serializer.toJson<String?>(anidbId),
+      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
+    };
+  }
+
+  MediaShow copyWith({
+    int? id,
+    String? groupTitle,
+    Value<String?> resolvedTitle = const Value.absent(),
+    Value<String?> mediaType = const Value.absent(),
+    Value<String?> animeType = const Value.absent(),
+    Value<int?> year = const Value.absent(),
+    Value<int?> totalEpisodes = const Value.absent(),
+    Value<String?> posterPath = const Value.absent(),
+    Value<String?> fanartPath = const Value.absent(),
+    Value<String?> overview = const Value.absent(),
+    Value<int?> simklId = const Value.absent(),
+    Value<String?> simklSlug = const Value.absent(),
+    Value<String?> imdbId = const Value.absent(),
+    Value<String?> tmdbId = const Value.absent(),
+    Value<int?> malId = const Value.absent(),
+    Value<int?> anilistId = const Value.absent(),
+    Value<int?> tvdbId = const Value.absent(),
+    Value<String?> anidbId = const Value.absent(),
+    Value<DateTime?> resolvedAt = const Value.absent(),
+  }) => MediaShow(
+    id: id ?? this.id,
+    groupTitle: groupTitle ?? this.groupTitle,
+    resolvedTitle: resolvedTitle.present
+        ? resolvedTitle.value
+        : this.resolvedTitle,
+    mediaType: mediaType.present ? mediaType.value : this.mediaType,
+    animeType: animeType.present ? animeType.value : this.animeType,
+    year: year.present ? year.value : this.year,
+    totalEpisodes: totalEpisodes.present
+        ? totalEpisodes.value
+        : this.totalEpisodes,
+    posterPath: posterPath.present ? posterPath.value : this.posterPath,
+    fanartPath: fanartPath.present ? fanartPath.value : this.fanartPath,
+    overview: overview.present ? overview.value : this.overview,
+    simklId: simklId.present ? simklId.value : this.simklId,
+    simklSlug: simklSlug.present ? simklSlug.value : this.simklSlug,
+    imdbId: imdbId.present ? imdbId.value : this.imdbId,
+    tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
+    malId: malId.present ? malId.value : this.malId,
+    anilistId: anilistId.present ? anilistId.value : this.anilistId,
+    tvdbId: tvdbId.present ? tvdbId.value : this.tvdbId,
+    anidbId: anidbId.present ? anidbId.value : this.anidbId,
+    resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
+  );
+  MediaShow copyWithCompanion(MediaShowsCompanion data) {
+    return MediaShow(
+      id: data.id.present ? data.id.value : this.id,
+      groupTitle: data.groupTitle.present
+          ? data.groupTitle.value
+          : this.groupTitle,
+      resolvedTitle: data.resolvedTitle.present
+          ? data.resolvedTitle.value
+          : this.resolvedTitle,
+      mediaType: data.mediaType.present ? data.mediaType.value : this.mediaType,
+      animeType: data.animeType.present ? data.animeType.value : this.animeType,
+      year: data.year.present ? data.year.value : this.year,
+      totalEpisodes: data.totalEpisodes.present
+          ? data.totalEpisodes.value
+          : this.totalEpisodes,
+      posterPath: data.posterPath.present
+          ? data.posterPath.value
+          : this.posterPath,
+      fanartPath: data.fanartPath.present
+          ? data.fanartPath.value
+          : this.fanartPath,
+      overview: data.overview.present ? data.overview.value : this.overview,
+      simklId: data.simklId.present ? data.simklId.value : this.simklId,
+      simklSlug: data.simklSlug.present ? data.simklSlug.value : this.simklSlug,
+      imdbId: data.imdbId.present ? data.imdbId.value : this.imdbId,
+      tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
+      malId: data.malId.present ? data.malId.value : this.malId,
+      anilistId: data.anilistId.present ? data.anilistId.value : this.anilistId,
+      tvdbId: data.tvdbId.present ? data.tvdbId.value : this.tvdbId,
+      anidbId: data.anidbId.present ? data.anidbId.value : this.anidbId,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MediaShow(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('resolvedTitle: $resolvedTitle, ')
+          ..write('mediaType: $mediaType, ')
+          ..write('animeType: $animeType, ')
+          ..write('year: $year, ')
+          ..write('totalEpisodes: $totalEpisodes, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('fanartPath: $fanartPath, ')
+          ..write('overview: $overview, ')
+          ..write('simklId: $simklId, ')
+          ..write('simklSlug: $simklSlug, ')
+          ..write('imdbId: $imdbId, ')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('malId: $malId, ')
+          ..write('anilistId: $anilistId, ')
+          ..write('tvdbId: $tvdbId, ')
+          ..write('anidbId: $anidbId, ')
+          ..write('resolvedAt: $resolvedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    groupTitle,
+    resolvedTitle,
+    mediaType,
+    animeType,
+    year,
+    totalEpisodes,
+    posterPath,
+    fanartPath,
+    overview,
+    simklId,
+    simklSlug,
+    imdbId,
+    tmdbId,
+    malId,
+    anilistId,
+    tvdbId,
+    anidbId,
+    resolvedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MediaShow &&
+          other.id == this.id &&
+          other.groupTitle == this.groupTitle &&
+          other.resolvedTitle == this.resolvedTitle &&
+          other.mediaType == this.mediaType &&
+          other.animeType == this.animeType &&
+          other.year == this.year &&
+          other.totalEpisodes == this.totalEpisodes &&
+          other.posterPath == this.posterPath &&
+          other.fanartPath == this.fanartPath &&
+          other.overview == this.overview &&
+          other.simklId == this.simklId &&
+          other.simklSlug == this.simklSlug &&
+          other.imdbId == this.imdbId &&
+          other.tmdbId == this.tmdbId &&
+          other.malId == this.malId &&
+          other.anilistId == this.anilistId &&
+          other.tvdbId == this.tvdbId &&
+          other.anidbId == this.anidbId &&
+          other.resolvedAt == this.resolvedAt);
+}
+
+class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
+  final Value<int> id;
+  final Value<String> groupTitle;
+  final Value<String?> resolvedTitle;
+  final Value<String?> mediaType;
+  final Value<String?> animeType;
+  final Value<int?> year;
+  final Value<int?> totalEpisodes;
+  final Value<String?> posterPath;
+  final Value<String?> fanartPath;
+  final Value<String?> overview;
+  final Value<int?> simklId;
+  final Value<String?> simklSlug;
+  final Value<String?> imdbId;
+  final Value<String?> tmdbId;
+  final Value<int?> malId;
+  final Value<int?> anilistId;
+  final Value<int?> tvdbId;
+  final Value<String?> anidbId;
+  final Value<DateTime?> resolvedAt;
+  const MediaShowsCompanion({
+    this.id = const Value.absent(),
+    this.groupTitle = const Value.absent(),
+    this.resolvedTitle = const Value.absent(),
+    this.mediaType = const Value.absent(),
+    this.animeType = const Value.absent(),
+    this.year = const Value.absent(),
+    this.totalEpisodes = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    this.fanartPath = const Value.absent(),
+    this.overview = const Value.absent(),
+    this.simklId = const Value.absent(),
+    this.simklSlug = const Value.absent(),
+    this.imdbId = const Value.absent(),
+    this.tmdbId = const Value.absent(),
+    this.malId = const Value.absent(),
+    this.anilistId = const Value.absent(),
+    this.tvdbId = const Value.absent(),
+    this.anidbId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+  });
+  MediaShowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String groupTitle,
+    this.resolvedTitle = const Value.absent(),
+    this.mediaType = const Value.absent(),
+    this.animeType = const Value.absent(),
+    this.year = const Value.absent(),
+    this.totalEpisodes = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    this.fanartPath = const Value.absent(),
+    this.overview = const Value.absent(),
+    this.simklId = const Value.absent(),
+    this.simklSlug = const Value.absent(),
+    this.imdbId = const Value.absent(),
+    this.tmdbId = const Value.absent(),
+    this.malId = const Value.absent(),
+    this.anilistId = const Value.absent(),
+    this.tvdbId = const Value.absent(),
+    this.anidbId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+  }) : groupTitle = Value(groupTitle);
+  static Insertable<MediaShow> custom({
+    Expression<int>? id,
+    Expression<String>? groupTitle,
+    Expression<String>? resolvedTitle,
+    Expression<String>? mediaType,
+    Expression<String>? animeType,
+    Expression<int>? year,
+    Expression<int>? totalEpisodes,
+    Expression<String>? posterPath,
+    Expression<String>? fanartPath,
+    Expression<String>? overview,
+    Expression<int>? simklId,
+    Expression<String>? simklSlug,
+    Expression<String>? imdbId,
+    Expression<String>? tmdbId,
+    Expression<int>? malId,
+    Expression<int>? anilistId,
+    Expression<int>? tvdbId,
+    Expression<String>? anidbId,
+    Expression<DateTime>? resolvedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupTitle != null) 'group_title': groupTitle,
+      if (resolvedTitle != null) 'resolved_title': resolvedTitle,
+      if (mediaType != null) 'media_type': mediaType,
+      if (animeType != null) 'anime_type': animeType,
+      if (year != null) 'year': year,
+      if (totalEpisodes != null) 'total_episodes': totalEpisodes,
+      if (posterPath != null) 'poster_path': posterPath,
+      if (fanartPath != null) 'fanart_path': fanartPath,
+      if (overview != null) 'overview': overview,
+      if (simklId != null) 'simkl_id': simklId,
+      if (simklSlug != null) 'simkl_slug': simklSlug,
+      if (imdbId != null) 'imdb_id': imdbId,
+      if (tmdbId != null) 'tmdb_id': tmdbId,
+      if (malId != null) 'mal_id': malId,
+      if (anilistId != null) 'anilist_id': anilistId,
+      if (tvdbId != null) 'tvdb_id': tvdbId,
+      if (anidbId != null) 'anidb_id': anidbId,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+    });
+  }
+
+  MediaShowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? groupTitle,
+    Value<String?>? resolvedTitle,
+    Value<String?>? mediaType,
+    Value<String?>? animeType,
+    Value<int?>? year,
+    Value<int?>? totalEpisodes,
+    Value<String?>? posterPath,
+    Value<String?>? fanartPath,
+    Value<String?>? overview,
+    Value<int?>? simklId,
+    Value<String?>? simklSlug,
+    Value<String?>? imdbId,
+    Value<String?>? tmdbId,
+    Value<int?>? malId,
+    Value<int?>? anilistId,
+    Value<int?>? tvdbId,
+    Value<String?>? anidbId,
+    Value<DateTime?>? resolvedAt,
+  }) {
+    return MediaShowsCompanion(
+      id: id ?? this.id,
+      groupTitle: groupTitle ?? this.groupTitle,
+      resolvedTitle: resolvedTitle ?? this.resolvedTitle,
+      mediaType: mediaType ?? this.mediaType,
+      animeType: animeType ?? this.animeType,
+      year: year ?? this.year,
+      totalEpisodes: totalEpisodes ?? this.totalEpisodes,
+      posterPath: posterPath ?? this.posterPath,
+      fanartPath: fanartPath ?? this.fanartPath,
+      overview: overview ?? this.overview,
+      simklId: simklId ?? this.simklId,
+      simklSlug: simklSlug ?? this.simklSlug,
+      imdbId: imdbId ?? this.imdbId,
+      tmdbId: tmdbId ?? this.tmdbId,
+      malId: malId ?? this.malId,
+      anilistId: anilistId ?? this.anilistId,
+      tvdbId: tvdbId ?? this.tvdbId,
+      anidbId: anidbId ?? this.anidbId,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupTitle.present) {
+      map['group_title'] = Variable<String>(groupTitle.value);
+    }
+    if (resolvedTitle.present) {
+      map['resolved_title'] = Variable<String>(resolvedTitle.value);
+    }
+    if (mediaType.present) {
+      map['media_type'] = Variable<String>(mediaType.value);
+    }
+    if (animeType.present) {
+      map['anime_type'] = Variable<String>(animeType.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (totalEpisodes.present) {
+      map['total_episodes'] = Variable<int>(totalEpisodes.value);
+    }
+    if (posterPath.present) {
+      map['poster_path'] = Variable<String>(posterPath.value);
+    }
+    if (fanartPath.present) {
+      map['fanart_path'] = Variable<String>(fanartPath.value);
+    }
+    if (overview.present) {
+      map['overview'] = Variable<String>(overview.value);
+    }
+    if (simklId.present) {
+      map['simkl_id'] = Variable<int>(simklId.value);
+    }
+    if (simklSlug.present) {
+      map['simkl_slug'] = Variable<String>(simklSlug.value);
+    }
+    if (imdbId.present) {
+      map['imdb_id'] = Variable<String>(imdbId.value);
+    }
+    if (tmdbId.present) {
+      map['tmdb_id'] = Variable<String>(tmdbId.value);
+    }
+    if (malId.present) {
+      map['mal_id'] = Variable<int>(malId.value);
+    }
+    if (anilistId.present) {
+      map['anilist_id'] = Variable<int>(anilistId.value);
+    }
+    if (tvdbId.present) {
+      map['tvdb_id'] = Variable<int>(tvdbId.value);
+    }
+    if (anidbId.present) {
+      map['anidb_id'] = Variable<String>(anidbId.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MediaShowsCompanion(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('resolvedTitle: $resolvedTitle, ')
+          ..write('mediaType: $mediaType, ')
+          ..write('animeType: $animeType, ')
+          ..write('year: $year, ')
+          ..write('totalEpisodes: $totalEpisodes, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('fanartPath: $fanartPath, ')
+          ..write('overview: $overview, ')
+          ..write('simklId: $simklId, ')
+          ..write('simklSlug: $simklSlug, ')
+          ..write('imdbId: $imdbId, ')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('malId: $malId, ')
+          ..write('anilistId: $anilistId, ')
+          ..write('tvdbId: $tvdbId, ')
+          ..write('anidbId: $anidbId, ')
+          ..write('resolvedAt: $resolvedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SourcesTable sources = $SourcesTable(this);
   late final $MediaItemsTable mediaItems = $MediaItemsTable(this);
+  late final $MediaShowsTable mediaShows = $MediaShowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [sources, mediaItems];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    sources,
+    mediaItems,
+    mediaShows,
+  ];
 }
 
 typedef $$SourcesTableCreateCompanionBuilder =
@@ -1398,6 +2511,7 @@ typedef $$MediaItemsTableCreateCompanionBuilder =
       required int sourceId,
       required String rawName,
       required String cleanTitle,
+      required String groupTitle,
       required String directUrl,
       required ScrapeItemType type,
       Value<int?> season,
@@ -1412,6 +2526,7 @@ typedef $$MediaItemsTableUpdateCompanionBuilder =
       Value<int> sourceId,
       Value<String> rawName,
       Value<String> cleanTitle,
+      Value<String> groupTitle,
       Value<String> directUrl,
       Value<ScrapeItemType> type,
       Value<int?> season,
@@ -1464,6 +2579,11 @@ class $$MediaItemsTableFilterComposer
 
   ColumnFilters<String> get cleanTitle => $composableBuilder(
     column: $table.cleanTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1551,6 +2671,11 @@ class $$MediaItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get directUrl => $composableBuilder(
     column: $table.directUrl,
     builder: (column) => ColumnOrderings(column),
@@ -1627,6 +2752,11 @@ class $$MediaItemsTableAnnotationComposer
 
   GeneratedColumn<String> get cleanTitle => $composableBuilder(
     column: $table.cleanTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
     builder: (column) => column,
   );
 
@@ -1709,6 +2839,7 @@ class $$MediaItemsTableTableManager
                 Value<int> sourceId = const Value.absent(),
                 Value<String> rawName = const Value.absent(),
                 Value<String> cleanTitle = const Value.absent(),
+                Value<String> groupTitle = const Value.absent(),
                 Value<String> directUrl = const Value.absent(),
                 Value<ScrapeItemType> type = const Value.absent(),
                 Value<int?> season = const Value.absent(),
@@ -1721,6 +2852,7 @@ class $$MediaItemsTableTableManager
                 sourceId: sourceId,
                 rawName: rawName,
                 cleanTitle: cleanTitle,
+                groupTitle: groupTitle,
                 directUrl: directUrl,
                 type: type,
                 season: season,
@@ -1735,6 +2867,7 @@ class $$MediaItemsTableTableManager
                 required int sourceId,
                 required String rawName,
                 required String cleanTitle,
+                required String groupTitle,
                 required String directUrl,
                 required ScrapeItemType type,
                 Value<int?> season = const Value.absent(),
@@ -1747,6 +2880,7 @@ class $$MediaItemsTableTableManager
                 sourceId: sourceId,
                 rawName: rawName,
                 cleanTitle: cleanTitle,
+                groupTitle: groupTitle,
                 directUrl: directUrl,
                 type: type,
                 season: season,
@@ -1822,6 +2956,475 @@ typedef $$MediaItemsTableProcessedTableManager =
       MediaItem,
       PrefetchHooks Function({bool sourceId})
     >;
+typedef $$MediaShowsTableCreateCompanionBuilder =
+    MediaShowsCompanion Function({
+      Value<int> id,
+      required String groupTitle,
+      Value<String?> resolvedTitle,
+      Value<String?> mediaType,
+      Value<String?> animeType,
+      Value<int?> year,
+      Value<int?> totalEpisodes,
+      Value<String?> posterPath,
+      Value<String?> fanartPath,
+      Value<String?> overview,
+      Value<int?> simklId,
+      Value<String?> simklSlug,
+      Value<String?> imdbId,
+      Value<String?> tmdbId,
+      Value<int?> malId,
+      Value<int?> anilistId,
+      Value<int?> tvdbId,
+      Value<String?> anidbId,
+      Value<DateTime?> resolvedAt,
+    });
+typedef $$MediaShowsTableUpdateCompanionBuilder =
+    MediaShowsCompanion Function({
+      Value<int> id,
+      Value<String> groupTitle,
+      Value<String?> resolvedTitle,
+      Value<String?> mediaType,
+      Value<String?> animeType,
+      Value<int?> year,
+      Value<int?> totalEpisodes,
+      Value<String?> posterPath,
+      Value<String?> fanartPath,
+      Value<String?> overview,
+      Value<int?> simklId,
+      Value<String?> simklSlug,
+      Value<String?> imdbId,
+      Value<String?> tmdbId,
+      Value<int?> malId,
+      Value<int?> anilistId,
+      Value<int?> tvdbId,
+      Value<String?> anidbId,
+      Value<DateTime?> resolvedAt,
+    });
+
+class $$MediaShowsTableFilterComposer
+    extends Composer<_$AppDatabase, $MediaShowsTable> {
+  $$MediaShowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolvedTitle => $composableBuilder(
+    column: $table.resolvedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get animeType => $composableBuilder(
+    column: $table.animeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalEpisodes => $composableBuilder(
+    column: $table.totalEpisodes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fanartPath => $composableBuilder(
+    column: $table.fanartPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get simklId => $composableBuilder(
+    column: $table.simklId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get simklSlug => $composableBuilder(
+    column: $table.simklSlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imdbId => $composableBuilder(
+    column: $table.imdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tmdbId => $composableBuilder(
+    column: $table.tmdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get malId => $composableBuilder(
+    column: $table.malId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get anilistId => $composableBuilder(
+    column: $table.anilistId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tvdbId => $composableBuilder(
+    column: $table.tvdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get anidbId => $composableBuilder(
+    column: $table.anidbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MediaShowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MediaShowsTable> {
+  $$MediaShowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolvedTitle => $composableBuilder(
+    column: $table.resolvedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get animeType => $composableBuilder(
+    column: $table.animeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalEpisodes => $composableBuilder(
+    column: $table.totalEpisodes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fanartPath => $composableBuilder(
+    column: $table.fanartPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get simklId => $composableBuilder(
+    column: $table.simklId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get simklSlug => $composableBuilder(
+    column: $table.simklSlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imdbId => $composableBuilder(
+    column: $table.imdbId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tmdbId => $composableBuilder(
+    column: $table.tmdbId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get malId => $composableBuilder(
+    column: $table.malId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get anilistId => $composableBuilder(
+    column: $table.anilistId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tvdbId => $composableBuilder(
+    column: $table.tvdbId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get anidbId => $composableBuilder(
+    column: $table.anidbId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MediaShowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MediaShowsTable> {
+  $$MediaShowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolvedTitle => $composableBuilder(
+    column: $table.resolvedTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mediaType =>
+      $composableBuilder(column: $table.mediaType, builder: (column) => column);
+
+  GeneratedColumn<String> get animeType =>
+      $composableBuilder(column: $table.animeType, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get totalEpisodes => $composableBuilder(
+    column: $table.totalEpisodes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fanartPath => $composableBuilder(
+    column: $table.fanartPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get overview =>
+      $composableBuilder(column: $table.overview, builder: (column) => column);
+
+  GeneratedColumn<int> get simklId =>
+      $composableBuilder(column: $table.simklId, builder: (column) => column);
+
+  GeneratedColumn<String> get simklSlug =>
+      $composableBuilder(column: $table.simklSlug, builder: (column) => column);
+
+  GeneratedColumn<String> get imdbId =>
+      $composableBuilder(column: $table.imdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get tmdbId =>
+      $composableBuilder(column: $table.tmdbId, builder: (column) => column);
+
+  GeneratedColumn<int> get malId =>
+      $composableBuilder(column: $table.malId, builder: (column) => column);
+
+  GeneratedColumn<int> get anilistId =>
+      $composableBuilder(column: $table.anilistId, builder: (column) => column);
+
+  GeneratedColumn<int> get tvdbId =>
+      $composableBuilder(column: $table.tvdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get anidbId =>
+      $composableBuilder(column: $table.anidbId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$MediaShowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MediaShowsTable,
+          MediaShow,
+          $$MediaShowsTableFilterComposer,
+          $$MediaShowsTableOrderingComposer,
+          $$MediaShowsTableAnnotationComposer,
+          $$MediaShowsTableCreateCompanionBuilder,
+          $$MediaShowsTableUpdateCompanionBuilder,
+          (
+            MediaShow,
+            BaseReferences<_$AppDatabase, $MediaShowsTable, MediaShow>,
+          ),
+          MediaShow,
+          PrefetchHooks Function()
+        > {
+  $$MediaShowsTableTableManager(_$AppDatabase db, $MediaShowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MediaShowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MediaShowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MediaShowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> groupTitle = const Value.absent(),
+                Value<String?> resolvedTitle = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
+                Value<String?> animeType = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<int?> totalEpisodes = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                Value<String?> fanartPath = const Value.absent(),
+                Value<String?> overview = const Value.absent(),
+                Value<int?> simklId = const Value.absent(),
+                Value<String?> simklSlug = const Value.absent(),
+                Value<String?> imdbId = const Value.absent(),
+                Value<String?> tmdbId = const Value.absent(),
+                Value<int?> malId = const Value.absent(),
+                Value<int?> anilistId = const Value.absent(),
+                Value<int?> tvdbId = const Value.absent(),
+                Value<String?> anidbId = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
+              }) => MediaShowsCompanion(
+                id: id,
+                groupTitle: groupTitle,
+                resolvedTitle: resolvedTitle,
+                mediaType: mediaType,
+                animeType: animeType,
+                year: year,
+                totalEpisodes: totalEpisodes,
+                posterPath: posterPath,
+                fanartPath: fanartPath,
+                overview: overview,
+                simklId: simklId,
+                simklSlug: simklSlug,
+                imdbId: imdbId,
+                tmdbId: tmdbId,
+                malId: malId,
+                anilistId: anilistId,
+                tvdbId: tvdbId,
+                anidbId: anidbId,
+                resolvedAt: resolvedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String groupTitle,
+                Value<String?> resolvedTitle = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
+                Value<String?> animeType = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<int?> totalEpisodes = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                Value<String?> fanartPath = const Value.absent(),
+                Value<String?> overview = const Value.absent(),
+                Value<int?> simklId = const Value.absent(),
+                Value<String?> simklSlug = const Value.absent(),
+                Value<String?> imdbId = const Value.absent(),
+                Value<String?> tmdbId = const Value.absent(),
+                Value<int?> malId = const Value.absent(),
+                Value<int?> anilistId = const Value.absent(),
+                Value<int?> tvdbId = const Value.absent(),
+                Value<String?> anidbId = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
+              }) => MediaShowsCompanion.insert(
+                id: id,
+                groupTitle: groupTitle,
+                resolvedTitle: resolvedTitle,
+                mediaType: mediaType,
+                animeType: animeType,
+                year: year,
+                totalEpisodes: totalEpisodes,
+                posterPath: posterPath,
+                fanartPath: fanartPath,
+                overview: overview,
+                simklId: simklId,
+                simklSlug: simklSlug,
+                imdbId: imdbId,
+                tmdbId: tmdbId,
+                malId: malId,
+                anilistId: anilistId,
+                tvdbId: tvdbId,
+                anidbId: anidbId,
+                resolvedAt: resolvedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MediaShowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MediaShowsTable,
+      MediaShow,
+      $$MediaShowsTableFilterComposer,
+      $$MediaShowsTableOrderingComposer,
+      $$MediaShowsTableAnnotationComposer,
+      $$MediaShowsTableCreateCompanionBuilder,
+      $$MediaShowsTableUpdateCompanionBuilder,
+      (MediaShow, BaseReferences<_$AppDatabase, $MediaShowsTable, MediaShow>),
+      MediaShow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1830,4 +3433,6 @@ class $AppDatabaseManager {
       $$SourcesTableTableManager(_db, _db.sources);
   $$MediaItemsTableTableManager get mediaItems =>
       $$MediaItemsTableTableManager(_db, _db.mediaItems);
+  $$MediaShowsTableTableManager get mediaShows =>
+      $$MediaShowsTableTableManager(_db, _db.mediaShows);
 }

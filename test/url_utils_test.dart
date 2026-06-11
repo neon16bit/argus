@@ -107,4 +107,32 @@ void main() {
       expect(extensionFromFilename('file.name.srt'), 'srt');
     });
   });
+
+  group('extractShowFolder', () {
+    test('extracts parent folder for regular file', () {
+      final base = Uri.parse('http://example.com/Series/Show/');
+      final file = Uri.parse('http://example.com/Series/Show/Episode.mkv');
+      expect(extractShowFolder(base, file), 'Show');
+    });
+
+    test('extracts grandparent when parent is season folder', () {
+      final base = Uri.parse('http://example.com/Series/');
+      final file = Uri.parse(
+        'http://example.com/Series/Show/Season 1/Episode.mkv',
+      );
+      expect(extractShowFolder(base, file), 'Show');
+    });
+
+    test('extracts from root level', () {
+      final base = Uri.parse('http://example.com/');
+      final file = Uri.parse('http://example.com/Show/Episode.mkv');
+      expect(extractShowFolder(base, file), 'Show');
+    });
+
+    test('returns empty for simple file without parent', () {
+      final base = Uri.parse('http://example.com/');
+      final file = Uri.parse('http://example.com/file.mkv');
+      expect(extractShowFolder(base, file), 'file.mkv');
+    });
+  });
 }

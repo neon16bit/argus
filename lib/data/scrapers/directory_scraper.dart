@@ -104,10 +104,13 @@ class DirectoryScraper {
             final ext = extensionFromFilename(filename);
             if (ext != null && kMediaExtensions.contains(ext)) {
               final cleaned = NameCleaner.clean(filename);
+              final parentFolder = extractShowFolder(baseUri, resolved);
+              final group = NameCleaner.cleanFolderName(parentFolder);
               results.add(
                 ScrapeResult(
                   rawName: filename,
                   cleanTitle: cleaned.title,
+                  groupTitle: group.title,
                   directUrl: resolvedStr,
                   type: ScrapeItemType.file,
                   season: cleaned.season,

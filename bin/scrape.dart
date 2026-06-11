@@ -36,8 +36,17 @@ void main(List<String> args) async {
     print('Scraping Complete in ${stopwatch.elapsed.inSeconds}s');
     print('Found ${results.length} files:\n');
 
-    for (var i = 0; i < results.length; i++) {
-      print('${i + 1}. ${results[i]}');
+    // group results by groupTitle for display
+    final grouped = <String, List<ScrapeResult>>{};
+    for (final r in results) {
+      (grouped[r.groupTitle] ??= []).add(r);
+    }
+
+    for (final entry in grouped.entries) {
+      print('\n--- ${entry.key} (${entry.value.length} files) ---');
+      for (var i = 0; i < entry.value.length; i++) {
+        print('  ${i + 1}. ${entry.value[i]}');
+      }
     }
   } catch (e) {
     print('\nFatal Error: $e');

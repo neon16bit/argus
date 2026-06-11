@@ -3,10 +3,11 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:argus/data/scrapers/scrape_result.dart';
 import 'tables/sources.dart';
 import 'tables/media_items.dart';
+import 'tables/media_shows.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Sources, MediaItems])
+@DriftDatabase(tables: [Sources, MediaItems, MediaShows])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
 
@@ -14,44 +15,69 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      // create FTS5 virtual table for full text search
-      await customStatement('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
-              clean_title,
-              raw_name,
-              content='media_items',
-              content_rowid='id'
-            )
-          ''');
-      // triggers to keep FTS index in sync
-      await customStatement('''
-            CREATE TRIGGER IF NOT EXISTS media_items_ai AFTER INSERT ON media_items BEGIN
-              INSERT INTO search_index(rowid, clean_title, raw_name)
-              VALUES (new.id, new.clean_title, new.raw_name);
-            END
-          ''');
-      await customStatement('''
-            CREATE TRIGGER IF NOT EXISTS media_items_ad AFTER DELETE ON media_items BEGIN
-              INSERT INTO search_index(search_index, rowid, clean_title, raw_name)
-              VALUES ('delete', old.id, old.clean_title, old.raw_name);
-            END
-          ''');
-      await customStatement('''
-            CREATE TRIGGER IF NOT EXISTS media_items_au AFTER UPDATE ON media_items BEGIN
-              INSERT INTO search_index(search_index, rowid, clean_title, raw_name)
-              VALUES ('delete', old.id, old.clean_title, old.raw_name);
-              INSERT INTO search_index(rowid, clean_title, raw_name)
-              VALUES (new.id, new.clean_title, new.raw_name);
-            END
-          ''');
+      await _createFts(m);
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // add group_title column, backfill from clean_title
+        await m.addColumn(mediaItems, mediaItems.groupTitle);
+        await customStatement(
+          "UPDATE media_items SET group_title = clean_title WHERE group_title = ''",
+        );
+        // create media_shows table
+        await m.createTable(mediaShows);
+        // rebuild FTS to use group_title instead of clean_title + raw_name
+        await customStatement('DROP TRIGGER IF EXISTS media_items_ai');
+        await customStatement('DROP TRIGGER IF EXISTS media_items_ad');
+        await customStatement('DROP TRIGGER IF EXISTS media_items_au');
+        await customStatement('DROP TABLE IF EXISTS search_index');
+        await _createFts(m);
+        // repopulate FTS from existing data
+        await customStatement('''
+          INSERT INTO search_index(rowid, group_title)
+          SELECT id, group_title FROM media_items
+        ''');
+      }
     },
   );
+
+  Future<void> _createFts(Migrator m) async {
+    // only group_title for search
+    await customStatement('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
+        group_title,
+        content='media_items',
+        content_rowid='id'
+      )
+    ''');
+    // triggers to keep FTS index in sync
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_items_ai AFTER INSERT ON media_items BEGIN
+        INSERT INTO search_index(rowid, group_title)
+        VALUES (new.id, new.group_title);
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_items_ad AFTER DELETE ON media_items BEGIN
+        INSERT INTO search_index(search_index, rowid, group_title)
+        VALUES ('delete', old.id, old.group_title);
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_items_au AFTER UPDATE ON media_items BEGIN
+        INSERT INTO search_index(search_index, rowid, group_title)
+        VALUES ('delete', old.id, old.group_title);
+        INSERT INTO search_index(rowid, group_title)
+        VALUES (new.id, new.group_title);
+      END
+    ''');
+  }
 
   // source operations
 
@@ -112,6 +138,18 @@ class AppDatabase extends _$AppDatabase {
     final result = await query.getSingle();
     return result.read(count) ?? 0;
   }
+
+  // media show operations
+
+  Future<MediaShow?> getShowByGroupTitle(String groupTitle) => (select(
+    mediaShows,
+  )..where((s) => s.groupTitle.equals(groupTitle))).getSingleOrNull();
+
+  Future<void> upsertShow(MediaShowsCompanion show) =>
+      into(mediaShows).insertOnConflictUpdate(show);
+
+  Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) =>
+      (select(mediaItems)..where((m) => m.groupTitle.equals(groupTitle))).get();
 
   // FTS5 search
 

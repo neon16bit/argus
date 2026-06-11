@@ -3,6 +3,7 @@ enum ScrapeItemType { file, folder }
 class ScrapeResult {
   final String rawName;
   final String cleanTitle;
+  final String groupTitle;
   final String directUrl;
   final ScrapeItemType type;
   final int? season;
@@ -13,6 +14,7 @@ class ScrapeResult {
   const ScrapeResult({
     required this.rawName,
     required this.cleanTitle,
+    required this.groupTitle,
     required this.directUrl,
     required this.type,
     this.season,

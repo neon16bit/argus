@@ -55,12 +55,12 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
 
   final grouped = <String, SearchResult>{};
   for (final item in items) {
-    final key = item.cleanTitle.toLowerCase();
+    final key = item.groupTitle.toLowerCase();
     final existing = grouped[key];
     if (existing != null) {
       existing.addItem(item);
     } else {
-      grouped[key] = SearchResult(cleanTitle: item.cleanTitle, items: [item]);
+      grouped[key] = SearchResult(cleanTitle: item.groupTitle, items: [item]);
     }
   }
   return grouped.values.toList();

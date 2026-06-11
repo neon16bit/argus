@@ -84,3 +84,27 @@ bool isSystemFile(String filename) {
 
   return false;
 }
+
+// extracts the folder name from a file url
+// if the immediate parent is a season folder, climbs to grandparent
+String extractShowFolder(Uri baseUri, Uri fileUri) {
+  final segments = fileUri.pathSegments.where((s) => s.isNotEmpty).toList();
+  if (segments.length < 2) return segments.lastOrNull ?? '';
+
+  final parent = Uri.decodeComponent(segments[segments.length - 2]);
+
+  // if parent looks like a season folder, use grandparent
+  if (_isSeasonFolder(parent) && segments.length >= 3) {
+    return Uri.decodeComponent(segments[segments.length - 3]);
+  }
+  return parent;
+}
+
+// loose match for season folders
+// matches: "Season 1", "S01", "S1 1080p", "Season 2 BluRay", etc
+bool _isSeasonFolder(String name) {
+  return RegExp(
+    r'^(Season\s*\d+|S\d{1,2})\b',
+    caseSensitive: false,
+  ).hasMatch(name);
+}

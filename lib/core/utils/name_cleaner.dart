@@ -91,6 +91,34 @@ class NameCleaner {
     RegExp(r'\b(?:8|10)bit\b', caseSensitive: false),
   ];
 
+  // Cleans a folder name into a show title + year.
+  static CleanResult cleanFolderName(String folderName) {
+    var name = folderName;
+    // extract year before stripping brackets
+    int? year;
+    final yearMatch = _yearPattern.firstMatch(name);
+    if (yearMatch != null) {
+      year = int.tryParse(yearMatch.group(1)!);
+      name = name.replaceFirst(yearMatch.group(0)!, ' ');
+    }
+
+    // strip bracket content
+    name = name.replaceAll(RegExp(r'\(.*?\)'), ' ');
+    name = name.replaceAll(RegExp(r'\[.*?\]'), ' ');
+    name = name.replaceAll(RegExp(r'\{.*?\}'), ' ');
+
+    // strip noise patterns
+    for (final pattern in _noisePatterns) {
+      name = name.replaceAll(pattern, ' ');
+    }
+
+    // replace separators, collapse whitespace
+    name = name.replaceAll(RegExp(r'[._]'), ' ');
+    name = name.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+
+    return CleanResult(title: _titleCase(name), year: year);
+  }
+
   // main cleaning function
   static CleanResult clean(String rawName) {
     // Remove file extension

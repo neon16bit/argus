@@ -7,6 +7,7 @@ class MediaItems extends Table {
   IntColumn get sourceId => integer().references(Sources, #id)();
   TextColumn get rawName => text()();
   TextColumn get cleanTitle => text()();
+  TextColumn get groupTitle => text()();
   TextColumn get directUrl => text()();
   TextColumn get type => textEnum<ScrapeItemType>()();
   IntColumn get season => integer().nullable()();

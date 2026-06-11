@@ -132,5 +132,12 @@ void main() {
       expect(result.season, 2);
       expect(result.episode, 1);
     });
+
+    test('Parse clean directory name', () {
+      final result = NameCleaner.cleanFolderName('Witch_Hat_ Atelier (2026)');
+
+      expect(result.title, 'Witch Hat Atelier');
+      expect(result.year, 2026);
+    });
   });
 }
