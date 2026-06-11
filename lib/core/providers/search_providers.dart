@@ -6,11 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // models
 class SearchResult {
-  final String cleanTitle;
+  final String cleanTitle; // original groupTitle
+  String? resolvedTitle; // simkl cached title
   final List<MediaItem> _items;
 
-  SearchResult({required this.cleanTitle, List<MediaItem>? items})
-    : _items = items ?? [];
+  SearchResult({
+    required this.cleanTitle,
+    this.resolvedTitle,
+    List<MediaItem>? items,
+  }) : _items = items ?? [];
+
+  // title to show in the ui (resolved first, fallback to cleanTitle)
+  String get displayTitle => resolvedTitle ?? cleanTitle;
 
   // unmodifiable view of the items list
   List<MediaItem> get items => List.unmodifiable(_items);
@@ -63,5 +70,14 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
       grouped[key] = SearchResult(cleanTitle: item.groupTitle, items: [item]);
     }
   }
+
+  // fetch resolved titles from the cache
+  for (final result in grouped.values) {
+    final show = await db.getShowByGroupTitle(result.cleanTitle);
+    if (show != null && show.resolvedTitle != null) {
+      result.resolvedTitle = show.resolvedTitle;
+    }
+  }
+
   return grouped.values.toList();
 });

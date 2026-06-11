@@ -163,11 +163,17 @@ class AppDatabase extends _$AppDatabase {
       SELECT m.* FROM media_items m
       INNER JOIN search_index si ON si.rowid = m.id
       WHERE search_index MATCH ?
-      ORDER BY rank
+      UNION
+      SELECT m.* FROM media_items m
+      INNER JOIN media_shows s ON m.group_title = s.group_title
+      WHERE s.resolved_title LIKE ?
       LIMIT 200
       ''',
-      variables: [Variable.withString(ftsQuery)],
-      readsFrom: {mediaItems},
+      variables: [
+        Variable.withString(ftsQuery),
+        Variable.withString('%$query%'),
+      ],
+      readsFrom: {mediaItems, mediaShows},
     ).get();
     return results.map((row) => mediaItems.map(row.data)).toList();
   }

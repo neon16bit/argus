@@ -36,7 +36,7 @@ class ShowDetailScreen extends ConsumerWidget {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                metadata?.title ?? result.cleanTitle,
+                metadata?.title ?? result.displayTitle,
                 style: const TextStyle(
                   fontSize: 16,
                   shadows: [Shadow(blurRadius: 8, color: Colors.black)],
