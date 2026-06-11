@@ -7,3 +7,12 @@ final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase.instance);
 final packageInfoProvider = Provider<PackageInfo>((ref) {
   throw UnimplementedError('Initialized in main()');
 });
+
+// fetches all items for a show when detail screen opens
+final showItemsProvider = FutureProvider.family<List<MediaItem>, String>((
+  ref,
+  groupTitle,
+) async {
+  final db = ref.watch(databaseProvider);
+  return db.getMediaItemsByGroupTitle(groupTitle);
+});

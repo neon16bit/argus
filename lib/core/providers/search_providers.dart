@@ -1,31 +1,32 @@
 import 'dart:async';
 
 import 'package:argus/core/providers/database_providers.dart';
-import 'package:argus/data/database/app_database.dart';
+import 'package:argus/data/remote/metadata/simkl_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // models
 class SearchResult {
-  final String cleanTitle; // original groupTitle
-  String? resolvedTitle; // simkl cached title
-  final List<MediaItem> _items;
+  final String groupTitle; // raw folder based title
+  final String? resolvedTitle; // simkl cached title
+  final String? posterPath; // raw simkl poster path
+  final String? mediaType; // tv, anime, movie
+  final int? year;
+  final int itemCount;
 
-  SearchResult({
-    required this.cleanTitle,
+  const SearchResult({
+    required this.groupTitle,
     this.resolvedTitle,
-    List<MediaItem>? items,
-  }) : _items = items ?? [];
+    this.posterPath,
+    this.mediaType,
+    this.year,
+    this.itemCount = 0,
+  });
 
-  // title to show in the ui (resolved first, fallback to cleanTitle)
-  String get displayTitle => resolvedTitle ?? cleanTitle;
+  // title to show in the ui (resolved first, fallback to groupTitle)
+  String get displayTitle => resolvedTitle ?? groupTitle;
 
-  // unmodifiable view of the items list
-  List<MediaItem> get items => List.unmodifiable(_items);
-
-  int get totalSources => _items.length;
-
-  // internal used only during grouping in the provider
-  void addItem(MediaItem item) => _items.add(item);
+  // build poster URL from cached path
+  String? get posterUrl => SimklProvider.posterUrl(posterPath);
 }
 
 class SearchQueryNotifier extends Notifier<String> {
@@ -58,26 +59,18 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
   if (query.trim().isEmpty) return [];
 
   final db = ref.watch(databaseProvider);
-  final items = await db.searchMedia(query);
+  final rows = await db.searchShows(query);
 
-  final grouped = <String, SearchResult>{};
-  for (final item in items) {
-    final key = item.groupTitle.toLowerCase();
-    final existing = grouped[key];
-    if (existing != null) {
-      existing.addItem(item);
-    } else {
-      grouped[key] = SearchResult(cleanTitle: item.groupTitle, items: [item]);
-    }
-  }
-
-  // fetch resolved titles from the cache
-  for (final result in grouped.values) {
-    final show = await db.getShowByGroupTitle(result.cleanTitle);
-    if (show != null && show.resolvedTitle != null) {
-      result.resolvedTitle = show.resolvedTitle;
-    }
-  }
-
-  return grouped.values.toList();
+  return rows
+      .map(
+        (row) => SearchResult(
+          groupTitle: row['group_title'] as String,
+          resolvedTitle: row['resolved_title'] as String?,
+          posterPath: row['poster_path'] as String?,
+          mediaType: row['media_type'] as String?,
+          year: row['year'] as int?,
+          itemCount: row['item_count'] as int? ?? 0,
+        ),
+      )
+      .toList();
 });

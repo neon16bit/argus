@@ -95,9 +95,14 @@ class _SearchResultCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final localCount = result.items.length;
-    // trigger Simkl metadata fetch for this search result
-    final metadataAsync = ref.watch(metadataProvider(result.cleanTitle));
+    // triggers an API call if not in db cache, updates UI when done
+    final metadataAsync = ref.watch(metadataProvider(result.groupTitle));
+    final metadata = metadataAsync.value;
+
+    // use cached db result if available, otherwise fallback to live metadata
+    final posterUrl = result.posterUrl ?? metadata?.posterUrl;
+    final displayTitle =
+        result.resolvedTitle ?? metadata?.title ?? result.displayTitle;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -111,23 +116,16 @@ class _SearchResultCard extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Poster thumbnail
+              // poster thumbnail from cached db data or live metadata
               SizedBox(
                 width: 60,
-                child: metadataAsync.when(
-                  data: (meta) {
-                    if (meta?.posterUrl != null) {
-                      return Image.network(
-                        meta!.posterUrl!,
+                child: posterUrl != null
+                    ? Image.network(
+                        posterUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => _defaultPoster(context),
-                      );
-                    }
-                    return _defaultPoster(context);
-                  },
-                  loading: () => Container(color: Colors.grey[800]),
-                  error: (_, _) => _defaultPoster(context),
-                ),
+                      )
+                    : _defaultPoster(context),
               ),
 
               // result details
@@ -139,7 +137,7 @@ class _SearchResultCard extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        result.displayTitle,
+                        displayTitle,
                         style: Theme.of(context).textTheme.titleMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -155,7 +153,7 @@ class _SearchResultCard extends ConsumerWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              '$localCount items',
+                              '${result.itemCount} items',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: Colors.grey[400]),
                               maxLines: 1,

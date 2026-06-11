@@ -13,12 +13,16 @@ class ShowDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metadataAsync = ref.watch(metadataProvider(result.cleanTitle));
+    final metadataAsync = ref.watch(metadataProvider(result.groupTitle));
     final metadata = metadataAsync.value;
+
+    // load items on-demand
+    final itemsAsync = ref.watch(showItemsProvider(result.groupTitle));
+    final items = itemsAsync.value ?? [];
 
     // group items by season
     final seasonMap = <int?, List<dynamic>>{};
-    for (final item in result.items) {
+    for (final item in items) {
       seasonMap.putIfAbsent(item.season, () => []).add(item);
     }
     for (final episodes in seasonMap.values) {
@@ -210,7 +214,7 @@ class ShowDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '${result.items.length} items',
+            '${result.itemCount} items',
             style: const TextStyle(color: Colors.grey),
           ),
         ],

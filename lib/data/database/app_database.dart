@@ -151,23 +151,37 @@ class AppDatabase extends _$AppDatabase {
   Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) =>
       (select(mediaItems)..where((m) => m.groupTitle.equals(groupTitle))).get();
 
-  // FTS5 search
-
-  Future<List<MediaItem>> searchMedia(String query) async {
+  // FTS5 search on titles
+  Future<List<Map<String, dynamic>>> searchShows(String query) async {
     if (query.trim().isEmpty) return [];
     // escape FTS5 special chars and add prefix matching
     final escaped = query.replaceAll('"', '""');
     final ftsQuery = '"$escaped"*';
     final results = await customSelect(
       '''
-      SELECT m.* FROM media_items m
+      SELECT m.group_title,
+             s.resolved_title,
+             s.poster_path,
+             s.media_type,
+             s.year,
+             COUNT(m.id) as item_count
+      FROM media_items m
       INNER JOIN search_index si ON si.rowid = m.id
+      LEFT JOIN media_shows s ON m.group_title = s.group_title
       WHERE search_index MATCH ?
+      GROUP BY m.group_title
       UNION
-      SELECT m.* FROM media_items m
+      SELECT m.group_title,
+             s.resolved_title,
+             s.poster_path,
+             s.media_type,
+             s.year,
+             COUNT(m.id) as item_count
+      FROM media_items m
       INNER JOIN media_shows s ON m.group_title = s.group_title
       WHERE s.resolved_title LIKE ?
-      LIMIT 200
+      GROUP BY m.group_title
+      LIMIT 50
       ''',
       variables: [
         Variable.withString(ftsQuery),
@@ -175,7 +189,7 @@ class AppDatabase extends _$AppDatabase {
       ],
       readsFrom: {mediaItems, mediaShows},
     ).get();
-    return results.map((row) => mediaItems.map(row.data)).toList();
+    return results.map((row) => row.data).toList();
   }
 
   static QueryExecutor _openConnection() {
