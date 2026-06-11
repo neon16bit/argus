@@ -34,8 +34,6 @@ class SimklProvider extends MetadataProvider {
     'Content-Type': 'application/json',
   };
 
-  // TODO: wip simkl search, episode names
-
   // search by title
   @override
   Future<ShowMetadata?> fetchMetadata(String title, {int? year}) async {
@@ -90,8 +88,10 @@ class SimklProvider extends MetadataProvider {
   }
 
   // search by filename
-  Future<ShowMetadata?> fetchMetadataByFilename(String filename) async {
+  Future<SimklFileResult?> fetchMetadataByFilename(String filename) async {
+    if (_clientId.isEmpty) return null;
     try {
+      debugPrint('[Simkl] File search: "$filename"');
       final uri = Uri.parse('$kSimklBaseUrl/search/file').replace(
         queryParameters: {
           'client_id': _clientId,
@@ -106,19 +106,60 @@ class SimklProvider extends MetadataProvider {
       if (response.statusCode != 200) return null;
 
       final json = jsonDecode(response.body);
-      if (json is! List || json.isEmpty) return null;
+      if (json is! Map<String, dynamic>) return null;
 
-      final first = json[0] as Map<String, dynamic>;
-
-      // search file returns type, movie/show/anime
-      final type = first['type'] as String?;
+      // file search returns
+      final type = json['type'] as String?;
+      final mediaKey = (type == 'episode') ? 'show' : (type ?? 'show');
       final mediaObject =
-          (first[type] ?? first['show'] ?? first['movie'])
+          (json[mediaKey] ?? json['show'] ?? json['movie'])
               as Map<String, dynamic>?;
       if (mediaObject == null) return null;
 
-      return _parseResult(mediaObject);
-    } catch (_) {
+      final ids = mediaObject['ids'] as Map<String, dynamic>? ?? {};
+      final title = (mediaObject['title'] ?? '') as String;
+
+      // determine media type for anime, also extract anime_type
+      String? resolvedMediaType;
+      String? animeType;
+      if (type == 'episode' || type == 'show') {
+        resolvedMediaType = mediaObject['anime_type'] != null ? 'anime' : 'tv';
+      } else {
+        resolvedMediaType = type;
+      }
+      if (resolvedMediaType == 'anime') {
+        animeType = (mediaObject['anime_type'] as String?) ?? 'tv';
+      }
+
+      debugPrint('[Simkl] File match: "$title" ($resolvedMediaType)');
+
+      int? parseIntSafe(dynamic val) {
+        if (val == null) return null;
+        if (val is int) return val;
+        if (val is String) return int.tryParse(val);
+        return null;
+      }
+
+      return SimklFileResult(
+        title: title,
+        mediaType: resolvedMediaType,
+        animeType: animeType,
+        year: parseIntSafe(mediaObject['year']),
+        totalEpisodes: parseIntSafe(mediaObject['total_episodes']),
+        posterPath: mediaObject['poster'] as String?,
+        fanartPath: mediaObject['fanart'] as String?,
+        overview: mediaObject['overview'] as String?,
+        simklId: parseIntSafe(ids['simkl']),
+        slug: ids['slug'] as String?,
+        imdbId: ids['imdb'] as String?,
+        tmdbId: (ids['tmdbtv'] ?? ids['tmdb'])?.toString(),
+        malId: parseIntSafe(ids['mal']),
+        anilistId: parseIntSafe(ids['anilist']),
+        tvdbId: parseIntSafe(ids['tvdb']),
+        anidbId: ids['anidb']?.toString(),
+      );
+    } catch (e) {
+      debugPrint('[Simkl] File search error: $e');
       return null;
     }
   }
