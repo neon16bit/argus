@@ -174,17 +174,25 @@ class SimklProvider extends MetadataProvider {
   //
   // size suffixes: _w (large), _m (medium), _ca (card)
   // _c (compact), _cm (compact medium), _s (small/40px).
-  static String? posterUrl(String? posterPath, {String size = '_m'}) {
-    if (posterPath == null) return null;
-    return '$kSimklImageBase/posters/$posterPath$size.webp&q=90';
+  static String? posterUrl(
+    String? posterPath, {
+    String size = '_w',
+    String ext = '.jpg',
+  }) {
+    if (posterPath == null || posterPath.isEmpty) return null;
+    return '$kSimklImageBase/posters/$posterPath$size$ext&q=90';
   }
 
   // build a fanart URL from a Simkl fanart path.
   //
   // size suffixes: _medium, _mobile, _w, _s48
-  static String? fanartUrl(String? fanartPath, {String size = '_mobile'}) {
-    if (fanartPath == null) return null;
-    return '$kSimklImageBase/fanart/$fanartPath$size.webp&q=90';
+  static String? fanartUrl(
+    String? fanartPath, {
+    String size = '_mobile',
+    String ext = '.jpg',
+  }) {
+    if (fanartPath == null || fanartPath.isEmpty) return null;
+    return '$kSimklImageBase/fanart/$fanartPath$size$ext&q=90';
   }
 
   ShowMetadata _parseResult(Map<String, dynamic> data) {
@@ -214,7 +222,9 @@ class SimklProvider extends MetadataProvider {
       title: title,
       overview: data['overview'] as String?,
       posterUrl: posterUrl(poster),
+      posterPath: poster,
       backdropUrl: fanartUrl(fanart),
+      fanartPath: fanart,
       rating: rating,
       year: year,
       genres: const [],

@@ -54,6 +54,17 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   final simkl = ref.watch(simklProvider);
   final result = await simkl.fetchMetadataByFilename(representative.rawName);
 
+  // if file search didn't return a poster, fetch full metadata (WIP)
+  String? posterPath = result?.posterPath;
+  String? fanartPath = result?.fanartPath;
+  if (result != null && result.posterPath == null) {
+    final fullMeta = await simkl.fetchMetadata(result.title, year: result.year);
+    if (fullMeta != null) {
+      posterPath = fullMeta.posterPath;
+      fanartPath = fullMeta.fanartPath;
+    }
+  }
+
   // cache result in MediaShows
   if (result != null) {
     await db.upsertShow(
@@ -64,8 +75,8 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
         animeType: Value(result.animeType),
         year: Value(result.year),
         totalEpisodes: Value(result.totalEpisodes),
-        posterPath: Value(result.posterPath),
-        fanartPath: Value(result.fanartPath),
+        posterPath: Value(posterPath),
+        fanartPath: Value(fanartPath),
         overview: Value(result.overview),
         simklId: Value(result.simklId),
         simklSlug: Value(result.slug),
@@ -87,8 +98,10 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
     return ShowMetadata(
       title: result.title,
       overview: result.overview,
-      posterUrl: SimklProvider.posterUrl(result.posterPath),
-      backdropUrl: SimklProvider.fanartUrl(result.fanartPath),
+      posterUrl: SimklProvider.posterUrl(posterPath),
+      posterPath: posterPath,
+      backdropUrl: SimklProvider.fanartUrl(fanartPath),
+      fanartPath: fanartPath,
       year: result.year,
     );
   }

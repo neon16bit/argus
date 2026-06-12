@@ -11,7 +11,9 @@ class ShowMetadata {
   final String title;
   final String? overview;
   final String? posterUrl;
+  final String? posterPath;
   final String? backdropUrl;
+  final String? fanartPath;
   final double? rating;
   final int? year;
   final List<String> genres;
@@ -21,7 +23,9 @@ class ShowMetadata {
     required this.title,
     this.overview,
     this.posterUrl,
+    this.posterPath,
     this.backdropUrl,
+    this.fanartPath,
     this.rating,
     this.year,
     this.genres = const [],

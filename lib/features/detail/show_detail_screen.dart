@@ -5,6 +5,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/data/remote/metadata/metadata_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ShowDetailScreen extends ConsumerWidget {
   final SearchResult result;
@@ -127,17 +128,17 @@ class ShowDetailScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context, ShowMetadata? metadata) {
     if (metadata?.backdropUrl != null) {
-      return Image.network(
-        metadata!.backdropUrl!,
+      return CachedNetworkImage(
+        imageUrl: metadata!.backdropUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _defaultHeader(context),
+        errorWidget: (_, _, _) => _defaultHeader(context),
       );
     } else if (metadata?.posterUrl != null) {
-      return Image.network(
-        metadata!.posterUrl!,
+      return CachedNetworkImage(
+        imageUrl: metadata!.posterUrl!,
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
-        errorBuilder: (_, _, _) => _defaultHeader(context),
+        errorWidget: (_, _, _) => _defaultHeader(context),
       );
     }
     return _defaultHeader(context);
@@ -165,12 +166,12 @@ class ShowDetailScreen extends ConsumerWidget {
               if (metadata?.posterUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    metadata!.posterUrl!,
+                  child: CachedNetworkImage(
+                    imageUrl: metadata!.posterUrl!,
                     width: 100,
                     height: 150,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const SizedBox(
+                    errorWidget: (_, _, _) => const SizedBox(
                       width: 100,
                       height: 150,
                       child: Center(child: Icon(Icons.image_not_supported)),

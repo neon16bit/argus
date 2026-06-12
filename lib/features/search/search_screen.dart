@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -120,10 +121,13 @@ class _SearchResultCard extends ConsumerWidget {
               SizedBox(
                 width: 60,
                 child: posterUrl != null
-                    ? Image.network(
-                        posterUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: posterUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _defaultPoster(context),
+                        placeholder: (context, url) =>
+                            Container(color: Colors.grey[800]),
+                        errorWidget: (context, url, error) =>
+                            _defaultPoster(context),
                       )
                     : _defaultPoster(context),
               ),
