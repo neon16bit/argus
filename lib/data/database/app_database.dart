@@ -15,7 +15,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -43,6 +43,10 @@ class AppDatabase extends _$AppDatabase {
           INSERT INTO search_index(rowid, group_title)
           SELECT id, group_title FROM media_items
         ''');
+      }
+      if (from < 3) {
+        // add titleEn column to mediaShows
+        await m.addColumn(mediaShows, mediaShows.titleEn);
       }
     },
   );
@@ -146,7 +150,19 @@ class AppDatabase extends _$AppDatabase {
   )..where((s) => s.groupTitle.equals(groupTitle))).getSingleOrNull();
 
   Future<void> upsertShow(MediaShowsCompanion show) =>
-      into(mediaShows).insertOnConflictUpdate(show);
+      into(mediaShows).insert(
+        show,
+        onConflict: DoUpdate(
+          (old) => show,
+          target: [mediaShows.groupTitle],
+        ),
+      );
+
+  Future<void> insertShowStub(String groupTitle, int year) =>
+      into(mediaShows).insert(
+        MediaShowsCompanion(groupTitle: Value(groupTitle), year: Value(year)),
+        mode: InsertMode.insertOrIgnore,
+      );
 
   Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) =>
       (select(mediaItems)..where((m) => m.groupTitle.equals(groupTitle))).get();
@@ -161,6 +177,7 @@ class AppDatabase extends _$AppDatabase {
       '''
       SELECT m.group_title,
              s.resolved_title,
+             s.title_en,
              s.poster_path,
              s.media_type,
              s.year,
@@ -168,18 +185,19 @@ class AppDatabase extends _$AppDatabase {
       FROM media_items m
       INNER JOIN search_index si ON si.rowid = m.id
       LEFT JOIN media_shows s ON m.group_title = s.group_title
-      WHERE search_index MATCH ?
+      WHERE search_index MATCH ?1
       GROUP BY m.group_title
       UNION
       SELECT m.group_title,
              s.resolved_title,
+             s.title_en,
              s.poster_path,
              s.media_type,
              s.year,
              COUNT(m.id) as item_count
       FROM media_items m
       INNER JOIN media_shows s ON m.group_title = s.group_title
-      WHERE s.resolved_title LIKE ?
+      WHERE s.resolved_title LIKE ?2 OR s.title_en LIKE ?2
       GROUP BY m.group_title
       LIMIT 50
       ''',

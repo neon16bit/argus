@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:argus/core/constants.dart';
+import 'package:argus/core/utils/name_cleaner.dart';
 import 'metadata_provider.dart';
 
 class SimklProvider extends MetadataProvider {
@@ -39,34 +41,50 @@ class SimklProvider extends MetadataProvider {
   Future<ShowMetadata?> fetchMetadata(String title, {int? year}) async {
     if (_clientId.isEmpty) return null;
     try {
-      debugPrint('[Simkl] Searching for: "$title"');
-      // try TV first, then anime then movie
-      final tvResult = await _searchByText('tv', title);
-      if (tvResult != null) {
-        debugPrint('[Simkl] Found TV match: "${tvResult.title}"');
-        return tvResult;
-      }
-
-      final animeResult = await _searchByText('anime', title);
+      debugPrint('[Simkl] Searching for: "$title" (year: $year)');
+      // try anime first, then TV, then movie
+      final animeResult = await _searchByText('anime', title, year: year);
       if (animeResult != null) {
         debugPrint('[Simkl] Found anime match: "${animeResult.title}"');
+        if (animeResult.simklId != null) {
+          final full = await fetchMetadataById(animeResult.simklId!, 'anime');
+          if (full != null) return full;
+        }
         return animeResult;
       }
 
-      final movieResult = await _searchByText('movie', title);
+      final tvResult = await _searchByText('tv', title, year: year);
+      if (tvResult != null) {
+        debugPrint('[Simkl] Found TV match: "${tvResult.title}"');
+        if (tvResult.simklId != null) {
+          final full = await fetchMetadataById(tvResult.simklId!, 'tv');
+          if (full != null) return full;
+        }
+        return tvResult;
+      }
+
+      final movieResult = await _searchByText('movie', title, year: year);
       if (movieResult != null) {
         debugPrint('[Simkl] Found movie match: "${movieResult.title}"');
-      } else {
-        debugPrint('[Simkl] No results for: "$title"');
+        if (movieResult.simklId != null) {
+          final full = await fetchMetadataById(movieResult.simklId!, 'movie');
+          if (full != null) return full;
+        }
+        return movieResult;
       }
-      return movieResult;
+      debugPrint('[Simkl] No results for: "$title"');
+      return null;
     } catch (e) {
       debugPrint('[Simkl] Error searching "$title": $e');
       return null;
     }
   }
 
-  Future<ShowMetadata?> _searchByText(String type, String query) async {
+  Future<ShowMetadata?> _searchByText(
+    String type,
+    String query, {
+    int? year,
+  }) async {
     final uri = Uri.parse('$kSimklBaseUrl/search/$type').replace(
       queryParameters: {
         'q': query,
@@ -83,13 +101,111 @@ class SimklProvider extends MetadataProvider {
     final results = jsonDecode(response.body);
     if (results is! List || results.isEmpty) return null;
 
+    // client side year filtering to mitigate false positives
+    if (year != null) {
+      for (final item in results) {
+        if (item is Map<String, dynamic>) {
+          final itemYear = item['year'] as int?;
+          if (itemYear == year) {
+            return _parseResult(item);
+          }
+        }
+      }
+      // if we had a year query but none of the search results matched that year,
+      // return null to prevent false positives and let waterfall fallback continue.
+      debugPrint(
+        '[Simkl] No results matched target year $year for query "$query".',
+      );
+      return null;
+    }
+
     final first = results[0] as Map<String, dynamic>;
     return _parseResult(first);
   }
 
-  // search by filename
-  Future<SimklFileResult?> fetchMetadataByFilename(String filename) async {
+  // fetch full metadata by simkl ID directly
+  Future<ShowMetadata?> fetchMetadataById(int simklId, String mediaType) async {
     if (_clientId.isEmpty) return null;
+    try {
+      final type = mediaType == 'anime'
+          ? 'anime'
+          : (mediaType == 'movie' ? 'movies' : 'tv');
+      final uri = Uri.parse('$kSimklBaseUrl/$type/$simklId').replace(
+        queryParameters: {
+          'extended': 'full',
+          'client_id': _clientId,
+          'app-name': appName,
+          'app-version': appVersion,
+        },
+      );
+
+      final response = await http.get(uri, headers: _headers).timeout(_timeout);
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) return null;
+
+      final meta = _parseResult(data);
+      return ShowMetadata(
+        title: meta.title,
+        titleEn: meta.titleEn,
+        overview: meta.overview,
+        posterUrl: meta.posterUrl,
+        posterPath: meta.posterPath,
+        backdropUrl: meta.backdropUrl,
+        fanartPath: meta.fanartPath,
+        rating: meta.rating,
+        year: meta.year,
+        simklId: simklId,
+        mediaType: mediaType,
+        slug: (data['ids']?['slug'] ?? data['slug']) as String?,
+        imdbId: meta.imdbId,
+        tmdbId: meta.tmdbId,
+        malId: meta.malId,
+        anilistId: meta.anilistId,
+        tvdbId: meta.tvdbId,
+        anidbId: meta.anidbId,
+      );
+    } catch (e) {
+      debugPrint('[Simkl] Error fetching metadata by ID $simklId: $e');
+      return null;
+    }
+  }
+
+  // global queue lock for filename search
+  static Future<dynamic>? _lastFileSearch;
+
+  // search by filename
+  Future<SimklFileResult?> fetchMetadataByFilename(
+    String filename, {
+    int? targetYear,
+  }) async {
+    if (_clientId.isEmpty) return null;
+
+    // one second delay between filename searches sequentially
+    final previous = _lastFileSearch;
+    final completer = Completer<void>();
+    _lastFileSearch = completer.future;
+
+    if (previous != null) {
+      await previous;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+
+    try {
+      return await _fetchMetadataByFilenameInternal(
+        filename,
+        targetYear: targetYear,
+      );
+    } finally {
+      completer.complete();
+    }
+  }
+
+  Future<SimklFileResult?> _fetchMetadataByFilenameInternal(
+    String filename, {
+    int? targetYear,
+  }) async {
     try {
       debugPrint('[Simkl] File search: "$filename"');
       final uri = Uri.parse('$kSimklBaseUrl/search/file').replace(
@@ -119,6 +235,27 @@ class SimklProvider extends MetadataProvider {
       final ids = mediaObject['ids'] as Map<String, dynamic>? ?? {};
       final title = (mediaObject['title'] ?? '') as String;
 
+      int? parseIntSafe(dynamic val) {
+        if (val == null) return null;
+        if (val is int) return val;
+        if (val is String) return int.tryParse(val);
+        return null;
+      }
+
+      // year mismatch checking to mitigate false positives
+      final clean = NameCleaner.clean(filename);
+      final filterYear = clean.year ?? targetYear;
+      final resolvedYear = parseIntSafe(mediaObject['year']);
+      if (filterYear != null &&
+          resolvedYear != null &&
+          resolvedYear != filterYear) {
+        debugPrint(
+          '[Simkl] Year mismatch for "$filename": '
+          'extracted/target $filterYear vs resolved $resolvedYear. Ignoring match.',
+        );
+        return null;
+      }
+
       // determine media type for anime, also extract anime_type
       String? resolvedMediaType;
       String? animeType;
@@ -133,30 +270,67 @@ class SimklProvider extends MetadataProvider {
 
       debugPrint('[Simkl] File match: "$title" ($resolvedMediaType)');
 
-      int? parseIntSafe(dynamic val) {
-        if (val == null) return null;
-        if (val is int) return val;
-        if (val is String) return int.tryParse(val);
-        return null;
+      int? simklId = parseIntSafe(ids['simkl']);
+      String? posterPath = mediaObject['poster'] as String?;
+      String? fanartPath = mediaObject['fanart'] as String?;
+      String? overview = mediaObject['overview'] as String?;
+      String? titleEn = mediaObject['title_en'] as String?;
+
+      String? imdbId = ids['imdb'] as String?;
+      String? tmdbId = (ids['tmdbtv'] ?? ids['tmdb'])?.toString();
+      int? malId = parseIntSafe(ids['mal']);
+      int? anilistId = parseIntSafe(ids['anilist']);
+      int? tvdbId = parseIntSafe(ids['tvdb']);
+      String? anidbId = ids['anidb']?.toString();
+
+      if (simklId != null && resolvedMediaType != null) {
+        final fullMeta = await fetchMetadataById(simklId, resolvedMediaType);
+        if (fullMeta != null) {
+          posterPath = fullMeta.posterPath ?? posterPath;
+          fanartPath = fullMeta.fanartPath ?? fanartPath;
+          overview = fullMeta.overview ?? overview;
+          titleEn = fullMeta.titleEn ?? titleEn;
+          imdbId = fullMeta.imdbId ?? imdbId;
+          tmdbId = fullMeta.tmdbId ?? tmdbId;
+          malId = fullMeta.malId ?? malId;
+          anilistId = fullMeta.anilistId ?? anilistId;
+          tvdbId = fullMeta.tvdbId ?? tvdbId;
+          anidbId = fullMeta.anidbId ?? anidbId;
+        }
+      } else {
+        final fullMeta = await fetchMetadata(title, year: resolvedYear);
+        if (fullMeta != null) {
+          posterPath = fullMeta.posterPath ?? posterPath;
+          fanartPath = fullMeta.fanartPath ?? fanartPath;
+          overview = fullMeta.overview ?? overview;
+          titleEn = fullMeta.titleEn ?? titleEn;
+          imdbId = fullMeta.imdbId ?? imdbId;
+          tmdbId = fullMeta.tmdbId ?? tmdbId;
+          malId = fullMeta.malId ?? malId;
+          anilistId = fullMeta.anilistId ?? anilistId;
+          tvdbId = fullMeta.tvdbId ?? tvdbId;
+          anidbId = fullMeta.anidbId ?? anidbId;
+        }
       }
 
       return SimklFileResult(
         title: title,
+        titleEn: titleEn,
         mediaType: resolvedMediaType,
         animeType: animeType,
-        year: parseIntSafe(mediaObject['year']),
+        year: resolvedYear,
         totalEpisodes: parseIntSafe(mediaObject['total_episodes']),
-        posterPath: mediaObject['poster'] as String?,
-        fanartPath: mediaObject['fanart'] as String?,
-        overview: mediaObject['overview'] as String?,
-        simklId: parseIntSafe(ids['simkl']),
+        posterPath: posterPath,
+        fanartPath: fanartPath,
+        overview: overview,
+        simklId: simklId,
         slug: ids['slug'] as String?,
-        imdbId: ids['imdb'] as String?,
-        tmdbId: (ids['tmdbtv'] ?? ids['tmdb'])?.toString(),
-        malId: parseIntSafe(ids['mal']),
-        anilistId: parseIntSafe(ids['anilist']),
-        tvdbId: parseIntSafe(ids['tvdb']),
-        anidbId: ids['anidb']?.toString(),
+        imdbId: imdbId,
+        tmdbId: tmdbId,
+        malId: malId,
+        anilistId: anilistId,
+        tvdbId: tvdbId,
+        anidbId: anidbId,
       );
     } catch (e) {
       debugPrint('[Simkl] File search error: $e');
@@ -196,10 +370,34 @@ class SimklProvider extends MetadataProvider {
   }
 
   ShowMetadata _parseResult(Map<String, dynamic> data) {
-    final title = (data['title'] ?? data['title_en'] ?? '') as String;
+    final title = (data['title'] ?? '') as String;
+    final titleEn = data['title_en'] as String?;
     final year = data['year'] as int?;
     final poster = data['poster'] as String?;
     final fanart = data['fanart'] as String?;
+
+    final ids = data['ids'] as Map<String, dynamic>? ?? {};
+
+    int? parseIntSafe(dynamic val) {
+      if (val == null) return null;
+      if (val is int) return val;
+      if (val is String) return int.tryParse(val);
+      return null;
+    }
+
+    String? parseStringSafe(dynamic val) {
+      if (val == null) return null;
+      return val.toString();
+    }
+
+    final simklId = parseIntSafe(ids['simkl'] ?? ids['simkl_id']);
+    final slug = ids['slug'] as String?;
+    final imdbId = parseStringSafe(ids['imdb']);
+    final tmdbId = parseStringSafe(ids['tmdb']);
+    final malId = parseIntSafe(ids['mal']);
+    final anilistId = parseIntSafe(ids['anilist']);
+    final tvdbId = parseIntSafe(ids['tvdb']);
+    final anidbId = parseStringSafe(ids['anidb']);
 
     // ratings TODO: mal for anime, imdb for movie/show maybe multiple ratings
     double? rating;
@@ -209,7 +407,6 @@ class SimklProvider extends MetadataProvider {
       if (simklRating is Map<String, dynamic>) {
         rating = (simklRating['rating'] as num?)?.toDouble();
       }
-      // fallback to imdb
       if (rating == null) {
         final imdbRating = ratings['imdb'];
         if (imdbRating is Map<String, dynamic>) {
@@ -220,6 +417,7 @@ class SimklProvider extends MetadataProvider {
 
     return ShowMetadata(
       title: title,
+      titleEn: titleEn,
       overview: data['overview'] as String?,
       posterUrl: posterUrl(poster),
       posterPath: poster,
@@ -227,6 +425,15 @@ class SimklProvider extends MetadataProvider {
       fanartPath: fanart,
       rating: rating,
       year: year,
+      simklId: simklId,
+      mediaType: (data['endpoint_type'] ?? data['type']) as String?,
+      slug: slug,
+      imdbId: imdbId,
+      tmdbId: tmdbId,
+      malId: malId,
+      anilistId: anilistId,
+      tvdbId: tvdbId,
+      anidbId: anidbId,
       genres: const [],
       cast: const [],
     );

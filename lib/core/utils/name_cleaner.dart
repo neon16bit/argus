@@ -107,6 +107,14 @@ class NameCleaner {
     name = name.replaceAll(RegExp(r'\[.*?\]'), ' ');
     name = name.replaceAll(RegExp(r'\{.*?\}'), ' ');
 
+    name = name.replaceAll(
+      RegExp(
+        r'\b(?:anime|tv\s+series|tv\s+show|series|show|movies|cartoons)\b',
+        caseSensitive: false,
+      ),
+      ' ',
+    );
+
     // strip noise patterns
     for (final pattern in _noisePatterns) {
       name = name.replaceAll(pattern, ' ');

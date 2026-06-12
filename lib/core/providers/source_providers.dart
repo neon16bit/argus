@@ -110,6 +110,13 @@ class SourceActions {
       await db.insertMediaItemsBatch(companions.sublist(i, end));
     }
 
+    // save extracted year stubs in media_shows
+    for (final r in results) {
+      if (r.year != null) {
+        await db.insertShowStub(r.groupTitle, r.year!);
+      }
+    }
+
     await db.setSourceLastScraped(source.id, DateTime.now());
     await db.setSourceOnline(source.id, true);
 
@@ -152,6 +159,13 @@ class SourceActions {
     for (var i = 0; i < companions.length; i += kInsertBatchSize) {
       final end = (i + kInsertBatchSize).clamp(0, companions.length);
       await db.insertMediaItemsBatch(companions.sublist(i, end));
+    }
+
+    // save extracted year stubs in media_shows
+    for (final r in collectedResults) {
+      if (r.year != null) {
+        await db.insertShowStub(r.groupTitle, r.year!);
+      }
     }
 
     await db.setSourceLastScraped(source.id, DateTime.now());

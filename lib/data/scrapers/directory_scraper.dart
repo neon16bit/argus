@@ -111,6 +111,7 @@ class DirectoryScraper {
                   rawName: filename,
                   cleanTitle: cleaned.title,
                   groupTitle: group.title,
+                  year: group.year,
                   directUrl: resolvedStr,
                   type: ScrapeItemType.file,
                   season: cleaned.season,

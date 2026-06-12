@@ -1161,6 +1161,17 @@ class $MediaShowsTable extends MediaShows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _titleEnMeta = const VerificationMeta(
+    'titleEn',
+  );
+  @override
+  late final GeneratedColumn<String> titleEn = GeneratedColumn<String>(
+    'title_en',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _mediaTypeMeta = const VerificationMeta(
     'mediaType',
   );
@@ -1332,6 +1343,7 @@ class $MediaShowsTable extends MediaShows
     id,
     groupTitle,
     resolvedTitle,
+    titleEn,
     mediaType,
     animeType,
     year,
@@ -1379,6 +1391,12 @@ class $MediaShowsTable extends MediaShows
           data['resolved_title']!,
           _resolvedTitleMeta,
         ),
+      );
+    }
+    if (data.containsKey('title_en')) {
+      context.handle(
+        _titleEnMeta,
+        titleEn.isAcceptableOrUnknown(data['title_en']!, _titleEnMeta),
       );
     }
     if (data.containsKey('media_type')) {
@@ -1501,6 +1519,10 @@ class $MediaShowsTable extends MediaShows
         DriftSqlType.string,
         data['${effectivePrefix}resolved_title'],
       ),
+      titleEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_en'],
+      ),
       mediaType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}media_type'],
@@ -1578,6 +1600,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
   final int id;
   final String groupTitle;
   final String? resolvedTitle;
+  final String? titleEn;
   final String? mediaType;
   final String? animeType;
   final int? year;
@@ -1598,6 +1621,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     required this.id,
     required this.groupTitle,
     this.resolvedTitle,
+    this.titleEn,
     this.mediaType,
     this.animeType,
     this.year,
@@ -1622,6 +1646,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     map['group_title'] = Variable<String>(groupTitle);
     if (!nullToAbsent || resolvedTitle != null) {
       map['resolved_title'] = Variable<String>(resolvedTitle);
+    }
+    if (!nullToAbsent || titleEn != null) {
+      map['title_en'] = Variable<String>(titleEn);
     }
     if (!nullToAbsent || mediaType != null) {
       map['media_type'] = Variable<String>(mediaType);
@@ -1681,6 +1708,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       resolvedTitle: resolvedTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(resolvedTitle),
+      titleEn: titleEn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleEn),
       mediaType: mediaType == null && nullToAbsent
           ? const Value.absent()
           : Value(mediaType),
@@ -1739,6 +1769,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       id: serializer.fromJson<int>(json['id']),
       groupTitle: serializer.fromJson<String>(json['groupTitle']),
       resolvedTitle: serializer.fromJson<String?>(json['resolvedTitle']),
+      titleEn: serializer.fromJson<String?>(json['titleEn']),
       mediaType: serializer.fromJson<String?>(json['mediaType']),
       animeType: serializer.fromJson<String?>(json['animeType']),
       year: serializer.fromJson<int?>(json['year']),
@@ -1764,6 +1795,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       'id': serializer.toJson<int>(id),
       'groupTitle': serializer.toJson<String>(groupTitle),
       'resolvedTitle': serializer.toJson<String?>(resolvedTitle),
+      'titleEn': serializer.toJson<String?>(titleEn),
       'mediaType': serializer.toJson<String?>(mediaType),
       'animeType': serializer.toJson<String?>(animeType),
       'year': serializer.toJson<int?>(year),
@@ -1787,6 +1819,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     int? id,
     String? groupTitle,
     Value<String?> resolvedTitle = const Value.absent(),
+    Value<String?> titleEn = const Value.absent(),
     Value<String?> mediaType = const Value.absent(),
     Value<String?> animeType = const Value.absent(),
     Value<int?> year = const Value.absent(),
@@ -1809,6 +1842,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     resolvedTitle: resolvedTitle.present
         ? resolvedTitle.value
         : this.resolvedTitle,
+    titleEn: titleEn.present ? titleEn.value : this.titleEn,
     mediaType: mediaType.present ? mediaType.value : this.mediaType,
     animeType: animeType.present ? animeType.value : this.animeType,
     year: year.present ? year.value : this.year,
@@ -1837,6 +1871,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       resolvedTitle: data.resolvedTitle.present
           ? data.resolvedTitle.value
           : this.resolvedTitle,
+      titleEn: data.titleEn.present ? data.titleEn.value : this.titleEn,
       mediaType: data.mediaType.present ? data.mediaType.value : this.mediaType,
       animeType: data.animeType.present ? data.animeType.value : this.animeType,
       year: data.year.present ? data.year.value : this.year,
@@ -1870,6 +1905,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
           ..write('id: $id, ')
           ..write('groupTitle: $groupTitle, ')
           ..write('resolvedTitle: $resolvedTitle, ')
+          ..write('titleEn: $titleEn, ')
           ..write('mediaType: $mediaType, ')
           ..write('animeType: $animeType, ')
           ..write('year: $year, ')
@@ -1895,6 +1931,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     id,
     groupTitle,
     resolvedTitle,
+    titleEn,
     mediaType,
     animeType,
     year,
@@ -1919,6 +1956,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
           other.id == this.id &&
           other.groupTitle == this.groupTitle &&
           other.resolvedTitle == this.resolvedTitle &&
+          other.titleEn == this.titleEn &&
           other.mediaType == this.mediaType &&
           other.animeType == this.animeType &&
           other.year == this.year &&
@@ -1941,6 +1979,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
   final Value<int> id;
   final Value<String> groupTitle;
   final Value<String?> resolvedTitle;
+  final Value<String?> titleEn;
   final Value<String?> mediaType;
   final Value<String?> animeType;
   final Value<int?> year;
@@ -1961,6 +2000,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     this.id = const Value.absent(),
     this.groupTitle = const Value.absent(),
     this.resolvedTitle = const Value.absent(),
+    this.titleEn = const Value.absent(),
     this.mediaType = const Value.absent(),
     this.animeType = const Value.absent(),
     this.year = const Value.absent(),
@@ -1982,6 +2022,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     this.id = const Value.absent(),
     required String groupTitle,
     this.resolvedTitle = const Value.absent(),
+    this.titleEn = const Value.absent(),
     this.mediaType = const Value.absent(),
     this.animeType = const Value.absent(),
     this.year = const Value.absent(),
@@ -2003,6 +2044,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     Expression<int>? id,
     Expression<String>? groupTitle,
     Expression<String>? resolvedTitle,
+    Expression<String>? titleEn,
     Expression<String>? mediaType,
     Expression<String>? animeType,
     Expression<int>? year,
@@ -2024,6 +2066,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
       if (id != null) 'id': id,
       if (groupTitle != null) 'group_title': groupTitle,
       if (resolvedTitle != null) 'resolved_title': resolvedTitle,
+      if (titleEn != null) 'title_en': titleEn,
       if (mediaType != null) 'media_type': mediaType,
       if (animeType != null) 'anime_type': animeType,
       if (year != null) 'year': year,
@@ -2047,6 +2090,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     Value<int>? id,
     Value<String>? groupTitle,
     Value<String?>? resolvedTitle,
+    Value<String?>? titleEn,
     Value<String?>? mediaType,
     Value<String?>? animeType,
     Value<int?>? year,
@@ -2068,6 +2112,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
       id: id ?? this.id,
       groupTitle: groupTitle ?? this.groupTitle,
       resolvedTitle: resolvedTitle ?? this.resolvedTitle,
+      titleEn: titleEn ?? this.titleEn,
       mediaType: mediaType ?? this.mediaType,
       animeType: animeType ?? this.animeType,
       year: year ?? this.year,
@@ -2098,6 +2143,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     }
     if (resolvedTitle.present) {
       map['resolved_title'] = Variable<String>(resolvedTitle.value);
+    }
+    if (titleEn.present) {
+      map['title_en'] = Variable<String>(titleEn.value);
     }
     if (mediaType.present) {
       map['media_type'] = Variable<String>(mediaType.value);
@@ -2156,6 +2204,7 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
           ..write('id: $id, ')
           ..write('groupTitle: $groupTitle, ')
           ..write('resolvedTitle: $resolvedTitle, ')
+          ..write('titleEn: $titleEn, ')
           ..write('mediaType: $mediaType, ')
           ..write('animeType: $animeType, ')
           ..write('year: $year, ')
@@ -2220,7 +2269,7 @@ final class $$SourcesTableReferences
   static MultiTypedResultKey<$MediaItemsTable, List<MediaItem>>
   _mediaItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.mediaItems,
-    aliasName: $_aliasNameGenerator(db.sources.id, db.mediaItems.sourceId),
+    aliasName: 'sources__id__media_items__source_id',
   );
 
   $$MediaItemsTableProcessedTableManager get mediaItemsRefs {
@@ -2540,8 +2589,8 @@ final class $$MediaItemsTableReferences
     extends BaseReferences<_$AppDatabase, $MediaItemsTable, MediaItem> {
   $$MediaItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $SourcesTable _sourceIdTable(_$AppDatabase db) => db.sources
-      .createAlias($_aliasNameGenerator(db.mediaItems.sourceId, db.sources.id));
+  static $SourcesTable _sourceIdTable(_$AppDatabase db) =>
+      db.sources.createAlias('media_items__source_id__sources__id');
 
   $$SourcesTableProcessedTableManager get sourceId {
     final $_column = $_itemColumn<int>('source_id')!;
@@ -2961,6 +3010,7 @@ typedef $$MediaShowsTableCreateCompanionBuilder =
       Value<int> id,
       required String groupTitle,
       Value<String?> resolvedTitle,
+      Value<String?> titleEn,
       Value<String?> mediaType,
       Value<String?> animeType,
       Value<int?> year,
@@ -2983,6 +3033,7 @@ typedef $$MediaShowsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> groupTitle,
       Value<String?> resolvedTitle,
+      Value<String?> titleEn,
       Value<String?> mediaType,
       Value<String?> animeType,
       Value<int?> year,
@@ -3022,6 +3073,11 @@ class $$MediaShowsTableFilterComposer
 
   ColumnFilters<String> get resolvedTitle => $composableBuilder(
     column: $table.resolvedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleEn => $composableBuilder(
+    column: $table.titleEn,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3130,6 +3186,11 @@ class $$MediaShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get titleEn => $composableBuilder(
+    column: $table.titleEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get mediaType => $composableBuilder(
     column: $table.mediaType,
     builder: (column) => ColumnOrderings(column),
@@ -3233,6 +3294,9 @@ class $$MediaShowsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get titleEn =>
+      $composableBuilder(column: $table.titleEn, builder: (column) => column);
+
   GeneratedColumn<String> get mediaType =>
       $composableBuilder(column: $table.mediaType, builder: (column) => column);
 
@@ -3324,6 +3388,7 @@ class $$MediaShowsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> groupTitle = const Value.absent(),
                 Value<String?> resolvedTitle = const Value.absent(),
+                Value<String?> titleEn = const Value.absent(),
                 Value<String?> mediaType = const Value.absent(),
                 Value<String?> animeType = const Value.absent(),
                 Value<int?> year = const Value.absent(),
@@ -3344,6 +3409,7 @@ class $$MediaShowsTableTableManager
                 id: id,
                 groupTitle: groupTitle,
                 resolvedTitle: resolvedTitle,
+                titleEn: titleEn,
                 mediaType: mediaType,
                 animeType: animeType,
                 year: year,
@@ -3366,6 +3432,7 @@ class $$MediaShowsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String groupTitle,
                 Value<String?> resolvedTitle = const Value.absent(),
+                Value<String?> titleEn = const Value.absent(),
                 Value<String?> mediaType = const Value.absent(),
                 Value<String?> animeType = const Value.absent(),
                 Value<int?> year = const Value.absent(),
@@ -3386,6 +3453,7 @@ class $$MediaShowsTableTableManager
                 id: id,
                 groupTitle: groupTitle,
                 resolvedTitle: resolvedTitle,
+                titleEn: titleEn,
                 mediaType: mediaType,
                 animeType: animeType,
                 year: year,

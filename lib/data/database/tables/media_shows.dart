@@ -7,6 +7,7 @@ class MediaShows extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get groupTitle => text().unique()();
   TextColumn get resolvedTitle => text().nullable()();
+  TextColumn get titleEn => text().nullable()();
   TextColumn get mediaType => text().nullable()(); // 'tv', 'anime', 'movie'
   TextColumn get animeType =>
       text().nullable()(); // 'tv', 'movie', 'ova', 'ona', 'special'

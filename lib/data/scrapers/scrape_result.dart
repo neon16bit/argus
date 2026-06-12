@@ -10,6 +10,7 @@ class ScrapeResult {
   final int? episode;
   final String? fileExtension;
   final int? fileSize;
+  final int? year;
 
   const ScrapeResult({
     required this.rawName,
@@ -21,6 +22,7 @@ class ScrapeResult {
     this.episode,
     this.fileExtension,
     this.fileSize,
+    this.year,
   });
 
   @override

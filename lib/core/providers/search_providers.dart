@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class SearchResult {
   final String groupTitle; // raw folder based title
   final String? resolvedTitle; // simkl cached title
+  final String? titleEn; // simkl English title
   final String? posterPath; // raw simkl poster path
   final String? mediaType; // tv, anime, movie
   final int? year;
@@ -16,14 +17,15 @@ class SearchResult {
   const SearchResult({
     required this.groupTitle,
     this.resolvedTitle,
+    this.titleEn,
     this.posterPath,
     this.mediaType,
     this.year,
     this.itemCount = 0,
   });
 
-  // title to show in the ui (resolved first, fallback to groupTitle)
-  String get displayTitle => resolvedTitle ?? groupTitle;
+  // title to show in the ui (titleEn > resolvedTitle > groupTitle)
+  String get displayTitle => titleEn ?? resolvedTitle ?? groupTitle;
 
   // build poster URL from cached path
   String? get posterUrl => SimklProvider.posterUrl(posterPath);
@@ -66,6 +68,7 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
         (row) => SearchResult(
           groupTitle: row['group_title'] as String,
           resolvedTitle: row['resolved_title'] as String?,
+          titleEn: row['title_en'] as String?,
           posterPath: row['poster_path'] as String?,
           mediaType: row['media_type'] as String?,
           year: row['year'] as int?,

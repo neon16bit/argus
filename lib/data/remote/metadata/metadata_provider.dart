@@ -9,6 +9,7 @@ abstract class MetadataProvider {
 
 class ShowMetadata {
   final String title;
+  final String? titleEn;
   final String? overview;
   final String? posterUrl;
   final String? posterPath;
@@ -16,11 +17,21 @@ class ShowMetadata {
   final String? fanartPath;
   final double? rating;
   final int? year;
+  final int? simklId;
+  final String? mediaType;
+  final String? slug;
+  final String? imdbId;
+  final String? tmdbId;
+  final int? malId;
+  final int? anilistId;
+  final int? tvdbId;
+  final String? anidbId;
   final List<String> genres;
   final List<String> cast;
 
   const ShowMetadata({
     required this.title,
+    this.titleEn,
     this.overview,
     this.posterUrl,
     this.posterPath,
@@ -28,6 +39,15 @@ class ShowMetadata {
     this.fanartPath,
     this.rating,
     this.year,
+    this.simklId,
+    this.mediaType,
+    this.slug,
+    this.imdbId,
+    this.tmdbId,
+    this.malId,
+    this.anilistId,
+    this.tvdbId,
+    this.anidbId,
     this.genres = const [],
     this.cast = const [],
   });
@@ -36,6 +56,7 @@ class ShowMetadata {
 // result from Simkl /search/file
 class SimklFileResult {
   final String title;
+  final String? titleEn;
   final String? mediaType; // tv, anime, movie
   final String? animeType; // tv, movie, ova, ona, special
   final int? year;
@@ -56,6 +77,7 @@ class SimklFileResult {
 
   const SimklFileResult({
     required this.title,
+    this.titleEn,
     this.mediaType,
     this.animeType,
     this.year,
