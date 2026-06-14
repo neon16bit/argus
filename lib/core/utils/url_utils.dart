@@ -85,24 +85,38 @@ bool isSystemFile(String filename) {
   return false;
 }
 
+// checks if a folder is a subfolder we want to climb out of (season or special/extra content)
+bool isFolderToClimb(String name) {
+  if (isSeasonFolder(name)) return true;
+  final clean = name.trim().toLowerCase();
+  return RegExp(
+    r'^(specials?|movies?|extras?|ovas?|nc|op-?ed|op|ed|s00?)$',
+  ).hasMatch(clean);
+}
+
 // extracts the folder name from a file url
-// if the immediate parent is a season folder, climbs to grandparent
+// climbs recursively out of season or special/extras folders
 String extractShowFolder(Uri baseUri, Uri fileUri) {
   final segments = fileUri.pathSegments.where((s) => s.isNotEmpty).toList();
   if (segments.length < 2) return segments.lastOrNull ?? '';
 
-  final parent = Uri.decodeComponent(segments[segments.length - 2]);
-
-  // if parent looks like a season folder, use grandparent
-  if (_isSeasonFolder(parent) && segments.length >= 3) {
-    return Uri.decodeComponent(segments[segments.length - 3]);
+  // step backwards through parents until we find a directory that isnt a season or special folder
+  int idx = segments.length - 2;
+  while (idx >= 0) {
+    final folderName = Uri.decodeComponent(segments[idx]);
+    if (!isFolderToClimb(folderName)) {
+      return folderName;
+    }
+    idx--;
   }
-  return parent;
+
+  // fallback to immediate parent
+  return Uri.decodeComponent(segments[segments.length - 2]);
 }
 
 // loose match for season folders
 // matches: "Season 1", "S01", "S1 1080p", "Season 2 BluRay", etc
-bool _isSeasonFolder(String name) {
+bool isSeasonFolder(String name) {
   return RegExp(
     r'^(Season\s*\d+|S\d{1,2})\b',
     caseSensitive: false,

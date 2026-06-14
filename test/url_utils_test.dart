@@ -123,6 +123,20 @@ void main() {
       expect(extractShowFolder(base, file), 'Show');
     });
 
+    test('Climbs nested specials/movies/season folders', () {
+      final base = Uri.parse('http://example.com/Series/');
+
+      final movieFile = Uri.parse(
+        'http://example.com/Series/Show/Movies/Episode.mkv',
+      );
+      final specialsFile = Uri.parse(
+        'http://example.com/Series/Show/Specials/Episode.mkv',
+      );
+
+      expect(extractShowFolder(base, movieFile), 'Show');
+      expect(extractShowFolder(base, specialsFile), 'Show');
+    });
+
     test('extracts from root level', () {
       final base = Uri.parse('http://example.com/');
       final file = Uri.parse('http://example.com/Show/Episode.mkv');

@@ -106,16 +106,73 @@ class DirectoryScraper {
               final cleaned = NameCleaner.clean(filename);
               final parentFolder = extractShowFolder(baseUri, resolved);
               final group = NameCleaner.cleanFolderName(parentFolder);
+
+              int? season = cleaned.season;
+              int? episode = cleaned.episode;
+              String title = cleaned.title;
+
+              if (season == null) {
+                final segments = resolved.pathSegments
+                    .where((s) => s.isNotEmpty)
+                    .toList();
+                if (segments.length >= 2) {
+                  final parent = Uri.decodeComponent(
+                    segments[segments.length - 2],
+                  );
+                  if (isSeasonFolder(parent)) {
+                    final match = RegExp(
+                      r'\b(?:Season\s*|S)(\d{1,2})\b',
+                      caseSensitive: false,
+                    ).firstMatch(parent);
+                    if (match != null) {
+                      season = int.tryParse(match.group(1)!);
+                      if (episode == null) {
+                        String tempTitle = title;
+                        final groupTitleLower = group.title.toLowerCase();
+                        final titleLower = tempTitle.toLowerCase();
+
+                        if (groupTitleLower.isNotEmpty &&
+                            titleLower.startsWith(groupTitleLower)) {
+                          tempTitle = tempTitle
+                              .substring(groupTitleLower.length)
+                              .trim();
+                        }
+
+                        final epMatch = RegExp(
+                          r'\b(\d{1,4})\b',
+                        ).firstMatch(tempTitle);
+                        if (epMatch != null) {
+                          episode = int.tryParse(epMatch.group(1)!);
+                          title = tempTitle
+                              .replaceFirst(epMatch.group(0)!, ' ')
+                              .trim();
+                          title = '${group.title} $title'.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+                        }
+                      }
+                    }
+                  } else {
+                    final cleanParent = parent.trim().toLowerCase();
+                    if (RegExp(
+                      r'^(specials?|movies?|extras?|ovas?|nc|op-?ed|op|ed|s00?)$',
+                    ).hasMatch(cleanParent)) {
+                      if (parentFolder.trim().toLowerCase() != cleanParent) {
+                        season = 0;
+                      }
+                    }
+                  }
+                }
+              }
+
               results.add(
                 ScrapeResult(
                   rawName: filename,
-                  cleanTitle: cleaned.title,
+                  cleanTitle: title,
                   groupTitle: group.title,
                   year: group.year,
                   directUrl: resolvedStr,
                   type: ScrapeItemType.file,
-                  season: cleaned.season,
-                  episode: cleaned.episode,
+                  season: season,
+                  episode: episode,
                   fileExtension: ext,
                 ),
               );
