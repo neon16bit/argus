@@ -149,14 +149,10 @@ class AppDatabase extends _$AppDatabase {
     mediaShows,
   )..where((s) => s.groupTitle.equals(groupTitle))).getSingleOrNull();
 
-  Future<void> upsertShow(MediaShowsCompanion show) =>
-      into(mediaShows).insert(
-        show,
-        onConflict: DoUpdate(
-          (old) => show,
-          target: [mediaShows.groupTitle],
-        ),
-      );
+  Future<void> upsertShow(MediaShowsCompanion show) => into(mediaShows).insert(
+    show,
+    onConflict: DoUpdate((old) => show, target: [mediaShows.groupTitle]),
+  );
 
   Future<void> insertShowStub(String groupTitle, int year) =>
       into(mediaShows).insert(
@@ -164,8 +160,27 @@ class AppDatabase extends _$AppDatabase {
         mode: InsertMode.insertOrIgnore,
       );
 
-  Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) =>
-      (select(mediaItems)..where((m) => m.groupTitle.equals(groupTitle))).get();
+  Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) async {
+    final rows = await customSelect(
+      '''
+      SELECT m.* FROM media_items m
+      WHERE m.group_title IN (
+        SELECT s2.group_title FROM media_shows s2
+        WHERE s2.simkl_id = (
+          SELECT simkl_id FROM media_shows WHERE group_title = ?1
+        )
+        AND s2.simkl_id IS NOT NULL
+        UNION
+        SELECT ?1 -- fallback if simkl_id is null
+      )
+      ORDER BY m.group_title, m.id
+      ''',
+      variables: [Variable.withString(groupTitle)],
+      readsFrom: {mediaItems, mediaShows},
+    ).get();
+
+    return rows.map((row) => mediaItems.map(row.data)).toList();
+  }
 
   // FTS5 search on titles
   Future<List<Map<String, dynamic>>> searchShows(String query) async {
@@ -175,30 +190,26 @@ class AppDatabase extends _$AppDatabase {
     final ftsQuery = '"$escaped"*';
     final results = await customSelect(
       '''
-      SELECT m.group_title,
-             s.resolved_title,
-             s.title_en,
-             s.poster_path,
-             s.media_type,
-             s.year,
-             COUNT(m.id) as item_count
+      SELECT
+        COALESCE(s.simkl_id, m.group_title) as result_key,
+        m.group_title,
+        s.resolved_title,
+        s.title_en,
+        s.poster_path,
+        s.media_type,
+        s.year,
+        COUNT(m.id) as item_count
       FROM media_items m
-      INNER JOIN search_index si ON si.rowid = m.id
       LEFT JOIN media_shows s ON m.group_title = s.group_title
-      WHERE search_index MATCH ?1
-      GROUP BY m.group_title
-      UNION
-      SELECT m.group_title,
-             s.resolved_title,
-             s.title_en,
-             s.poster_path,
-             s.media_type,
-             s.year,
-             COUNT(m.id) as item_count
-      FROM media_items m
-      INNER JOIN media_shows s ON m.group_title = s.group_title
-      WHERE s.resolved_title LIKE ?2 OR s.title_en LIKE ?2
-      GROUP BY m.group_title
+      WHERE m.id IN (
+        SELECT rowid FROM search_index WHERE search_index MATCH ?1
+        UNION
+        SELECT m2.id FROM media_items m2
+        INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
+        WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
+      )
+      GROUP BY COALESCE(s.simkl_id, m.group_title)
+      ORDER BY COUNT(m.id) DESC
       LIMIT 50
       ''',
       variables: [
