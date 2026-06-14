@@ -9,10 +9,10 @@ final packageInfoProvider = Provider<PackageInfo>((ref) {
 });
 
 // fetches all items for a show when detail screen opens
-final showItemsProvider = FutureProvider.family<List<MediaItem>, String>((
+final showItemsProvider = StreamProvider.family<List<MediaItem>, String>((
   ref,
   groupTitle,
-) async {
+) {
   final db = ref.watch(databaseProvider);
-  return db.getMediaItemsByGroupTitle(groupTitle);
+  return db.watchMediaItemsByGroupTitle(groupTitle);
 });

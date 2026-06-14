@@ -56,24 +56,26 @@ final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
   SearchQueryNotifier.new,
 );
 
-final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
+final searchResultsProvider = StreamProvider<List<SearchResult>>((ref) {
   final query = ref.watch(searchQueryProvider);
-  if (query.trim().isEmpty) return [];
+  if (query.trim().isEmpty) return Stream.value([]);
 
   final db = ref.watch(databaseProvider);
-  final rows = await db.searchShows(query);
-
-  return rows
+  return db
+      .watchSearchShows(query)
       .map(
-        (row) => SearchResult(
-          groupTitle: row['group_title'] as String,
-          resolvedTitle: row['resolved_title'] as String?,
-          titleEn: row['title_en'] as String?,
-          posterPath: row['poster_path'] as String?,
-          mediaType: row['media_type'] as String?,
-          year: row['year'] as int?,
-          itemCount: row['item_count'] as int? ?? 0,
-        ),
-      )
-      .toList();
+        (rows) => rows
+            .map(
+              (row) => SearchResult(
+                groupTitle: row['group_title'] as String,
+                resolvedTitle: row['resolved_title'] as String?,
+                titleEn: row['title_en'] as String?,
+                posterPath: row['poster_path'] as String?,
+                mediaType: row['media_type'] as String?,
+                year: row['year'] as int?,
+                itemCount: row['item_count'] as int? ?? 0,
+              ),
+            )
+            .toList(),
+      );
 });

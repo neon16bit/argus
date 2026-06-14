@@ -182,6 +182,28 @@ class AppDatabase extends _$AppDatabase {
     return rows.map((row) => mediaItems.map(row.data)).toList();
   }
 
+  Stream<List<MediaItem>> watchMediaItemsByGroupTitle(String groupTitle) {
+    return customSelect(
+      '''
+      SELECT m.* FROM media_items m
+      WHERE m.group_title IN (
+        SELECT s2.group_title FROM media_shows s2
+        WHERE s2.simkl_id = (
+          SELECT simkl_id FROM media_shows WHERE group_title = ?1
+        )
+        AND s2.simkl_id IS NOT NULL
+        UNION
+        SELECT ?1
+      )
+      ORDER BY m.group_title, m.id
+      ''',
+      variables: [Variable.withString(groupTitle)],
+      readsFrom: {mediaItems, mediaShows},
+    ).watch().map(
+      (rows) => rows.map((row) => mediaItems.map(row.data)).toList(),
+    );
+  }
+
   // FTS5 search on titles
   Future<List<Map<String, dynamic>>> searchShows(String query) async {
     if (query.trim().isEmpty) return [];
@@ -219,6 +241,42 @@ class AppDatabase extends _$AppDatabase {
       readsFrom: {mediaItems, mediaShows},
     ).get();
     return results.map((row) => row.data).toList();
+  }
+
+  Stream<List<Map<String, dynamic>>> watchSearchShows(String query) {
+    if (query.trim().isEmpty) return Stream.value([]);
+    final escaped = query.replaceAll('"', '""');
+    final ftsQuery = '"$escaped"*';
+    return customSelect(
+      '''
+      SELECT
+        COALESCE(s.simkl_id, m.group_title) as result_key,
+        m.group_title,
+        s.resolved_title,
+        s.title_en,
+        s.poster_path,
+        s.media_type,
+        s.year,
+        COUNT(m.id) as item_count
+      FROM media_items m
+      LEFT JOIN media_shows s ON m.group_title = s.group_title
+      WHERE m.id IN (
+        SELECT rowid FROM search_index WHERE search_index MATCH ?1
+        UNION
+        SELECT m2.id FROM media_items m2
+        INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
+        WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
+      )
+      GROUP BY COALESCE(s.simkl_id, m.group_title)
+      ORDER BY COUNT(m.id) DESC
+      LIMIT 50
+      ''',
+      variables: [
+        Variable.withString(ftsQuery),
+        Variable.withString('%$query%'),
+      ],
+      readsFrom: {mediaItems, mediaShows},
+    ).watch().map((rows) => rows.map((row) => row.data).toList());
   }
 
   static QueryExecutor _openConnection() {
