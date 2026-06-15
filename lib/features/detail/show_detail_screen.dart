@@ -22,106 +22,196 @@ class ShowDetailScreen extends ConsumerWidget {
     final items = itemsAsync.value ?? [];
 
     // group items by season
-    final seasonMap = <int?, List<dynamic>>{};
+    final tempSeasonMap = <int?, List<dynamic>>{};
     for (final item in items) {
-      seasonMap.putIfAbsent(item.season, () => []).add(item);
+      tempSeasonMap.putIfAbsent(item.season, () => []).add(item);
     }
-    for (final episodes in seasonMap.values) {
-      episodes.sort((a, b) => (a.episode ?? 0).compareTo(b.episode ?? 0));
-    }
-    final sortedSeasons = seasonMap.keys.toList()
-      ..sort((a, b) => (a ?? 0).compareTo(b ?? 0));
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // collapsing header with poster/fanart
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                metadata?.titleEn ?? metadata?.title ?? result.displayTitle,
-                style: const TextStyle(
-                  fontSize: 16,
-                  shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+    final seasonMap = <int?, List<List<dynamic>>>{};
+    for (final entry in tempSeasonMap.entries) {
+      final season = entry.key;
+      final episodes = entry.value;
+
+      final groupedEpisodes = <int?, List<dynamic>>{};
+      final nullEpisodes = <dynamic>[];
+
+      for (final item in episodes) {
+        if (item.episode == null) {
+          nullEpisodes.add(item);
+        } else {
+          groupedEpisodes.putIfAbsent(item.episode, () => []).add(item);
+        }
+      }
+
+      final sortedGrouped = groupedEpisodes.values.toList()
+        ..sort(
+          (a, b) => (a.first.episode ?? 0).compareTo(b.first.episode ?? 0),
+        );
+
+      seasonMap[season] = [
+        ...sortedGrouped,
+        ...nullEpisodes.map((e) => [e]),
+      ];
+    }
+
+    final sortedSeasons = seasonMap.keys.toList()
+      ..sort((a, b) {
+        final aVal = a ?? 0;
+        final bVal = b ?? 0;
+        if (aVal == 0 && bVal != 0) return 1;
+        if (bVal == 0 && aVal != 0) return -1;
+        return aVal.compareTo(bVal);
+      });
+
+    final commonSlivers = [
+      SliverAppBar(
+        expandedHeight: 280,
+        pinned: true,
+        flexibleSpace: FlexibleSpaceBar(
+          title: Text(
+            metadata?.titleEn ?? metadata?.title ?? result.displayTitle,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.white,
+              shadows: [
+                Shadow(
+                  blurRadius: 4,
+                  color: Colors.black,
+                  offset: Offset(1, 1),
                 ),
-              ),
-              background: _buildHeader(context, metadata),
+              ],
             ),
           ),
-
-          // metadata card (poster, info)
-          SliverToBoxAdapter(child: _buildMetadataCard(context, metadata)),
-
-          // files by season
-          if (seasonMap.isNotEmpty) ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  'Available Files',
-                  style: Theme.of(context).textTheme.titleLarge,
+          background: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildHeader(context, metadata),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.5, 1.0],
+                    colors: [Colors.transparent, Colors.black87],
+                  ),
                 ),
               ),
-            ),
-            SliverList(
-              delegate: SliverChildListDelegate([
-                for (final season in sortedSeasons) ...[
-                  if (season != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: Text(
-                        'Season $season',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                  ...seasonMap[season]!.map(
-                    (item) => Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 2,
-                      ),
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(
-                          Icons.play_circle_rounded,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        title: Text(
-                          item.episode != null
-                              ? 'Episode ${item.episode}'
-                              : item.rawName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          item.rawName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        trailing: Text(
-                          item.fileExtension?.toUpperCase() ?? '',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        onTap: () => _showPlayOptions(context, item.rawName, [
-                          item.directUrl,
-                        ]),
-                      ),
-                    ),
-                  ),
-                ],
-              ]),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+      // metadata card (poster, info)
+      SliverToBoxAdapter(child: _buildMetadataCard(context, metadata)),
+    ];
 
-          // bottom padding
-          const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
-        ],
+    final hasOnlyNullSeason =
+        seasonMap.length == 1 && seasonMap.containsKey(null);
+
+    if (seasonMap.isEmpty || hasOnlyNullSeason) {
+      return Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            ...commonSlivers,
+            if (hasOnlyNullSeason) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Text(
+                    'Available Files',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  ...seasonMap[null]!.map(
+                    (item) => _buildFileCard(context, item),
+                  ),
+                ]),
+              ),
+            ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
+          ],
+        ),
+      );
+    }
+
+    return DefaultTabController(
+      length: sortedSeasons.length,
+      child: Scaffold(
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              ...commonSlivers,
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverAppBarDelegate(
+                  TabBar(
+                    isScrollable: true,
+                    tabs: [
+                      for (final season in sortedSeasons)
+                        Tab(
+                          text: season == 0
+                              ? 'Specials'
+                              : (season == null ? 'Extras' : 'Season $season'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: [
+              for (final season in sortedSeasons)
+                ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 32),
+                  itemCount: seasonMap[season]!.length,
+                  itemBuilder: (context, index) {
+                    final item = seasonMap[season]![index];
+                    return _buildFileCard(context, item);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileCard(BuildContext context, List<dynamic> group) {
+    if (group.isEmpty) return const SizedBox.shrink();
+
+    final item = group.first;
+    final isMulti = group.length > 1;
+
+    final titleStr = item.episode != null
+        ? 'Episode ${item.episode}'
+        : item.rawName;
+    final subtitleStr = isMulti
+        ? 'Multiple versions available (${group.length})'
+        : item.rawName;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: ListTile(
+        dense: true,
+        leading: Icon(
+          isMulti ? Icons.video_library_rounded : Icons.play_circle_rounded,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        title: Text(titleStr, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          subtitleStr,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11),
+        ),
+        trailing: Text(
+          isMulti ? '' : (item.fileExtension?.toUpperCase() ?? ''),
+          style: const TextStyle(fontSize: 11, color: Colors.grey),
+        ),
+        onTap: () => _showPlayOptions(context, titleStr, group),
       ),
     );
   }
@@ -223,9 +313,14 @@ class ShowDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showPlayOptions(BuildContext context, String title, List<String> urls) {
+  void _showPlayOptions(
+    BuildContext context,
+    String title,
+    List<dynamic> items,
+  ) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -239,40 +334,62 @@ class ShowDetailScreen extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
-            ...urls.map(
-              (url) => ListTile(
-                leading: const Icon(Icons.play_arrow_rounded),
-                title: const Text('Play In-App'),
-                subtitle: Text(
-                  Uri.parse(url).host,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: items
+                      .map<Widget>(
+                        (item) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.play_arrow_rounded),
+                          title: Text(
+                            item.rawName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            Uri.parse(item.directUrl).host,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded),
+                                tooltip: 'Copy URL',
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  Clipboard.setData(
+                                    ClipboardData(text: item.directUrl),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('URL copied to clipboard'),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.open_in_new_rounded),
+                                tooltip: 'Open in External Player',
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  // TODO: implement open in external player/urilauncher
+                                },
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _playInApp(context, item.directUrl);
+                          },
+                        ),
+                      )
+                      .toList(),
                 ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _playInApp(context, url);
-                },
               ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.open_in_new_rounded),
-              title: const Text('Open in External Player'),
-              onTap: () {
-                Navigator.pop(ctx);
-                // TODO: implement open in external player/urilauncher
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.copy_rounded),
-              title: const Text('Copy URL'),
-              onTap: () {
-                Navigator.pop(ctx);
-                Clipboard.setData(ClipboardData(text: urls.first));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('URL copied to clipboard')),
-                );
-              },
             ),
           ],
         ),
@@ -322,5 +439,33 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       body: Center(child: Video(controller: _controller)),
     );
+  }
+}
+
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate(this._tabBar);
+
+  final TabBar _tabBar;
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
   }
 }
