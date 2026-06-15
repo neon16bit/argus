@@ -67,6 +67,27 @@ class ShowDetailScreen extends ConsumerWidget {
       SliverAppBar(
         expandedHeight: 280,
         pinned: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Metadata',
+            onPressed: () async {
+              final db = ref.read(databaseProvider);
+              await db.clearShowCache(result.groupTitle);
+              ref.invalidate(metadataProvider(result.groupTitle));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Refreshing metadata for ${result.displayTitle}...',
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
             metadata?.titleEn ?? metadata?.title ?? result.displayTitle,

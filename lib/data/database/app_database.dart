@@ -160,6 +160,11 @@ class AppDatabase extends _$AppDatabase {
     onConflict: DoUpdate((old) => show, target: [mediaShows.groupTitle]),
   );
 
+  Future<void> clearShowCache(String groupTitle) =>
+      (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle))).write(
+        const MediaShowsCompanion(resolvedAt: Value(null)),
+      );
+
   Future<void> insertShowStub(String groupTitle, int year) =>
       into(mediaShows).insert(
         MediaShowsCompanion(groupTitle: Value(groupTitle), year: Value(year)),
