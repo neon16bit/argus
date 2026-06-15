@@ -146,7 +146,9 @@ class DirectoryScraper {
                           title = tempTitle
                               .replaceFirst(epMatch.group(0)!, ' ')
                               .trim();
-                          title = '${group.title} $title'.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+                          title = '${group.title} $title'
+                              .replaceAll(RegExp(r'\s{2,}'), ' ')
+                              .trim();
                         }
                       }
                     }
@@ -167,8 +169,8 @@ class DirectoryScraper {
                 ScrapeResult(
                   rawName: filename,
                   cleanTitle: title,
-                  groupTitle: group.title,
-                  year: group.year,
+                  groupTitle: group.title.isEmpty ? cleaned.title : group.title,
+                  year: group.year ?? cleaned.year,
                   directUrl: resolvedStr,
                   type: ScrapeItemType.file,
                   season: season,
