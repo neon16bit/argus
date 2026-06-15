@@ -1247,6 +1247,39 @@ class $MediaShowsTable extends MediaShows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _ratingSimklMeta = const VerificationMeta(
+    'ratingSimkl',
+  );
+  @override
+  late final GeneratedColumn<double> ratingSimkl = GeneratedColumn<double>(
+    'rating_simkl',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratingMalMeta = const VerificationMeta(
+    'ratingMal',
+  );
+  @override
+  late final GeneratedColumn<double> ratingMal = GeneratedColumn<double>(
+    'rating_mal',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratingImdbMeta = const VerificationMeta(
+    'ratingImdb',
+  );
+  @override
+  late final GeneratedColumn<double> ratingImdb = GeneratedColumn<double>(
+    'rating_imdb',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _simklIdMeta = const VerificationMeta(
     'simklId',
   );
@@ -1351,6 +1384,9 @@ class $MediaShowsTable extends MediaShows
     posterPath,
     fanartPath,
     overview,
+    ratingSimkl,
+    ratingMal,
+    ratingImdb,
     simklId,
     simklSlug,
     imdbId,
@@ -1442,6 +1478,27 @@ class $MediaShowsTable extends MediaShows
       context.handle(
         _overviewMeta,
         overview.isAcceptableOrUnknown(data['overview']!, _overviewMeta),
+      );
+    }
+    if (data.containsKey('rating_simkl')) {
+      context.handle(
+        _ratingSimklMeta,
+        ratingSimkl.isAcceptableOrUnknown(
+          data['rating_simkl']!,
+          _ratingSimklMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rating_mal')) {
+      context.handle(
+        _ratingMalMeta,
+        ratingMal.isAcceptableOrUnknown(data['rating_mal']!, _ratingMalMeta),
+      );
+    }
+    if (data.containsKey('rating_imdb')) {
+      context.handle(
+        _ratingImdbMeta,
+        ratingImdb.isAcceptableOrUnknown(data['rating_imdb']!, _ratingImdbMeta),
       );
     }
     if (data.containsKey('simkl_id')) {
@@ -1551,6 +1608,18 @@ class $MediaShowsTable extends MediaShows
         DriftSqlType.string,
         data['${effectivePrefix}overview'],
       ),
+      ratingSimkl: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating_simkl'],
+      ),
+      ratingMal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating_mal'],
+      ),
+      ratingImdb: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating_imdb'],
+      ),
       simklId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}simkl_id'],
@@ -1608,6 +1677,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
   final String? posterPath;
   final String? fanartPath;
   final String? overview;
+  final double? ratingSimkl;
+  final double? ratingMal;
+  final double? ratingImdb;
   final int? simklId;
   final String? simklSlug;
   final String? imdbId;
@@ -1629,6 +1701,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     this.posterPath,
     this.fanartPath,
     this.overview,
+    this.ratingSimkl,
+    this.ratingMal,
+    this.ratingImdb,
     this.simklId,
     this.simklSlug,
     this.imdbId,
@@ -1670,6 +1745,15 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     }
     if (!nullToAbsent || overview != null) {
       map['overview'] = Variable<String>(overview);
+    }
+    if (!nullToAbsent || ratingSimkl != null) {
+      map['rating_simkl'] = Variable<double>(ratingSimkl);
+    }
+    if (!nullToAbsent || ratingMal != null) {
+      map['rating_mal'] = Variable<double>(ratingMal);
+    }
+    if (!nullToAbsent || ratingImdb != null) {
+      map['rating_imdb'] = Variable<double>(ratingImdb);
     }
     if (!nullToAbsent || simklId != null) {
       map['simkl_id'] = Variable<int>(simklId);
@@ -1730,6 +1814,15 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       overview: overview == null && nullToAbsent
           ? const Value.absent()
           : Value(overview),
+      ratingSimkl: ratingSimkl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratingSimkl),
+      ratingMal: ratingMal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratingMal),
+      ratingImdb: ratingImdb == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratingImdb),
       simklId: simklId == null && nullToAbsent
           ? const Value.absent()
           : Value(simklId),
@@ -1777,6 +1870,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       posterPath: serializer.fromJson<String?>(json['posterPath']),
       fanartPath: serializer.fromJson<String?>(json['fanartPath']),
       overview: serializer.fromJson<String?>(json['overview']),
+      ratingSimkl: serializer.fromJson<double?>(json['ratingSimkl']),
+      ratingMal: serializer.fromJson<double?>(json['ratingMal']),
+      ratingImdb: serializer.fromJson<double?>(json['ratingImdb']),
       simklId: serializer.fromJson<int?>(json['simklId']),
       simklSlug: serializer.fromJson<String?>(json['simklSlug']),
       imdbId: serializer.fromJson<String?>(json['imdbId']),
@@ -1803,6 +1899,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
       'posterPath': serializer.toJson<String?>(posterPath),
       'fanartPath': serializer.toJson<String?>(fanartPath),
       'overview': serializer.toJson<String?>(overview),
+      'ratingSimkl': serializer.toJson<double?>(ratingSimkl),
+      'ratingMal': serializer.toJson<double?>(ratingMal),
+      'ratingImdb': serializer.toJson<double?>(ratingImdb),
       'simklId': serializer.toJson<int?>(simklId),
       'simklSlug': serializer.toJson<String?>(simklSlug),
       'imdbId': serializer.toJson<String?>(imdbId),
@@ -1827,6 +1926,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     Value<String?> posterPath = const Value.absent(),
     Value<String?> fanartPath = const Value.absent(),
     Value<String?> overview = const Value.absent(),
+    Value<double?> ratingSimkl = const Value.absent(),
+    Value<double?> ratingMal = const Value.absent(),
+    Value<double?> ratingImdb = const Value.absent(),
     Value<int?> simklId = const Value.absent(),
     Value<String?> simklSlug = const Value.absent(),
     Value<String?> imdbId = const Value.absent(),
@@ -1852,6 +1954,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     posterPath: posterPath.present ? posterPath.value : this.posterPath,
     fanartPath: fanartPath.present ? fanartPath.value : this.fanartPath,
     overview: overview.present ? overview.value : this.overview,
+    ratingSimkl: ratingSimkl.present ? ratingSimkl.value : this.ratingSimkl,
+    ratingMal: ratingMal.present ? ratingMal.value : this.ratingMal,
+    ratingImdb: ratingImdb.present ? ratingImdb.value : this.ratingImdb,
     simklId: simklId.present ? simklId.value : this.simklId,
     simklSlug: simklSlug.present ? simklSlug.value : this.simklSlug,
     imdbId: imdbId.present ? imdbId.value : this.imdbId,
@@ -1885,6 +1990,13 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
           ? data.fanartPath.value
           : this.fanartPath,
       overview: data.overview.present ? data.overview.value : this.overview,
+      ratingSimkl: data.ratingSimkl.present
+          ? data.ratingSimkl.value
+          : this.ratingSimkl,
+      ratingMal: data.ratingMal.present ? data.ratingMal.value : this.ratingMal,
+      ratingImdb: data.ratingImdb.present
+          ? data.ratingImdb.value
+          : this.ratingImdb,
       simklId: data.simklId.present ? data.simklId.value : this.simklId,
       simklSlug: data.simklSlug.present ? data.simklSlug.value : this.simklSlug,
       imdbId: data.imdbId.present ? data.imdbId.value : this.imdbId,
@@ -1913,6 +2025,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
           ..write('posterPath: $posterPath, ')
           ..write('fanartPath: $fanartPath, ')
           ..write('overview: $overview, ')
+          ..write('ratingSimkl: $ratingSimkl, ')
+          ..write('ratingMal: $ratingMal, ')
+          ..write('ratingImdb: $ratingImdb, ')
           ..write('simklId: $simklId, ')
           ..write('simklSlug: $simklSlug, ')
           ..write('imdbId: $imdbId, ')
@@ -1927,7 +2042,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     groupTitle,
     resolvedTitle,
@@ -1939,6 +2054,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     posterPath,
     fanartPath,
     overview,
+    ratingSimkl,
+    ratingMal,
+    ratingImdb,
     simklId,
     simklSlug,
     imdbId,
@@ -1948,7 +2066,7 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
     tvdbId,
     anidbId,
     resolvedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1964,6 +2082,9 @@ class MediaShow extends DataClass implements Insertable<MediaShow> {
           other.posterPath == this.posterPath &&
           other.fanartPath == this.fanartPath &&
           other.overview == this.overview &&
+          other.ratingSimkl == this.ratingSimkl &&
+          other.ratingMal == this.ratingMal &&
+          other.ratingImdb == this.ratingImdb &&
           other.simklId == this.simklId &&
           other.simklSlug == this.simklSlug &&
           other.imdbId == this.imdbId &&
@@ -1987,6 +2108,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
   final Value<String?> posterPath;
   final Value<String?> fanartPath;
   final Value<String?> overview;
+  final Value<double?> ratingSimkl;
+  final Value<double?> ratingMal;
+  final Value<double?> ratingImdb;
   final Value<int?> simklId;
   final Value<String?> simklSlug;
   final Value<String?> imdbId;
@@ -2008,6 +2132,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     this.posterPath = const Value.absent(),
     this.fanartPath = const Value.absent(),
     this.overview = const Value.absent(),
+    this.ratingSimkl = const Value.absent(),
+    this.ratingMal = const Value.absent(),
+    this.ratingImdb = const Value.absent(),
     this.simklId = const Value.absent(),
     this.simklSlug = const Value.absent(),
     this.imdbId = const Value.absent(),
@@ -2030,6 +2157,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     this.posterPath = const Value.absent(),
     this.fanartPath = const Value.absent(),
     this.overview = const Value.absent(),
+    this.ratingSimkl = const Value.absent(),
+    this.ratingMal = const Value.absent(),
+    this.ratingImdb = const Value.absent(),
     this.simklId = const Value.absent(),
     this.simklSlug = const Value.absent(),
     this.imdbId = const Value.absent(),
@@ -2052,6 +2182,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     Expression<String>? posterPath,
     Expression<String>? fanartPath,
     Expression<String>? overview,
+    Expression<double>? ratingSimkl,
+    Expression<double>? ratingMal,
+    Expression<double>? ratingImdb,
     Expression<int>? simklId,
     Expression<String>? simklSlug,
     Expression<String>? imdbId,
@@ -2074,6 +2207,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
       if (posterPath != null) 'poster_path': posterPath,
       if (fanartPath != null) 'fanart_path': fanartPath,
       if (overview != null) 'overview': overview,
+      if (ratingSimkl != null) 'rating_simkl': ratingSimkl,
+      if (ratingMal != null) 'rating_mal': ratingMal,
+      if (ratingImdb != null) 'rating_imdb': ratingImdb,
       if (simklId != null) 'simkl_id': simklId,
       if (simklSlug != null) 'simkl_slug': simklSlug,
       if (imdbId != null) 'imdb_id': imdbId,
@@ -2098,6 +2234,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     Value<String?>? posterPath,
     Value<String?>? fanartPath,
     Value<String?>? overview,
+    Value<double?>? ratingSimkl,
+    Value<double?>? ratingMal,
+    Value<double?>? ratingImdb,
     Value<int?>? simklId,
     Value<String?>? simklSlug,
     Value<String?>? imdbId,
@@ -2120,6 +2259,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
       posterPath: posterPath ?? this.posterPath,
       fanartPath: fanartPath ?? this.fanartPath,
       overview: overview ?? this.overview,
+      ratingSimkl: ratingSimkl ?? this.ratingSimkl,
+      ratingMal: ratingMal ?? this.ratingMal,
+      ratingImdb: ratingImdb ?? this.ratingImdb,
       simklId: simklId ?? this.simklId,
       simklSlug: simklSlug ?? this.simklSlug,
       imdbId: imdbId ?? this.imdbId,
@@ -2168,6 +2310,15 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
     if (overview.present) {
       map['overview'] = Variable<String>(overview.value);
     }
+    if (ratingSimkl.present) {
+      map['rating_simkl'] = Variable<double>(ratingSimkl.value);
+    }
+    if (ratingMal.present) {
+      map['rating_mal'] = Variable<double>(ratingMal.value);
+    }
+    if (ratingImdb.present) {
+      map['rating_imdb'] = Variable<double>(ratingImdb.value);
+    }
     if (simklId.present) {
       map['simkl_id'] = Variable<int>(simklId.value);
     }
@@ -2212,6 +2363,9 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
           ..write('posterPath: $posterPath, ')
           ..write('fanartPath: $fanartPath, ')
           ..write('overview: $overview, ')
+          ..write('ratingSimkl: $ratingSimkl, ')
+          ..write('ratingMal: $ratingMal, ')
+          ..write('ratingImdb: $ratingImdb, ')
           ..write('simklId: $simklId, ')
           ..write('simklSlug: $simklSlug, ')
           ..write('imdbId: $imdbId, ')
@@ -3018,6 +3172,9 @@ typedef $$MediaShowsTableCreateCompanionBuilder =
       Value<String?> posterPath,
       Value<String?> fanartPath,
       Value<String?> overview,
+      Value<double?> ratingSimkl,
+      Value<double?> ratingMal,
+      Value<double?> ratingImdb,
       Value<int?> simklId,
       Value<String?> simklSlug,
       Value<String?> imdbId,
@@ -3041,6 +3198,9 @@ typedef $$MediaShowsTableUpdateCompanionBuilder =
       Value<String?> posterPath,
       Value<String?> fanartPath,
       Value<String?> overview,
+      Value<double?> ratingSimkl,
+      Value<double?> ratingMal,
+      Value<double?> ratingImdb,
       Value<int?> simklId,
       Value<String?> simklSlug,
       Value<String?> imdbId,
@@ -3113,6 +3273,21 @@ class $$MediaShowsTableFilterComposer
 
   ColumnFilters<String> get overview => $composableBuilder(
     column: $table.overview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ratingSimkl => $composableBuilder(
+    column: $table.ratingSimkl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ratingMal => $composableBuilder(
+    column: $table.ratingMal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ratingImdb => $composableBuilder(
+    column: $table.ratingImdb,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3226,6 +3401,21 @@ class $$MediaShowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get ratingSimkl => $composableBuilder(
+    column: $table.ratingSimkl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get ratingMal => $composableBuilder(
+    column: $table.ratingMal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get ratingImdb => $composableBuilder(
+    column: $table.ratingImdb,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get simklId => $composableBuilder(
     column: $table.simklId,
     builder: (column) => ColumnOrderings(column),
@@ -3324,6 +3514,19 @@ class $$MediaShowsTableAnnotationComposer
   GeneratedColumn<String> get overview =>
       $composableBuilder(column: $table.overview, builder: (column) => column);
 
+  GeneratedColumn<double> get ratingSimkl => $composableBuilder(
+    column: $table.ratingSimkl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get ratingMal =>
+      $composableBuilder(column: $table.ratingMal, builder: (column) => column);
+
+  GeneratedColumn<double> get ratingImdb => $composableBuilder(
+    column: $table.ratingImdb,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get simklId =>
       $composableBuilder(column: $table.simklId, builder: (column) => column);
 
@@ -3396,6 +3599,9 @@ class $$MediaShowsTableTableManager
                 Value<String?> posterPath = const Value.absent(),
                 Value<String?> fanartPath = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
+                Value<double?> ratingSimkl = const Value.absent(),
+                Value<double?> ratingMal = const Value.absent(),
+                Value<double?> ratingImdb = const Value.absent(),
                 Value<int?> simklId = const Value.absent(),
                 Value<String?> simklSlug = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
@@ -3417,6 +3623,9 @@ class $$MediaShowsTableTableManager
                 posterPath: posterPath,
                 fanartPath: fanartPath,
                 overview: overview,
+                ratingSimkl: ratingSimkl,
+                ratingMal: ratingMal,
+                ratingImdb: ratingImdb,
                 simklId: simklId,
                 simklSlug: simklSlug,
                 imdbId: imdbId,
@@ -3440,6 +3649,9 @@ class $$MediaShowsTableTableManager
                 Value<String?> posterPath = const Value.absent(),
                 Value<String?> fanartPath = const Value.absent(),
                 Value<String?> overview = const Value.absent(),
+                Value<double?> ratingSimkl = const Value.absent(),
+                Value<double?> ratingMal = const Value.absent(),
+                Value<double?> ratingImdb = const Value.absent(),
                 Value<int?> simklId = const Value.absent(),
                 Value<String?> simklSlug = const Value.absent(),
                 Value<String?> imdbId = const Value.absent(),
@@ -3461,6 +3673,9 @@ class $$MediaShowsTableTableManager
                 posterPath: posterPath,
                 fanartPath: fanartPath,
                 overview: overview,
+                ratingSimkl: ratingSimkl,
+                ratingMal: ratingMal,
+                ratingImdb: ratingImdb,
                 simklId: simklId,
                 simklSlug: simklSlug,
                 imdbId: imdbId,

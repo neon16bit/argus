@@ -15,7 +15,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -47,6 +47,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         // add titleEn column to mediaShows
         await m.addColumn(mediaShows, mediaShows.titleEn);
+      }
+      if (from < 4) {
+        // add rating columns to mediaShows
+        await m.addColumn(mediaShows, mediaShows.ratingSimkl);
+        await m.addColumn(mediaShows, mediaShows.ratingMal);
+        await m.addColumn(mediaShows, mediaShows.ratingImdb);
       }
     },
   );

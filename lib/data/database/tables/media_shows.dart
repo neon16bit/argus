@@ -16,6 +16,9 @@ class MediaShows extends Table {
   TextColumn get posterPath => text().nullable()();
   TextColumn get fanartPath => text().nullable()();
   TextColumn get overview => text().nullable()();
+  RealColumn get ratingSimkl => real().nullable()();
+  RealColumn get ratingMal => real().nullable()();
+  RealColumn get ratingImdb => real().nullable()();
 
   // external IDs from Simkl /search/file response
   IntColumn get simklId => integer().nullable()();

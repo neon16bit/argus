@@ -155,6 +155,9 @@ class SimklProvider extends MetadataProvider {
         backdropUrl: meta.backdropUrl,
         fanartPath: meta.fanartPath,
         rating: meta.rating,
+        ratingSimkl: meta.ratingSimkl,
+        ratingMal: meta.ratingMal,
+        ratingImdb: meta.ratingImdb,
         year: meta.year,
         simklId: simklId,
         mediaType: mediaType,
@@ -283,6 +286,10 @@ class SimklProvider extends MetadataProvider {
       int? tvdbId = parseIntSafe(ids['tvdb']);
       String? anidbId = ids['anidb']?.toString();
 
+      double? ratingSimkl;
+      double? ratingMal;
+      double? ratingImdb;
+
       if (simklId != null && resolvedMediaType != null) {
         final fullMeta = await fetchMetadataById(simklId, resolvedMediaType);
         if (fullMeta != null) {
@@ -296,6 +303,9 @@ class SimklProvider extends MetadataProvider {
           anilistId = fullMeta.anilistId ?? anilistId;
           tvdbId = fullMeta.tvdbId ?? tvdbId;
           anidbId = fullMeta.anidbId ?? anidbId;
+          ratingSimkl = fullMeta.ratingSimkl;
+          ratingMal = fullMeta.ratingMal;
+          ratingImdb = fullMeta.ratingImdb;
         }
       } else {
         final fullMeta = await fetchMetadata(title, year: resolvedYear);
@@ -310,6 +320,9 @@ class SimklProvider extends MetadataProvider {
           anilistId = fullMeta.anilistId ?? anilistId;
           tvdbId = fullMeta.tvdbId ?? tvdbId;
           anidbId = fullMeta.anidbId ?? anidbId;
+          ratingSimkl = fullMeta.ratingSimkl;
+          ratingMal = fullMeta.ratingMal;
+          ratingImdb = fullMeta.ratingImdb;
         }
       }
 
@@ -323,6 +336,9 @@ class SimklProvider extends MetadataProvider {
         posterPath: posterPath,
         fanartPath: fanartPath,
         overview: overview,
+        ratingSimkl: ratingSimkl,
+        ratingMal: ratingMal,
+        ratingImdb: ratingImdb,
         simklId: simklId,
         slug: ids['slug'] as String?,
         imdbId: imdbId,
@@ -399,21 +415,26 @@ class SimklProvider extends MetadataProvider {
     final tvdbId = parseIntSafe(ids['tvdb']);
     final anidbId = parseStringSafe(ids['anidb']);
 
-    // ratings TODO: mal for anime, imdb for movie/show maybe multiple ratings
-    double? rating;
+    // ratings
+    double? ratingSimkl;
+    double? ratingMal;
+    double? ratingImdb;
     final ratings = data['ratings'];
     if (ratings is Map<String, dynamic>) {
       final simklRating = ratings['simkl'];
       if (simklRating is Map<String, dynamic>) {
-        rating = (simklRating['rating'] as num?)?.toDouble();
+        ratingSimkl = (simklRating['rating'] as num?)?.toDouble();
       }
-      if (rating == null) {
-        final imdbRating = ratings['imdb'];
-        if (imdbRating is Map<String, dynamic>) {
-          rating = (imdbRating['rating'] as num?)?.toDouble();
-        }
+      final malRating = ratings['mal'];
+      if (malRating is Map<String, dynamic>) {
+        ratingMal = (malRating['rating'] as num?)?.toDouble();
+      }
+      final imdbRating = ratings['imdb'];
+      if (imdbRating is Map<String, dynamic>) {
+        ratingImdb = (imdbRating['rating'] as num?)?.toDouble();
       }
     }
+    final rating = ratingImdb ?? ratingMal ?? ratingSimkl;
 
     return ShowMetadata(
       title: title,
@@ -424,6 +445,9 @@ class SimklProvider extends MetadataProvider {
       backdropUrl: fanartUrl(fanart),
       fanartPath: fanart,
       rating: rating,
+      ratingSimkl: ratingSimkl,
+      ratingMal: ratingMal,
+      ratingImdb: ratingImdb,
       year: year,
       simklId: simklId,
       mediaType: (data['endpoint_type'] ?? data['type']) as String?,

@@ -16,6 +16,9 @@ class ShowMetadata {
   final String? backdropUrl;
   final String? fanartPath;
   final double? rating;
+  final double? ratingSimkl;
+  final double? ratingMal;
+  final double? ratingImdb;
   final int? year;
   final int? simklId;
   final String? mediaType;
@@ -38,6 +41,9 @@ class ShowMetadata {
     this.backdropUrl,
     this.fanartPath,
     this.rating,
+    this.ratingSimkl,
+    this.ratingMal,
+    this.ratingImdb,
     this.year,
     this.simklId,
     this.mediaType,
@@ -64,6 +70,9 @@ class SimklFileResult {
   final String? posterPath; // raw path, not full URL
   final String? fanartPath;
   final String? overview;
+  final double? ratingSimkl;
+  final double? ratingMal;
+  final double? ratingImdb;
 
   // external IDs
   final int? simklId;
@@ -85,6 +94,9 @@ class SimklFileResult {
     this.posterPath,
     this.fanartPath,
     this.overview,
+    this.ratingSimkl,
+    this.ratingMal,
+    this.ratingImdb,
     this.simklId,
     this.slug,
     this.imdbId,

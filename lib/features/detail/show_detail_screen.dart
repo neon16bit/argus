@@ -291,6 +291,38 @@ class ShowDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                     ],
+                    if (metadata?.ratingImdb != null ||
+                        metadata?.ratingMal != null ||
+                        metadata?.ratingSimkl != null) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          if (metadata?.ratingImdb != null)
+                            _buildRatingBadge(
+                              context,
+                              'IMDb',
+                              metadata!.ratingImdb!,
+                              Colors.amber[700]!,
+                            ),
+                          if (metadata?.ratingMal != null)
+                            _buildRatingBadge(
+                              context,
+                              'MAL',
+                              metadata!.ratingMal!,
+                              Colors.blue[600]!,
+                            ),
+                          if (metadata?.ratingSimkl != null)
+                            _buildRatingBadge(
+                              context,
+                              'Simkl',
+                              metadata!.ratingSimkl!,
+                              Colors.red[600]!,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (metadata?.overview != null)
                       Text(
                         metadata!.overview!,
@@ -307,6 +339,45 @@ class ShowDetailScreen extends ConsumerWidget {
           Text(
             '${result.itemCount} items',
             style: const TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingBadge(
+    BuildContext context,
+    String provider,
+    double rating,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            provider,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+          const SizedBox(width: 2),
+          Text(
+            rating.toStringAsFixed(1),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
           ),
         ],
       ),
