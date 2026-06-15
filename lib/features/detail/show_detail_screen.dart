@@ -1,3 +1,4 @@
+import 'package:argus/data/database/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -7,19 +8,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/data/remote/metadata/metadata_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-class ShowDetailScreen extends ConsumerWidget {
+class ShowDetailScreen extends ConsumerStatefulWidget {
   final SearchResult result;
 
   const ShowDetailScreen({super.key, required this.result});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final metadataAsync = ref.watch(metadataProvider(result.groupTitle));
+  ConsumerState<ShowDetailScreen> createState() => _ShowDetailScreenState();
+}
+
+class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
+  int? _selectedSourceId;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadataAsync = ref.watch(metadataProvider(widget.result.groupTitle));
     final metadata = metadataAsync.value;
 
     // load items on-demand
-    final itemsAsync = ref.watch(showItemsProvider(result.groupTitle));
+    final itemsAsync = ref.watch(showItemsProvider(widget.result.groupTitle));
     final items = itemsAsync.value ?? [];
+
+    // get all sources to match source names
+    final sourcesAsync = ref.watch(sourcesProvider);
+    final allSources = sourcesAsync.value ?? [];
+
+    // determine which sources are contributing to this show's items
+    final showSourceIds = items.map((i) => i.sourceId).toSet();
+    final contributingSources = allSources
+        .where((s) => showSourceIds.contains(s.id))
+        .toList();
 
     // group items by season
     final tempSeasonMap = <int?, List<dynamic>>{};
@@ -27,15 +45,29 @@ class ShowDetailScreen extends ConsumerWidget {
       tempSeasonMap.putIfAbsent(item.season, () => []).add(item);
     }
 
+    final filteredItems = <dynamic>[];
     final seasonMap = <int?, List<List<dynamic>>>{};
+
     for (final entry in tempSeasonMap.entries) {
       final season = entry.key;
       final episodes = entry.value;
 
+      // filter episodes by selected source
+      final filteredEpisodesForSeason = _selectedSourceId == null
+          ? episodes
+          : episodes.where((i) => i.sourceId == _selectedSourceId).toList();
+
+      // if the selected source doesnt have this season, fall back to all sources
+      final finalEpisodesForSeason = filteredEpisodesForSeason.isNotEmpty
+          ? filteredEpisodesForSeason
+          : episodes;
+
+      filteredItems.addAll(finalEpisodesForSeason);
+
       final groupedEpisodes = <int?, List<dynamic>>{};
       final nullEpisodes = <dynamic>[];
 
-      for (final item in episodes) {
+      for (final item in finalEpisodesForSeason) {
         if (item.episode == null) {
           nullEpisodes.add(item);
         } else {
@@ -73,13 +105,13 @@ class ShowDetailScreen extends ConsumerWidget {
             tooltip: 'Refresh Metadata',
             onPressed: () async {
               final db = ref.read(databaseProvider);
-              await db.clearShowCache(result.groupTitle);
-              ref.invalidate(metadataProvider(result.groupTitle));
+              await db.clearShowCache(widget.result.groupTitle);
+              ref.invalidate(metadataProvider(widget.result.groupTitle));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Refreshing metadata for ${result.displayTitle}...',
+                      'Refreshing metadata for ${widget.result.displayTitle}...',
                     ),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -90,7 +122,7 @@ class ShowDetailScreen extends ConsumerWidget {
         ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
-            metadata?.titleEn ?? metadata?.title ?? result.displayTitle,
+            metadata?.titleEn ?? metadata?.title ?? widget.result.displayTitle,
             style: const TextStyle(
               fontSize: 16,
               color: Colors.white,
@@ -122,7 +154,15 @@ class ShowDetailScreen extends ConsumerWidget {
         ),
       ),
       // metadata card (poster, info)
-      SliverToBoxAdapter(child: _buildMetadataCard(context, metadata)),
+      SliverToBoxAdapter(
+        child: _buildMetadataCard(
+          context,
+          metadata,
+          items,
+          filteredItems,
+          contributingSources,
+        ),
+      ),
     ];
 
     final hasOnlyNullSeason =
@@ -186,6 +226,9 @@ class ShowDetailScreen extends ConsumerWidget {
             children: [
               for (final season in sortedSeasons)
                 ListView.builder(
+                  key: PageStorageKey(
+                    'season_${widget.result.groupTitle}_$season',
+                  ),
                   padding: const EdgeInsets.only(top: 8, bottom: 32),
                   itemCount: seasonMap[season]!.length,
                   itemBuilder: (context, index) {
@@ -264,7 +307,13 @@ class ShowDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetadataCard(BuildContext context, ShowMetadata? metadata) {
+  Widget _buildMetadataCard(
+    BuildContext context,
+    ShowMetadata? metadata,
+    List<dynamic> items,
+    List<dynamic> filteredItems,
+    List<Source> contributingSources,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -357,10 +406,53 @@ class ShowDetailScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            '${result.itemCount} items',
-            style: const TextStyle(color: Colors.grey),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _selectedSourceId == null
+                    ? '${items.length} items'
+                    : '${filteredItems.length} of ${items.length} items',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
           ),
+          if (contributingSources.length > 1) ...[
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    selected: _selectedSourceId == null,
+                    label: const Text('All Sources'),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedSourceId = null;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  ...contributingSources.map((source) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        selected: _selectedSourceId == source.id,
+                        label: Text(source.name),
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedSourceId = selected ? source.id : null;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
