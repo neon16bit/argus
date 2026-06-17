@@ -652,10 +652,10 @@ packages:
     dependency: "direct main"
     description:
       name: path_provider
-      sha256: "50c5dd5b6e1aaf6fb3a78b33f6aa3afca52bf903a8a5298f53101fdaee55bbcd"
+      sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.5"
+    version: "2.1.6"
   path_provider_android:
     dependency: transitive
     description:
@@ -910,13 +910,13 @@ packages:
     source: hosted
     version: "0.7.0+eol"
   sqlite3:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: sqlite3
-      sha256: "9488c7d2cdb1091c91cacf7e207cff81b28bff8e366f042bad3afe7d34afe189"
+      sha256: "37356bcb56ce0d9404d602c41e4bdb7765e7e9732a3e47adb3d98c556a6abdad"
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.2"
+    version: "3.3.3"
   sqlite3_flutter_libs:
     dependency: transitive
     description:

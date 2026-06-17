@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
+import 'package:drift/native.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:argus/data/scrapers/scrape_result.dart';
 import 'tables/sources.dart';
 import 'tables/media_items.dart';
@@ -291,6 +295,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'argus_db');
+    return LazyDatabase(() async {
+      final dbDir = await getApplicationSupportDirectory();
+      final file = File(p.join(dbDir.path, 'argus_db.sqlite'));
+      final cachebase = (await getTemporaryDirectory()).path;
+      sqlite3.tempDirectory = cachebase;
+
+      return NativeDatabase.createInBackground(file);
+    });
   }
 }
