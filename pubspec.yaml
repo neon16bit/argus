@@ -47,6 +47,8 @@ dependencies:
   package_info_plus: ^10.1.0
   cached_network_image: ^3.4.1
   sqlite3: ^3.3.3
+  url_launcher: ^6.3.2
+  android_intent_plus: ^6.0.0
 
 dev_dependencies:
   flutter_test:

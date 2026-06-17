@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:argus/features/detail/widgets/video_player_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FileCard extends StatelessWidget {
   final List<dynamic> group;
@@ -108,7 +112,10 @@ class FileCard extends StatelessWidget {
                                 tooltip: 'Open in External Player',
                                 onPressed: () {
                                   Navigator.pop(ctx);
-                                  // TODO: implement open in external player/urilauncher
+                                  _openInExternalPlayer(
+                                    context,
+                                    item.directUrl,
+                                  );
                                 },
                               ),
                             ],
@@ -134,5 +141,43 @@ class FileCard extends StatelessWidget {
       context,
       MaterialPageRoute(builder: (_) => VideoPlayerScreen(url: url)),
     );
+  }
+
+  Future<void> _openInExternalPlayer(
+    BuildContext context,
+    String streamUrl,
+  ) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      if (Platform.isAndroid) {
+        final intent = AndroidIntent(
+          action: 'action_view',
+          data: streamUrl,
+          type: 'video/*',
+        );
+        await intent.launch();
+      } else {
+        final uri = Uri.parse(streamUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          throw 'Could not launch URL';
+        }
+      }
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Failed to open external player. Play in app or copy the link instead.',
+          ),
+          action: SnackBarAction(
+            label: 'Copy',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: streamUrl));
+            },
+          ),
+        ),
+      );
+    }
   }
 }
