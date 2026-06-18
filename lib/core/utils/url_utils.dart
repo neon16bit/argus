@@ -62,6 +62,16 @@ bool isSameDomain(Uri baseUrl, Uri targetUrl) {
   return baseHost == targetHost;
 }
 
+// checks if targetUrl is a child/subpath of baseUrl
+bool isSubpath(Uri baseUrl, Uri targetUrl) {
+  if (!isSameDomain(baseUrl, targetUrl)) return false;
+
+  final basePath = baseUrl.path;
+  final targetPath = targetUrl.path;
+
+  return targetPath.startsWith(basePath);
+}
+
 bool isSystemFile(String filename) {
   final lower = filename.toLowerCase().trim();
 

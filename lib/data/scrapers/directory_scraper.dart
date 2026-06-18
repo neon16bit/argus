@@ -87,7 +87,7 @@ class DirectoryScraper {
           final resolvedStr = resolved.toString();
 
           if (isDirectoryPath(href)) {
-            if (!isSameDomain(baseUri, resolved)) {
+            if (!isSubpath(baseUri, resolved)) {
               skippedOutOfScope++;
               continue;
             }
@@ -96,7 +96,7 @@ class DirectoryScraper {
               newDirs++;
             }
           } else {
-            if (!isSameDomain(baseUri, resolved)) {
+            if (!isSubpath(baseUri, resolved)) {
               skippedOutOfScope++;
               continue;
             }
