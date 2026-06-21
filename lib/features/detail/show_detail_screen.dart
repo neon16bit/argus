@@ -23,13 +23,16 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // prioritize scrape if this result was opened from a shallow indexed folder
-    final folderUrl = widget.result.folderUrl;
-    if (!widget.result.isScraped && folderUrl != null) {
-      Future.microtask(
-        () => ref.read(scrapeQueueProvider.notifier).prioritize(folderUrl),
-      );
-    }
+    // prioritize scraping any unscraped folders for this show on any active sources
+    Future.microtask(() async {
+      final db = ref.read(databaseProvider);
+      final folders = await db.getFoldersByGroupTitle(widget.result.groupTitle);
+      for (final folder in folders) {
+        if (!folder.isScraped) {
+          ref.read(scrapeQueueProvider.notifier).prioritize(folder.folderUrl);
+        }
+      }
+    });
   }
 
   @override
@@ -43,6 +46,13 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final sourcesAsync = ref.watch(sourcesProvider);
     final allSources = sourcesAsync.value ?? [];
 
+    final foldersAsync = ref.watch(
+      showFoldersProvider(widget.result.groupTitle),
+    );
+    final folders = foldersAsync.value ?? [];
+    final isAnyUnscraped =
+        folders.isNotEmpty && folders.any((f) => !f.isScraped);
+
     // reactive filtering, grouping and sorting calculations
     final viewModel = ShowViewModel.compute(
       items: items,
@@ -55,7 +65,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         expandedHeight: 280,
         pinned: true,
         actions: [
-          if (!widget.result.isScraped)
+          if (isAnyUnscraped)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Center(
@@ -66,30 +76,32 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 ),
               ),
             ),
-          if (widget.result.folderUrl != null)
+          if (folders.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.cloud_sync_rounded),
               tooltip: 'Re-scrape Folder',
               onPressed: () async {
                 final db = ref.read(databaseProvider);
+                // clear media items for this show across all matching sources
                 await (db.delete(db.mediaItems)..where(
                       (m) => m.groupTitle.equals(widget.result.groupTitle),
                     ))
                     .go();
-                await (db.update(db.indexedFolders)..where(
-                      (f) => f.folderUrl.equals(widget.result.folderUrl!),
-                    ))
-                    .write(
-                      const IndexedFoldersCompanion(isScraped: Value(false)),
-                    );
-                ref
-                    .read(scrapeQueueProvider.notifier)
-                    .prioritize(widget.result.folderUrl!);
+                for (final folder in folders) {
+                  await (db.update(
+                    db.indexedFolders,
+                  )..where((f) => f.folderUrl.equals(folder.folderUrl))).write(
+                    const IndexedFoldersCompanion(isScraped: Value(false)),
+                  );
+                  ref
+                      .read(scrapeQueueProvider.notifier)
+                      .prioritize(folder.folderUrl);
+                }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Re-scraping ${widget.result.displayTitle}...',
+                        'Re-scraping folders for ${widget.result.displayTitle}...',
                       ),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -199,7 +211,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
 
     return DefaultTabController(
-      key: ValueKey('${widget.result.groupTitle}_${viewModel.sortedSeasons.length}'),
+      key: ValueKey(
+        '${widget.result.groupTitle}_${viewModel.sortedSeasons.length}',
+      ),
       length: viewModel.sortedSeasons.length,
       child: Scaffold(
         body: NestedScrollView(
@@ -228,7 +242,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
             children: [
               for (final season in viewModel.sortedSeasons)
                 ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  behavior: ScrollConfiguration.of(
+                    context,
+                  ).copyWith(scrollbars: false),
                   child: ListView.builder(
                     key: PageStorageKey(
                       'season_${widget.result.groupTitle}_$season',

@@ -205,19 +205,21 @@ class AppDatabase extends _$AppDatabase {
         mode: InsertMode.insertOrIgnore,
       );
 
+  static const _kGroupTitlesSubquery = '''
+    SELECT s2.group_title FROM media_shows s2
+    WHERE s2.simkl_id = (
+      SELECT simkl_id FROM media_shows WHERE group_title = ?1
+    )
+    AND s2.simkl_id IS NOT NULL
+    UNION
+    SELECT ?1 -- fallback if simkl_id is null
+  ''';
+
   Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) async {
     final rows = await customSelect(
       '''
       SELECT m.* FROM media_items m
-      WHERE m.group_title IN (
-        SELECT s2.group_title FROM media_shows s2
-        WHERE s2.simkl_id = (
-          SELECT simkl_id FROM media_shows WHERE group_title = ?1
-        )
-        AND s2.simkl_id IS NOT NULL
-        UNION
-        SELECT ?1 -- fallback if simkl_id is null
-      )
+      WHERE m.group_title IN ($_kGroupTitlesSubquery)
       ORDER BY m.group_title, m.id
       ''',
       variables: [Variable.withString(groupTitle)],
@@ -231,15 +233,7 @@ class AppDatabase extends _$AppDatabase {
     return customSelect(
       '''
       SELECT m.* FROM media_items m
-      WHERE m.group_title IN (
-        SELECT s2.group_title FROM media_shows s2
-        WHERE s2.simkl_id = (
-          SELECT simkl_id FROM media_shows WHERE group_title = ?1
-        )
-        AND s2.simkl_id IS NOT NULL
-        UNION
-        SELECT ?1
-      )
+      WHERE m.group_title IN ($_kGroupTitlesSubquery)
       ORDER BY m.group_title, m.id
       ''',
       variables: [Variable.withString(groupTitle)],
@@ -315,6 +309,33 @@ class AppDatabase extends _$AppDatabase {
       ],
       readsFrom: {mediaItems, mediaShows, indexedFolders},
     ).watch().map((rows) => rows.map((row) => row.data).toList());
+  }
+
+  Future<List<IndexedFolder>> getFoldersByGroupTitle(String groupTitle) async {
+    final rows = await customSelect(
+      '''
+      SELECT f.*
+      FROM indexed_folders f
+      WHERE f.clean_title IN ($_kGroupTitlesSubquery)
+      ''',
+      variables: [Variable.withString(groupTitle)],
+      readsFrom: {indexedFolders, mediaShows},
+    ).get();
+    return rows.map((row) => indexedFolders.map(row.data)).toList();
+  }
+
+  Stream<List<IndexedFolder>> watchFoldersByGroupTitle(String groupTitle) {
+    return customSelect(
+      '''
+      SELECT f.*
+      FROM indexed_folders f
+      WHERE f.clean_title IN ($_kGroupTitlesSubquery)
+      ''',
+      variables: [Variable.withString(groupTitle)],
+      readsFrom: {indexedFolders, mediaShows},
+    ).watch().map(
+      (rows) => rows.map((row) => indexedFolders.map(row.data)).toList(),
+    );
   }
 
   static QueryExecutor _openConnection() {

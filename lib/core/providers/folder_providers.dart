@@ -3,6 +3,7 @@ import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/database_providers.dart';
 import 'package:argus/core/providers/settings_provider.dart';
 import 'package:argus/core/providers/source_providers.dart';
+import 'package:argus/data/database/app_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // manages a priority queue of folder scrape tasks
@@ -21,6 +22,7 @@ class ScrapeQueueNotifier extends Notifier<void> {
   }
 
   void prioritize(String folderUrl) {
+    if (_inProgress.contains(folderUrl)) return;
     _queue.remove(folderUrl);
     // re-insert at front by rebuilding with it first
     final rest = List<String>.from(_queue);
@@ -60,3 +62,8 @@ class ScrapeQueueNotifier extends Notifier<void> {
 final scrapeQueueProvider = NotifierProvider<ScrapeQueueNotifier, void>(
   ScrapeQueueNotifier.new,
 );
+
+final showFoldersProvider = StreamProvider.family<List<IndexedFolder>, String>((ref, groupTitle) {
+  final db = ref.watch(databaseProvider);
+  return db.watchFoldersByGroupTitle(groupTitle);
+});
