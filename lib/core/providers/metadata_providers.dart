@@ -65,10 +65,20 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   // get target year from cached stub if available
   final targetYear = cached?.year;
 
-  // call simkl file search with raw filename
+  // if the representative has a detected season/episode, inject it if missing
+  final filename =
+      (representative.season != null && representative.episode != null)
+      ? _injectSeasonTag(
+          representative.rawName,
+          representative.season!,
+          representative.episode!,
+        )
+      : representative.rawName;
+
+  // call simkl file search with filename
   final simkl = ref.watch(simklProvider);
   final fileResult = await simkl.fetchMetadataByFilename(
-    representative.rawName,
+    filename,
     targetYear: targetYear,
   );
 
@@ -82,7 +92,10 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
       'falling back to text search.',
     );
     final clean = NameCleaner.cleanFolderName(groupTitle);
-    final fullMeta = await simkl.fetchMetadata(clean.title, year: targetYear ?? clean.year);
+    final fullMeta = await simkl.fetchMetadata(
+      clean.title,
+      year: targetYear ?? clean.year,
+    );
     if (fullMeta != null) {
       result = SimklFileResult(
         title: fullMeta.title,
@@ -171,3 +184,35 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   );
   return null;
 });
+
+String _injectSeasonTag(String filename, int season, int episode) {
+  final hasSeason =
+      RegExp(
+        r'\b[Ss]\d{1,2}\s*[Ee]\d{1,3}\b',
+        caseSensitive: false,
+      ).hasMatch(filename) ||
+      RegExp(
+        r'\bSeason\s*\d{1,2}\b',
+        caseSensitive: false,
+      ).hasMatch(filename) ||
+      RegExp(r'\b\d{1,2}[xX]\d{2,3}\b').hasMatch(filename);
+  if (hasSeason) return filename;
+
+  final seasonStr = season.toString().padLeft(2, '0');
+  final episodeStr = episode.toString().padLeft(2, '0');
+  final replacement = "S${seasonStr}E$episodeStr";
+
+  // find the episode pattern matching the known episode number
+  final epRegex = RegExp(
+    r'\b(?:Ep(?:isode)?\.?\s*|[Ee])?0*' +
+        RegExp.escape(episode.toString()) +
+        r'\b',
+    caseSensitive: false,
+  );
+
+  if (epRegex.hasMatch(filename)) {
+    return filename.replaceFirst(epRegex, replacement);
+  }
+
+  return filename;
+}
