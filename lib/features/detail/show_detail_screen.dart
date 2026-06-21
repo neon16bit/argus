@@ -199,6 +199,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
 
     return DefaultTabController(
+      key: ValueKey('${widget.result.groupTitle}_${viewModel.sortedSeasons.length}'),
       length: viewModel.sortedSeasons.length,
       child: Scaffold(
         body: NestedScrollView(
@@ -226,16 +227,20 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           body: TabBarView(
             children: [
               for (final season in viewModel.sortedSeasons)
-                ListView.builder(
-                  key: PageStorageKey(
-                    'season_${widget.result.groupTitle}_$season',
+                ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: ListView.builder(
+                    key: PageStorageKey(
+                      'season_${widget.result.groupTitle}_$season',
+                    ),
+                    primary: true,
+                    padding: const EdgeInsets.only(top: 8, bottom: 32),
+                    itemCount: viewModel.seasonMap[season]!.length,
+                    itemBuilder: (context, index) {
+                      final group = viewModel.seasonMap[season]![index];
+                      return FileCard(group: group);
+                    },
                   ),
-                  padding: const EdgeInsets.only(top: 8, bottom: 32),
-                  itemCount: viewModel.seasonMap[season]!.length,
-                  itemBuilder: (context, index) {
-                    final group = viewModel.seasonMap[season]![index];
-                    return FileCard(group: group);
-                  },
                 ),
             ],
           ),
