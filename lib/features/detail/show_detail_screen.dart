@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
+import 'package:drift/drift.dart';
+import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/widgets/metadata_card.dart';
 import 'package:argus/features/detail/widgets/file_card.dart';
 import 'package:argus/features/detail/widgets/source_filter.dart';
@@ -17,6 +19,18 @@ class ShowDetailScreen extends ConsumerStatefulWidget {
 
 class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   int? _selectedSourceId;
+
+  @override
+  void initState() {
+    super.initState();
+    // prioritize scrape if this result was opened from a shallow indexed folder
+    final folderUrl = widget.result.folderUrl;
+    if (!widget.result.isScraped && folderUrl != null) {
+      Future.microtask(
+        () => ref.read(scrapeQueueProvider.notifier).prioritize(folderUrl),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +55,48 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         expandedHeight: 280,
         pinned: true,
         actions: [
+          if (!widget.result.isScraped)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          if (widget.result.folderUrl != null)
+            IconButton(
+              icon: const Icon(Icons.cloud_sync_rounded),
+              tooltip: 'Re-scrape Folder',
+              onPressed: () async {
+                final db = ref.read(databaseProvider);
+                await (db.delete(db.mediaItems)..where(
+                      (m) => m.groupTitle.equals(widget.result.groupTitle),
+                    ))
+                    .go();
+                await (db.update(db.indexedFolders)..where(
+                      (f) => f.folderUrl.equals(widget.result.folderUrl!),
+                    ))
+                    .write(
+                      const IndexedFoldersCompanion(isScraped: Value(false)),
+                    );
+                ref
+                    .read(scrapeQueueProvider.notifier)
+                    .prioritize(widget.result.folderUrl!);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Re-scraping ${widget.result.displayTitle}...',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh Metadata',

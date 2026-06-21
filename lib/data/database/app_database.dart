@@ -8,10 +8,11 @@ import 'package:argus/data/scrapers/scrape_result.dart';
 import 'tables/sources.dart';
 import 'tables/media_items.dart';
 import 'tables/media_shows.dart';
+import 'tables/indexed_folders.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Sources, MediaItems, MediaShows])
+@DriftDatabase(tables: [Sources, MediaItems, MediaShows, IndexedFolders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
 
@@ -19,7 +20,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -57,6 +58,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(mediaShows, mediaShows.ratingSimkl);
         await m.addColumn(mediaShows, mediaShows.ratingMal);
         await m.addColumn(mediaShows, mediaShows.ratingImdb);
+      }
+      if (from < 5) {
+        await m.createTable(indexedFolders);
       }
     },
   );
@@ -153,8 +157,34 @@ class AppDatabase extends _$AppDatabase {
     return result.read(count) ?? 0;
   }
 
-  // media show operations
+  // indexed folder operations
+  Future<void> insertIndexedFoldersBatch(
+    List<IndexedFoldersCompanion> folders,
+  ) => batch(
+    (b) =>
+        b.insertAll(indexedFolders, folders, mode: InsertMode.insertOrReplace),
+  );
 
+  Future<void> markFolderScraped(int id) =>
+      (update(indexedFolders)..where((f) => f.id.equals(id))).write(
+        IndexedFoldersCompanion(
+          isScraped: const Value(true),
+          lastScraped: Value(DateTime.now()),
+        ),
+      );
+
+  Future<IndexedFolder?> getFolderByUrl(String url) => (select(
+    indexedFolders,
+  )..where((f) => f.folderUrl.equals(url))).getSingleOrNull();
+
+  Future<int> deleteIndexedFoldersBySource(int sourceId) =>
+      (delete(indexedFolders)..where((f) => f.sourceId.equals(sourceId))).go();
+
+  Stream<List<IndexedFolder>> watchFoldersBySource(int sourceId) => (select(
+    indexedFolders,
+  )..where((f) => f.sourceId.equals(sourceId))).watch();
+
+  // media show operations
   Future<MediaShow?> getShowByGroupTitle(String groupTitle) => (select(
     mediaShows,
   )..where((s) => s.groupTitle.equals(groupTitle))).getSingleOrNull();
@@ -219,41 +249,57 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // FTS5 search on titles
+  // FTS5 search on titles + indexed folders
+  static const _kSearchSql = '''
+    SELECT
+      COALESCE(s.simkl_id, m.group_title) as result_key,
+      m.group_title,
+      s.resolved_title, s.title_en, s.poster_path, s.media_type, s.year,
+      COUNT(m.id) as item_count,
+      NULL as folder_url,
+      1 as is_scraped
+    FROM media_items m
+    LEFT JOIN media_shows s ON m.group_title = s.group_title
+    WHERE m.id IN (
+      SELECT rowid FROM search_index WHERE search_index MATCH ?1
+      UNION
+      SELECT m2.id FROM media_items m2
+      INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
+      WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
+    )
+    GROUP BY COALESCE(s.simkl_id, m.group_title)
+
+    UNION
+
+    SELECT
+      f.folder_url as result_key,
+      f.clean_title as group_title,
+      s.resolved_title, s.title_en, s.poster_path, s.media_type,
+      COALESCE(s.year, f.year) as year,
+      0 as item_count,
+      f.folder_url as folder_url,
+      f.is_scraped as is_scraped
+    FROM indexed_folders f
+    LEFT JOIN media_shows s ON f.clean_title = s.group_title
+    WHERE f.clean_title LIKE ?2
+    AND NOT EXISTS (
+      SELECT 1 FROM media_items m3 WHERE m3.group_title = f.clean_title
+    )
+
+    ORDER BY item_count DESC
+    LIMIT 50
+  ''';
+
   Future<List<Map<String, dynamic>>> searchShows(String query) async {
     if (query.trim().isEmpty) return [];
-    // escape FTS5 special chars and add prefix matching
     final escaped = query.replaceAll('"', '""');
-    final ftsQuery = '"$escaped"*';
     final results = await customSelect(
-      '''
-      SELECT
-        COALESCE(s.simkl_id, m.group_title) as result_key,
-        m.group_title,
-        s.resolved_title,
-        s.title_en,
-        s.poster_path,
-        s.media_type,
-        s.year,
-        COUNT(m.id) as item_count
-      FROM media_items m
-      LEFT JOIN media_shows s ON m.group_title = s.group_title
-      WHERE m.id IN (
-        SELECT rowid FROM search_index WHERE search_index MATCH ?1
-        UNION
-        SELECT m2.id FROM media_items m2
-        INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
-        WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
-      )
-      GROUP BY COALESCE(s.simkl_id, m.group_title)
-      ORDER BY COUNT(m.id) DESC
-      LIMIT 50
-      ''',
+      _kSearchSql,
       variables: [
-        Variable.withString(ftsQuery),
+        Variable.withString('"$escaped"*'),
         Variable.withString('%$query%'),
       ],
-      readsFrom: {mediaItems, mediaShows},
+      readsFrom: {mediaItems, mediaShows, indexedFolders},
     ).get();
     return results.map((row) => row.data).toList();
   }
@@ -261,36 +307,13 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<Map<String, dynamic>>> watchSearchShows(String query) {
     if (query.trim().isEmpty) return Stream.value([]);
     final escaped = query.replaceAll('"', '""');
-    final ftsQuery = '"$escaped"*';
     return customSelect(
-      '''
-      SELECT
-        COALESCE(s.simkl_id, m.group_title) as result_key,
-        m.group_title,
-        s.resolved_title,
-        s.title_en,
-        s.poster_path,
-        s.media_type,
-        s.year,
-        COUNT(m.id) as item_count
-      FROM media_items m
-      LEFT JOIN media_shows s ON m.group_title = s.group_title
-      WHERE m.id IN (
-        SELECT rowid FROM search_index WHERE search_index MATCH ?1
-        UNION
-        SELECT m2.id FROM media_items m2
-        INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
-        WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
-      )
-      GROUP BY COALESCE(s.simkl_id, m.group_title)
-      ORDER BY COUNT(m.id) DESC
-      LIMIT 50
-      ''',
+      _kSearchSql,
       variables: [
-        Variable.withString(ftsQuery),
+        Variable.withString('"$escaped"*'),
         Variable.withString('%$query%'),
       ],
-      readsFrom: {mediaItems, mediaShows},
+      readsFrom: {mediaItems, mediaShows, indexedFolders},
     ).watch().map((rows) => rows.map((row) => row.data).toList());
   }
 

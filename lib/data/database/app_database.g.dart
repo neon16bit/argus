@@ -2380,12 +2380,573 @@ class MediaShowsCompanion extends UpdateCompanion<MediaShow> {
   }
 }
 
+class $IndexedFoldersTable extends IndexedFolders
+    with TableInfo<$IndexedFoldersTable, IndexedFolder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IndexedFoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<int> sourceId = GeneratedColumn<int>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sources (id)',
+    ),
+  );
+  static const VerificationMeta _folderNameMeta = const VerificationMeta(
+    'folderName',
+  );
+  @override
+  late final GeneratedColumn<String> folderName = GeneratedColumn<String>(
+    'folder_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cleanTitleMeta = const VerificationMeta(
+    'cleanTitle',
+  );
+  @override
+  late final GeneratedColumn<String> cleanTitle = GeneratedColumn<String>(
+    'clean_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderUrlMeta = const VerificationMeta(
+    'folderUrl',
+  );
+  @override
+  late final GeneratedColumn<String> folderUrl = GeneratedColumn<String>(
+    'folder_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isScrapedMeta = const VerificationMeta(
+    'isScraped',
+  );
+  @override
+  late final GeneratedColumn<bool> isScraped = GeneratedColumn<bool>(
+    'is_scraped',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_scraped" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lastScrapedMeta = const VerificationMeta(
+    'lastScraped',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastScraped = GeneratedColumn<DateTime>(
+    'last_scraped',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _indexedAtMeta = const VerificationMeta(
+    'indexedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> indexedAt = GeneratedColumn<DateTime>(
+    'indexed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceId,
+    folderName,
+    cleanTitle,
+    folderUrl,
+    year,
+    isScraped,
+    lastScraped,
+    indexedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'indexed_folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IndexedFolder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('folder_name')) {
+      context.handle(
+        _folderNameMeta,
+        folderName.isAcceptableOrUnknown(data['folder_name']!, _folderNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderNameMeta);
+    }
+    if (data.containsKey('clean_title')) {
+      context.handle(
+        _cleanTitleMeta,
+        cleanTitle.isAcceptableOrUnknown(data['clean_title']!, _cleanTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cleanTitleMeta);
+    }
+    if (data.containsKey('folder_url')) {
+      context.handle(
+        _folderUrlMeta,
+        folderUrl.isAcceptableOrUnknown(data['folder_url']!, _folderUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderUrlMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('is_scraped')) {
+      context.handle(
+        _isScrapedMeta,
+        isScraped.isAcceptableOrUnknown(data['is_scraped']!, _isScrapedMeta),
+      );
+    }
+    if (data.containsKey('last_scraped')) {
+      context.handle(
+        _lastScrapedMeta,
+        lastScraped.isAcceptableOrUnknown(
+          data['last_scraped']!,
+          _lastScrapedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('indexed_at')) {
+      context.handle(
+        _indexedAtMeta,
+        indexedAt.isAcceptableOrUnknown(data['indexed_at']!, _indexedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  IndexedFolder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IndexedFolder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}source_id'],
+      )!,
+      folderName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_name'],
+      )!,
+      cleanTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clean_title'],
+      )!,
+      folderUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_url'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      ),
+      isScraped: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_scraped'],
+      )!,
+      lastScraped: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_scraped'],
+      ),
+      indexedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}indexed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $IndexedFoldersTable createAlias(String alias) {
+    return $IndexedFoldersTable(attachedDatabase, alias);
+  }
+}
+
+class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
+  final int id;
+  final int sourceId;
+  final String folderName;
+  final String cleanTitle;
+  final String folderUrl;
+  final int? year;
+  final bool isScraped;
+  final DateTime? lastScraped;
+  final DateTime indexedAt;
+  const IndexedFolder({
+    required this.id,
+    required this.sourceId,
+    required this.folderName,
+    required this.cleanTitle,
+    required this.folderUrl,
+    this.year,
+    required this.isScraped,
+    this.lastScraped,
+    required this.indexedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['source_id'] = Variable<int>(sourceId);
+    map['folder_name'] = Variable<String>(folderName);
+    map['clean_title'] = Variable<String>(cleanTitle);
+    map['folder_url'] = Variable<String>(folderUrl);
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
+    map['is_scraped'] = Variable<bool>(isScraped);
+    if (!nullToAbsent || lastScraped != null) {
+      map['last_scraped'] = Variable<DateTime>(lastScraped);
+    }
+    map['indexed_at'] = Variable<DateTime>(indexedAt);
+    return map;
+  }
+
+  IndexedFoldersCompanion toCompanion(bool nullToAbsent) {
+    return IndexedFoldersCompanion(
+      id: Value(id),
+      sourceId: Value(sourceId),
+      folderName: Value(folderName),
+      cleanTitle: Value(cleanTitle),
+      folderUrl: Value(folderUrl),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      isScraped: Value(isScraped),
+      lastScraped: lastScraped == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastScraped),
+      indexedAt: Value(indexedAt),
+    );
+  }
+
+  factory IndexedFolder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IndexedFolder(
+      id: serializer.fromJson<int>(json['id']),
+      sourceId: serializer.fromJson<int>(json['sourceId']),
+      folderName: serializer.fromJson<String>(json['folderName']),
+      cleanTitle: serializer.fromJson<String>(json['cleanTitle']),
+      folderUrl: serializer.fromJson<String>(json['folderUrl']),
+      year: serializer.fromJson<int?>(json['year']),
+      isScraped: serializer.fromJson<bool>(json['isScraped']),
+      lastScraped: serializer.fromJson<DateTime?>(json['lastScraped']),
+      indexedAt: serializer.fromJson<DateTime>(json['indexedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sourceId': serializer.toJson<int>(sourceId),
+      'folderName': serializer.toJson<String>(folderName),
+      'cleanTitle': serializer.toJson<String>(cleanTitle),
+      'folderUrl': serializer.toJson<String>(folderUrl),
+      'year': serializer.toJson<int?>(year),
+      'isScraped': serializer.toJson<bool>(isScraped),
+      'lastScraped': serializer.toJson<DateTime?>(lastScraped),
+      'indexedAt': serializer.toJson<DateTime>(indexedAt),
+    };
+  }
+
+  IndexedFolder copyWith({
+    int? id,
+    int? sourceId,
+    String? folderName,
+    String? cleanTitle,
+    String? folderUrl,
+    Value<int?> year = const Value.absent(),
+    bool? isScraped,
+    Value<DateTime?> lastScraped = const Value.absent(),
+    DateTime? indexedAt,
+  }) => IndexedFolder(
+    id: id ?? this.id,
+    sourceId: sourceId ?? this.sourceId,
+    folderName: folderName ?? this.folderName,
+    cleanTitle: cleanTitle ?? this.cleanTitle,
+    folderUrl: folderUrl ?? this.folderUrl,
+    year: year.present ? year.value : this.year,
+    isScraped: isScraped ?? this.isScraped,
+    lastScraped: lastScraped.present ? lastScraped.value : this.lastScraped,
+    indexedAt: indexedAt ?? this.indexedAt,
+  );
+  IndexedFolder copyWithCompanion(IndexedFoldersCompanion data) {
+    return IndexedFolder(
+      id: data.id.present ? data.id.value : this.id,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      folderName: data.folderName.present
+          ? data.folderName.value
+          : this.folderName,
+      cleanTitle: data.cleanTitle.present
+          ? data.cleanTitle.value
+          : this.cleanTitle,
+      folderUrl: data.folderUrl.present ? data.folderUrl.value : this.folderUrl,
+      year: data.year.present ? data.year.value : this.year,
+      isScraped: data.isScraped.present ? data.isScraped.value : this.isScraped,
+      lastScraped: data.lastScraped.present
+          ? data.lastScraped.value
+          : this.lastScraped,
+      indexedAt: data.indexedAt.present ? data.indexedAt.value : this.indexedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexedFolder(')
+          ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('folderName: $folderName, ')
+          ..write('cleanTitle: $cleanTitle, ')
+          ..write('folderUrl: $folderUrl, ')
+          ..write('year: $year, ')
+          ..write('isScraped: $isScraped, ')
+          ..write('lastScraped: $lastScraped, ')
+          ..write('indexedAt: $indexedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sourceId,
+    folderName,
+    cleanTitle,
+    folderUrl,
+    year,
+    isScraped,
+    lastScraped,
+    indexedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IndexedFolder &&
+          other.id == this.id &&
+          other.sourceId == this.sourceId &&
+          other.folderName == this.folderName &&
+          other.cleanTitle == this.cleanTitle &&
+          other.folderUrl == this.folderUrl &&
+          other.year == this.year &&
+          other.isScraped == this.isScraped &&
+          other.lastScraped == this.lastScraped &&
+          other.indexedAt == this.indexedAt);
+}
+
+class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
+  final Value<int> id;
+  final Value<int> sourceId;
+  final Value<String> folderName;
+  final Value<String> cleanTitle;
+  final Value<String> folderUrl;
+  final Value<int?> year;
+  final Value<bool> isScraped;
+  final Value<DateTime?> lastScraped;
+  final Value<DateTime> indexedAt;
+  const IndexedFoldersCompanion({
+    this.id = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.folderName = const Value.absent(),
+    this.cleanTitle = const Value.absent(),
+    this.folderUrl = const Value.absent(),
+    this.year = const Value.absent(),
+    this.isScraped = const Value.absent(),
+    this.lastScraped = const Value.absent(),
+    this.indexedAt = const Value.absent(),
+  });
+  IndexedFoldersCompanion.insert({
+    this.id = const Value.absent(),
+    required int sourceId,
+    required String folderName,
+    required String cleanTitle,
+    required String folderUrl,
+    this.year = const Value.absent(),
+    this.isScraped = const Value.absent(),
+    this.lastScraped = const Value.absent(),
+    this.indexedAt = const Value.absent(),
+  }) : sourceId = Value(sourceId),
+       folderName = Value(folderName),
+       cleanTitle = Value(cleanTitle),
+       folderUrl = Value(folderUrl);
+  static Insertable<IndexedFolder> custom({
+    Expression<int>? id,
+    Expression<int>? sourceId,
+    Expression<String>? folderName,
+    Expression<String>? cleanTitle,
+    Expression<String>? folderUrl,
+    Expression<int>? year,
+    Expression<bool>? isScraped,
+    Expression<DateTime>? lastScraped,
+    Expression<DateTime>? indexedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceId != null) 'source_id': sourceId,
+      if (folderName != null) 'folder_name': folderName,
+      if (cleanTitle != null) 'clean_title': cleanTitle,
+      if (folderUrl != null) 'folder_url': folderUrl,
+      if (year != null) 'year': year,
+      if (isScraped != null) 'is_scraped': isScraped,
+      if (lastScraped != null) 'last_scraped': lastScraped,
+      if (indexedAt != null) 'indexed_at': indexedAt,
+    });
+  }
+
+  IndexedFoldersCompanion copyWith({
+    Value<int>? id,
+    Value<int>? sourceId,
+    Value<String>? folderName,
+    Value<String>? cleanTitle,
+    Value<String>? folderUrl,
+    Value<int?>? year,
+    Value<bool>? isScraped,
+    Value<DateTime?>? lastScraped,
+    Value<DateTime>? indexedAt,
+  }) {
+    return IndexedFoldersCompanion(
+      id: id ?? this.id,
+      sourceId: sourceId ?? this.sourceId,
+      folderName: folderName ?? this.folderName,
+      cleanTitle: cleanTitle ?? this.cleanTitle,
+      folderUrl: folderUrl ?? this.folderUrl,
+      year: year ?? this.year,
+      isScraped: isScraped ?? this.isScraped,
+      lastScraped: lastScraped ?? this.lastScraped,
+      indexedAt: indexedAt ?? this.indexedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<int>(sourceId.value);
+    }
+    if (folderName.present) {
+      map['folder_name'] = Variable<String>(folderName.value);
+    }
+    if (cleanTitle.present) {
+      map['clean_title'] = Variable<String>(cleanTitle.value);
+    }
+    if (folderUrl.present) {
+      map['folder_url'] = Variable<String>(folderUrl.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (isScraped.present) {
+      map['is_scraped'] = Variable<bool>(isScraped.value);
+    }
+    if (lastScraped.present) {
+      map['last_scraped'] = Variable<DateTime>(lastScraped.value);
+    }
+    if (indexedAt.present) {
+      map['indexed_at'] = Variable<DateTime>(indexedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexedFoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('folderName: $folderName, ')
+          ..write('cleanTitle: $cleanTitle, ')
+          ..write('folderUrl: $folderUrl, ')
+          ..write('year: $year, ')
+          ..write('isScraped: $isScraped, ')
+          ..write('lastScraped: $lastScraped, ')
+          ..write('indexedAt: $indexedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SourcesTable sources = $SourcesTable(this);
   late final $MediaItemsTable mediaItems = $MediaItemsTable(this);
   late final $MediaShowsTable mediaShows = $MediaShowsTable(this);
+  late final $IndexedFoldersTable indexedFolders = $IndexedFoldersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2394,6 +2955,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sources,
     mediaItems,
     mediaShows,
+    indexedFolders,
   ];
 }
 
@@ -2433,6 +2995,24 @@ final class $$SourcesTableReferences
     ).filter((f) => f.sourceId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_mediaItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$IndexedFoldersTable, List<IndexedFolder>>
+  _indexedFoldersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.indexedFolders,
+    aliasName: 'sources__id__indexed_folders__source_id',
+  );
+
+  $$IndexedFoldersTableProcessedTableManager get indexedFoldersRefs {
+    final manager = $$IndexedFoldersTableTableManager(
+      $_db,
+      $_db.indexedFolders,
+    ).filter((f) => f.sourceId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_indexedFoldersRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -2494,6 +3074,31 @@ class $$SourcesTableFilterComposer
           }) => $$MediaItemsTableFilterComposer(
             $db: $db,
             $table: $db.mediaItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> indexedFoldersRefs(
+    Expression<bool> Function($$IndexedFoldersTableFilterComposer f) f,
+  ) {
+    final $$IndexedFoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.indexedFolders,
+      getReferencedColumn: (t) => t.sourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IndexedFoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.indexedFolders,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2597,6 +3202,31 @@ class $$SourcesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> indexedFoldersRefs<T extends Object>(
+    Expression<T> Function($$IndexedFoldersTableAnnotationComposer a) f,
+  ) {
+    final $$IndexedFoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.indexedFolders,
+      getReferencedColumn: (t) => t.sourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IndexedFoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.indexedFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SourcesTableTableManager
@@ -2612,7 +3242,7 @@ class $$SourcesTableTableManager
           $$SourcesTableUpdateCompanionBuilder,
           (Source, $$SourcesTableReferences),
           Source,
-          PrefetchHooks Function({bool mediaItemsRefs})
+          PrefetchHooks Function({bool mediaItemsRefs, bool indexedFoldersRefs})
         > {
   $$SourcesTableTableManager(_$AppDatabase db, $SourcesTable table)
     : super(
@@ -2665,31 +3295,63 @@ class $$SourcesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({mediaItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (mediaItemsRefs) db.mediaItems],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (mediaItemsRefs)
-                    await $_getPrefetchedData<Source, $SourcesTable, MediaItem>(
-                      currentTable: table,
-                      referencedTable: $$SourcesTableReferences
-                          ._mediaItemsRefsTable(db),
-                      managerFromTypedResult: (p0) => $$SourcesTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).mediaItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.sourceId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({mediaItemsRefs = false, indexedFoldersRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (mediaItemsRefs) db.mediaItems,
+                    if (indexedFoldersRefs) db.indexedFolders,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (mediaItemsRefs)
+                        await $_getPrefetchedData<
+                          Source,
+                          $SourcesTable,
+                          MediaItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SourcesTableReferences
+                              ._mediaItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SourcesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mediaItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sourceId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (indexedFoldersRefs)
+                        await $_getPrefetchedData<
+                          Source,
+                          $SourcesTable,
+                          IndexedFolder
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SourcesTableReferences
+                              ._indexedFoldersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SourcesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).indexedFoldersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sourceId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2706,7 +3368,7 @@ typedef $$SourcesTableProcessedTableManager =
       $$SourcesTableUpdateCompanionBuilder,
       (Source, $$SourcesTableReferences),
       Source,
-      PrefetchHooks Function({bool mediaItemsRefs})
+      PrefetchHooks Function({bool mediaItemsRefs, bool indexedFoldersRefs})
     >;
 typedef $$MediaItemsTableCreateCompanionBuilder =
     MediaItemsCompanion Function({
@@ -3708,6 +4370,406 @@ typedef $$MediaShowsTableProcessedTableManager =
       MediaShow,
       PrefetchHooks Function()
     >;
+typedef $$IndexedFoldersTableCreateCompanionBuilder =
+    IndexedFoldersCompanion Function({
+      Value<int> id,
+      required int sourceId,
+      required String folderName,
+      required String cleanTitle,
+      required String folderUrl,
+      Value<int?> year,
+      Value<bool> isScraped,
+      Value<DateTime?> lastScraped,
+      Value<DateTime> indexedAt,
+    });
+typedef $$IndexedFoldersTableUpdateCompanionBuilder =
+    IndexedFoldersCompanion Function({
+      Value<int> id,
+      Value<int> sourceId,
+      Value<String> folderName,
+      Value<String> cleanTitle,
+      Value<String> folderUrl,
+      Value<int?> year,
+      Value<bool> isScraped,
+      Value<DateTime?> lastScraped,
+      Value<DateTime> indexedAt,
+    });
+
+final class $$IndexedFoldersTableReferences
+    extends BaseReferences<_$AppDatabase, $IndexedFoldersTable, IndexedFolder> {
+  $$IndexedFoldersTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SourcesTable _sourceIdTable(_$AppDatabase db) =>
+      db.sources.createAlias('indexed_folders__source_id__sources__id');
+
+  $$SourcesTableProcessedTableManager get sourceId {
+    final $_column = $_itemColumn<int>('source_id')!;
+
+    final manager = $$SourcesTableTableManager(
+      $_db,
+      $_db.sources,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sourceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$IndexedFoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $IndexedFoldersTable> {
+  $$IndexedFoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get folderName => $composableBuilder(
+    column: $table.folderName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cleanTitle => $composableBuilder(
+    column: $table.cleanTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get folderUrl => $composableBuilder(
+    column: $table.folderUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isScraped => $composableBuilder(
+    column: $table.isScraped,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastScraped => $composableBuilder(
+    column: $table.lastScraped,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get indexedAt => $composableBuilder(
+    column: $table.indexedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SourcesTableFilterComposer get sourceId {
+    final $$SourcesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceId,
+      referencedTable: $db.sources,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SourcesTableFilterComposer(
+            $db: $db,
+            $table: $db.sources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$IndexedFoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $IndexedFoldersTable> {
+  $$IndexedFoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get folderName => $composableBuilder(
+    column: $table.folderName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cleanTitle => $composableBuilder(
+    column: $table.cleanTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get folderUrl => $composableBuilder(
+    column: $table.folderUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isScraped => $composableBuilder(
+    column: $table.isScraped,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastScraped => $composableBuilder(
+    column: $table.lastScraped,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get indexedAt => $composableBuilder(
+    column: $table.indexedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SourcesTableOrderingComposer get sourceId {
+    final $$SourcesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceId,
+      referencedTable: $db.sources,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SourcesTableOrderingComposer(
+            $db: $db,
+            $table: $db.sources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$IndexedFoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IndexedFoldersTable> {
+  $$IndexedFoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get folderName => $composableBuilder(
+    column: $table.folderName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cleanTitle => $composableBuilder(
+    column: $table.cleanTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get folderUrl =>
+      $composableBuilder(column: $table.folderUrl, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<bool> get isScraped =>
+      $composableBuilder(column: $table.isScraped, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastScraped => $composableBuilder(
+    column: $table.lastScraped,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get indexedAt =>
+      $composableBuilder(column: $table.indexedAt, builder: (column) => column);
+
+  $$SourcesTableAnnotationComposer get sourceId {
+    final $$SourcesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceId,
+      referencedTable: $db.sources,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SourcesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$IndexedFoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IndexedFoldersTable,
+          IndexedFolder,
+          $$IndexedFoldersTableFilterComposer,
+          $$IndexedFoldersTableOrderingComposer,
+          $$IndexedFoldersTableAnnotationComposer,
+          $$IndexedFoldersTableCreateCompanionBuilder,
+          $$IndexedFoldersTableUpdateCompanionBuilder,
+          (IndexedFolder, $$IndexedFoldersTableReferences),
+          IndexedFolder,
+          PrefetchHooks Function({bool sourceId})
+        > {
+  $$IndexedFoldersTableTableManager(
+    _$AppDatabase db,
+    $IndexedFoldersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IndexedFoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IndexedFoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IndexedFoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> sourceId = const Value.absent(),
+                Value<String> folderName = const Value.absent(),
+                Value<String> cleanTitle = const Value.absent(),
+                Value<String> folderUrl = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<bool> isScraped = const Value.absent(),
+                Value<DateTime?> lastScraped = const Value.absent(),
+                Value<DateTime> indexedAt = const Value.absent(),
+              }) => IndexedFoldersCompanion(
+                id: id,
+                sourceId: sourceId,
+                folderName: folderName,
+                cleanTitle: cleanTitle,
+                folderUrl: folderUrl,
+                year: year,
+                isScraped: isScraped,
+                lastScraped: lastScraped,
+                indexedAt: indexedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int sourceId,
+                required String folderName,
+                required String cleanTitle,
+                required String folderUrl,
+                Value<int?> year = const Value.absent(),
+                Value<bool> isScraped = const Value.absent(),
+                Value<DateTime?> lastScraped = const Value.absent(),
+                Value<DateTime> indexedAt = const Value.absent(),
+              }) => IndexedFoldersCompanion.insert(
+                id: id,
+                sourceId: sourceId,
+                folderName: folderName,
+                cleanTitle: cleanTitle,
+                folderUrl: folderUrl,
+                year: year,
+                isScraped: isScraped,
+                lastScraped: lastScraped,
+                indexedAt: indexedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$IndexedFoldersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sourceId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sourceId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sourceId,
+                                referencedTable: $$IndexedFoldersTableReferences
+                                    ._sourceIdTable(db),
+                                referencedColumn:
+                                    $$IndexedFoldersTableReferences
+                                        ._sourceIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$IndexedFoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IndexedFoldersTable,
+      IndexedFolder,
+      $$IndexedFoldersTableFilterComposer,
+      $$IndexedFoldersTableOrderingComposer,
+      $$IndexedFoldersTableAnnotationComposer,
+      $$IndexedFoldersTableCreateCompanionBuilder,
+      $$IndexedFoldersTableUpdateCompanionBuilder,
+      (IndexedFolder, $$IndexedFoldersTableReferences),
+      IndexedFolder,
+      PrefetchHooks Function({bool sourceId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3718,4 +4780,6 @@ class $AppDatabaseManager {
       $$MediaItemsTableTableManager(_db, _db.mediaItems);
   $$MediaShowsTableTableManager get mediaShows =>
       $$MediaShowsTableTableManager(_db, _db.mediaShows);
+  $$IndexedFoldersTableTableManager get indexedFolders =>
+      $$IndexedFoldersTableTableManager(_db, _db.indexedFolders);
 }

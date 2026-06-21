@@ -27,8 +27,66 @@ class ScrapeProgress {
   });
 }
 
+class FolderEntry {
+  final String rawName;
+  final String cleanTitle;
+  final String folderUrl;
+  final int? year;
+  const FolderEntry({
+    required this.rawName,
+    required this.cleanTitle,
+    required this.folderUrl,
+    this.year,
+  });
+}
+
 class DirectoryScraper {
-  static Stream<ScrapeProgress> scrapeWithProgress(String baseUrl) async* {
+  // fetches only the root page and returns top level directory entries
+  // returns null if the page looks like a show level source (dirs are season folders)
+  static Future<List<FolderEntry>?> shallowIndex(String baseUrl) async {
+    final baseUri = Uri.parse(baseUrl);
+    try {
+      final response = await http.get(baseUri).timeout(kScrapeTimeout);
+      if (response.statusCode != 200) return [];
+      final links = html_parser
+          .parse(response.body)
+          .querySelectorAll('a[href]');
+      final dirs = <FolderEntry>[];
+      int seasonLike = 0;
+      for (final link in links) {
+        final href = link.attributes['href'];
+        if (href == null || !isDirectoryPath(href) || isNavigationLink(href)) {
+          continue;
+        }
+        final resolved = resolveUrl(baseUri, href);
+        if (!isSubpath(baseUri, resolved)) continue;
+        final rawName = resolved.pathSegments.where((s) => s.isNotEmpty).last;
+        if (isSeasonFolder(rawName) || isFolderToClimb(rawName)) {
+          seasonLike++;
+          continue;
+        }
+        final cleaned = NameCleaner.cleanFolderName(rawName);
+        dirs.add(
+          FolderEntry(
+            rawName: rawName,
+            cleanTitle: cleaned.title,
+            folderUrl: resolved.toString(),
+            year: cleaned.year,
+          ),
+        );
+      }
+      // if majority of dirs look like season folders, this is a show level source
+      if (seasonLike > dirs.length) return null;
+      return dirs;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Stream<ScrapeProgress> scrapeWithProgress(
+    String baseUrl, {
+    Duration requestDelay = Duration.zero,
+  }) async* {
     final baseUri = Uri.parse(baseUrl);
     final results = <ScrapeResult>[];
     final visited = <String>{};
@@ -57,6 +115,7 @@ class DirectoryScraper {
 
       try {
         final uri = Uri.parse(url);
+        if (requestDelay > Duration.zero) await Future.delayed(requestDelay);
         final response = await http.get(uri).timeout(kScrapeTimeout);
 
         if (response.statusCode != 200) {
@@ -116,9 +175,7 @@ class DirectoryScraper {
                     .where((s) => s.isNotEmpty)
                     .toList();
                 if (segments.length >= 2) {
-                  final parent = Uri.decodeComponent(
-                    segments[segments.length - 2],
-                  );
+                  final parent = segments[segments.length - 2];
                   if (isSeasonFolder(parent)) {
                     final match = RegExp(
                       r'\b(?:Season\s*|S)(\d{1,2})\b',

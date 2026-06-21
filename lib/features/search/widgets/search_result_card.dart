@@ -11,8 +11,17 @@ class SearchResultCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // triggers an API call if not in db cache, updates UI when done
-    final metadataAsync = ref.watch(metadataProvider(result.groupTitle));
+    // enqueue background deep scrape when this card becomes visible (on build)
+    if (!result.isScraped && result.folderUrl != null) {
+      Future.microtask(
+        () => ref.read(scrapeQueueProvider.notifier).enqueue(result.folderUrl!),
+      );
+    }
+
+    // only watch metadata for fully scraped results (need filenames for accuracy)
+    final metadataAsync = result.isScraped
+        ? ref.watch(metadataProvider(result.groupTitle))
+        : const AsyncData(null);
     final metadata = metadataAsync.value;
 
     // use cached db result if available, otherwise fallback to live metadata
@@ -32,7 +41,7 @@ class SearchResultCard extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // poster thumbnail from cached db data or live metadata
+              // poster thumbnail
               SizedBox(
                 width: 60,
                 child: posterUrl != null
@@ -65,14 +74,20 @@ class SearchResultCard extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            Icons.storage_rounded,
+                            result.isScraped
+                                ? Icons.storage_rounded
+                                : Icons.cloud_sync_rounded,
                             size: 14,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: result.isScraped
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.orange,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              '${result.itemCount} items',
+                              result.isScraped
+                                  ? '${result.itemCount} items'
+                                  : 'Indexing...',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: Colors.grey[400]),
                               maxLines: 1,

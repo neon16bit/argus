@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ScrapeProgressSheet extends StatefulWidget {
+class ScrapeProgressSheet extends ConsumerStatefulWidget {
   final SourceActions sourceActions;
   final Source source;
   final void Function(int count) onDone;
@@ -19,10 +20,11 @@ class ScrapeProgressSheet extends StatefulWidget {
   });
 
   @override
-  State<ScrapeProgressSheet> createState() => _ScrapeProgressSheetState();
+  ConsumerState<ScrapeProgressSheet> createState() =>
+      _ScrapeProgressSheetState();
 }
 
-class _ScrapeProgressSheetState extends State<ScrapeProgressSheet> {
+class _ScrapeProgressSheetState extends ConsumerState<ScrapeProgressSheet> {
   ScrapeProgress? _progress;
   bool _isDone = false;
   StreamSubscription<ScrapeProgress>? _subscription;
@@ -40,8 +42,10 @@ class _ScrapeProgressSheetState extends State<ScrapeProgressSheet> {
   }
 
   void _startScraping() {
+    final fullScrape =
+        ref.read(settingsProvider).value?.fullScrapeMode ?? false;
     _subscription = widget.sourceActions
-        .scrapeSourceWithProgress(widget.source)
+        .scrapeSourceWithProgress(widget.source, fullScrape: fullScrape)
         .listen(
           (progress) {
             if (!mounted) return;

@@ -123,7 +123,48 @@ class SourceActions {
     return companions.length;
   }
 
-  Stream<ScrapeProgress> scrapeSourceWithProgress(Source source) async* {
+  Stream<ScrapeProgress> scrapeSourceWithProgress(
+    Source source, {
+    bool fullScrape = false,
+  }) async* {
+    // shallow mode: index top level folders only
+    if (!fullScrape) {
+      yield const ScrapeProgress(message: 'Indexing folders...', urlsQueued: 1);
+      final folders = await DirectoryScraper.shallowIndex(source.baseUrl);
+
+      // null = show level sourcee
+      if (folders != null) {
+        await db.deleteIndexedFoldersBySource(source.id);
+        if (folders.isNotEmpty) {
+          await db.insertIndexedFoldersBatch(
+            folders
+                .map(
+                  (f) => IndexedFoldersCompanion(
+                    sourceId: Value(source.id),
+                    folderName: Value(f.rawName),
+                    cleanTitle: Value(f.cleanTitle),
+                    folderUrl: Value(f.folderUrl),
+                    year: Value(f.year),
+                  ),
+                )
+                .toList(),
+          );
+        }
+        await db.setSourceLastScraped(source.id, DateTime.now());
+        await db.setSourceOnline(source.id, true);
+        yield ScrapeProgress(
+          message: 'Indexed ${folders.length} folders.',
+          filesFound: folders.length,
+          isDone: true,
+        );
+        return;
+      }
+      // fall through to deep scrape for show level sources
+      yield const ScrapeProgress(
+        message: 'Show level source detected, full scraping...',
+      );
+    }
+
     List<ScrapeResult> collectedResults = [];
 
     await for (final progress in DirectoryScraper.scrapeWithProgress(
@@ -178,8 +219,41 @@ class SourceActions {
     );
   }
 
+  // full scrapes a single indexed folder and inserts its media items
+  Future<void> deepScrapeFolder(
+    IndexedFolder folder, {
+    Duration requestDelay = Duration.zero,
+  }) async {
+    final results = <ScrapeResult>[];
+    await for (final p in DirectoryScraper.scrapeWithProgress(
+      folder.folderUrl,
+      requestDelay: requestDelay,
+    )) {
+      if (p.isDone) {
+        results.addAll(p.results);
+        break;
+      }
+    }
+    if (results.isEmpty) {
+      await db.markFolderScraped(folder.id);
+      return;
+    }
+    final companions = results
+        .map((r) => _toCompanion(r, folder.sourceId))
+        .toList();
+    for (var i = 0; i < companions.length; i += kInsertBatchSize) {
+      final end = (i + kInsertBatchSize).clamp(0, companions.length);
+      await db.insertMediaItemsBatch(companions.sublist(i, end));
+    }
+    for (final r in results) {
+      if (r.year != null) await db.insertShowStub(r.groupTitle, r.year!);
+    }
+    await db.markFolderScraped(folder.id);
+  }
+
   Future<void> deleteSource(int id) async {
     await db.deleteMediaItemsBySource(id);
+    await db.deleteIndexedFoldersBySource(id);
     await db.deleteSource(id);
   }
 }

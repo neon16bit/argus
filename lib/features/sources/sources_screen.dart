@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:argus/features/sources/widgets/source_tile.dart';
+import 'package:argus/features/settings/settings_screen.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +16,19 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(sourcesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Sources')),
+      appBar: AppBar(
+        title: const Text('Sources'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
       body: sourcesAsync.when(
         data: (sources) {
           if (sources.isEmpty) {

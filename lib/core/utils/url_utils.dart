@@ -38,7 +38,7 @@ bool isDirectoryPath(String path) {
 String filenameFromUrl(Uri url) {
   final segments = url.pathSegments.where((s) => s.isNotEmpty).toList();
   if (segments.isEmpty) return '';
-  return Uri.decodeComponent(segments.last);
+  return segments.last;
 }
 
 // Extracts the file extension from a filename (lowercase, no dot)
@@ -113,7 +113,7 @@ String extractShowFolder(Uri baseUri, Uri fileUri) {
   // step backwards through parents until we find a directory that isnt a season or special folder
   int idx = segments.length - 2;
   while (idx >= 0) {
-    final folderName = Uri.decodeComponent(segments[idx]);
+    final folderName = segments[idx];
     if (!isFolderToClimb(folderName)) {
       return folderName;
     }
@@ -121,7 +121,7 @@ String extractShowFolder(Uri baseUri, Uri fileUri) {
   }
 
   // fallback to immediate parent
-  return Uri.decodeComponent(segments[segments.length - 2]);
+  return segments[segments.length - 2];
 }
 
 // loose match for season folders

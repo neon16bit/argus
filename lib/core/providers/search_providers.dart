@@ -13,6 +13,8 @@ class SearchResult {
   final String? mediaType; // tv, anime, movie
   final int? year;
   final int itemCount;
+  final String? folderUrl; // non-null if from indexed_folders (not yet scraped)
+  final bool isScraped;
 
   const SearchResult({
     required this.groupTitle,
@@ -22,6 +24,8 @@ class SearchResult {
     this.mediaType,
     this.year,
     this.itemCount = 0,
+    this.folderUrl,
+    this.isScraped = true,
   });
 
   // title to show in the ui (titleEn > resolvedTitle > groupTitle)
@@ -74,6 +78,8 @@ final searchResultsProvider = StreamProvider<List<SearchResult>>((ref) {
                 mediaType: row['media_type'] as String?,
                 year: row['year'] as int?,
                 itemCount: row['item_count'] as int? ?? 0,
+                folderUrl: row['folder_url'] as String?,
+                isScraped: (row['is_scraped'] as int? ?? 1) == 1,
               ),
             )
             .toList(),
