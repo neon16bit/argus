@@ -86,6 +86,7 @@ class DirectoryScraper {
   static Stream<ScrapeProgress> scrapeWithProgress(
     String baseUrl, {
     Duration requestDelay = Duration.zero,
+    String? groupTitle,
   }) async* {
     final baseUri = Uri.parse(baseUrl);
     final results = <ScrapeResult>[];
@@ -163,8 +164,15 @@ class DirectoryScraper {
             final ext = extensionFromFilename(filename);
             if (ext != null && kMediaExtensions.contains(ext)) {
               final cleaned = NameCleaner.clean(filename);
-              final parentFolder = extractShowFolder(baseUri, resolved);
-              final group = NameCleaner.cleanFolderName(parentFolder);
+              final String parentFolder;
+              final CleanResult group;
+              if (groupTitle != null) {
+                parentFolder = groupTitle;
+                group = CleanResult(title: groupTitle);
+              } else {
+                parentFolder = extractShowFolder(baseUri, resolved);
+                group = NameCleaner.cleanFolderName(parentFolder);
+              }
 
               int? season = cleaned.season;
               int? episode = cleaned.episode;

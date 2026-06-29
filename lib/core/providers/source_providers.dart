@@ -228,6 +228,7 @@ class SourceActions {
     await for (final p in DirectoryScraper.scrapeWithProgress(
       folder.folderUrl,
       requestDelay: requestDelay,
+      groupTitle: folder.cleanTitle,
     )) {
       if (p.isDone) {
         results.addAll(p.results);
@@ -242,8 +243,11 @@ class SourceActions {
         .map((r) => _toCompanion(r, folder.sourceId))
         .toList();
     await (db.delete(db.mediaItems)..where(
-      (m) => m.sourceId.equals(folder.sourceId) & m.directUrl.like('${folder.folderUrl}%'),
-    )).go();
+          (m) =>
+              m.sourceId.equals(folder.sourceId) &
+              m.directUrl.like('${folder.folderUrl}%'),
+        ))
+        .go();
     for (var i = 0; i < companions.length; i += kInsertBatchSize) {
       final end = (i + kInsertBatchSize).clamp(0, companions.length);
       await db.insertMediaItemsBatch(companions.sublist(i, end));
