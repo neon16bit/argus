@@ -26,8 +26,9 @@ class SearchResultCard extends ConsumerWidget {
 
     // use cached db result if available, otherwise fallback to live metadata
     final posterUrl = result.posterUrl ?? metadata?.posterUrl;
-    final displayTitle =
-        result.resolvedTitle ?? metadata?.title ?? result.displayTitle;
+    final displayTitle = result.displayTitle != result.groupTitle
+        ? result.displayTitle
+        : metadata?.titleEn ?? metadata?.title ?? result.displayTitle;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

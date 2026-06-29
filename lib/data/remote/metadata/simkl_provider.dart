@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' as html_parser;
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/utils/name_cleaner.dart';
 import 'metadata_provider.dart';
@@ -236,7 +237,7 @@ class SimklProvider extends MetadataProvider {
       if (mediaObject == null) return null;
 
       final ids = mediaObject['ids'] as Map<String, dynamic>? ?? {};
-      final title = (mediaObject['title'] ?? '') as String;
+      final title = _unescapeHtml((mediaObject['title'] ?? '') as String) ?? '';
 
       int? parseIntSafe(dynamic val) {
         if (val == null) return null;
@@ -276,8 +277,9 @@ class SimklProvider extends MetadataProvider {
       int? simklId = parseIntSafe(ids['simkl']);
       String? posterPath = mediaObject['poster'] as String?;
       String? fanartPath = mediaObject['fanart'] as String?;
-      String? overview = mediaObject['overview'] as String?;
-      String? titleEn = mediaObject['title_en'] as String?;
+      String? overview = _unescapeHtml(mediaObject['overview'] as String?);
+      String? titleEn =
+          _unescapeHtml((mediaObject['en_title'] ?? mediaObject['title_en']) as String?);
 
       String? imdbId = ids['imdb'] as String?;
       String? tmdbId = (ids['tmdbtv'] ?? ids['tmdb'])?.toString();
@@ -386,8 +388,8 @@ class SimklProvider extends MetadataProvider {
   }
 
   ShowMetadata _parseResult(Map<String, dynamic> data) {
-    final title = (data['title'] ?? '') as String;
-    final titleEn = data['title_en'] as String?;
+    final title = _unescapeHtml((data['title'] ?? '') as String) ?? '';
+    final titleEn = _unescapeHtml((data['en_title'] ?? data['title_en']) as String?);
     final year = data['year'] as int?;
     final poster = data['poster'] as String?;
     final fanart = data['fanart'] as String?;
@@ -439,7 +441,7 @@ class SimklProvider extends MetadataProvider {
     return ShowMetadata(
       title: title,
       titleEn: titleEn,
-      overview: data['overview'] as String?,
+      overview: _unescapeHtml(data['overview'] as String?),
       posterUrl: posterUrl(poster),
       posterPath: poster,
       backdropUrl: fanartUrl(fanart),
@@ -462,4 +464,9 @@ class SimklProvider extends MetadataProvider {
       cast: const [],
     );
   }
+}
+
+String? _unescapeHtml(String? input) {
+  if (input == null) return null;
+  return html_parser.parseFragment(input).text;
 }

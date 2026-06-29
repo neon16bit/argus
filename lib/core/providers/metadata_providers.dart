@@ -62,8 +62,14 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   );
   if (representative == null) return null;
 
-  // get target year from cached stub if available
-  final targetYear = cached?.year;
+  // get target year from cached stub if available, fallback to indexed folder year
+  int? targetYear = cached?.year;
+  if (targetYear == null) {
+    final folders = await db.getFoldersByGroupTitle(groupTitle);
+    if (folders.isNotEmpty) {
+      targetYear = folders.first.year;
+    }
+  }
 
   // if the representative has a detected season/episode, inject it if missing
   final filename =

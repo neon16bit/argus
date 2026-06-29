@@ -77,9 +77,10 @@ class NameCleaner {
     RegExp(r'\b(?:HDR10|HDR|SDR|DV|DoVi|Remux)\b', caseSensitive: false),
     // common streaming service tags
     RegExp(
-      r'\b(?:NF|AMZN|DSNP|ATVP|HMAX|MAX|PEACOCK|CRAV)\b',
+      r'\b(?:NF|AMZN|DSNP|ATVP|HMAX|PEACOCK|CRAV)\b',
       caseSensitive: false,
     ),
+    RegExp(r'\bMAX\b'),
     // release group after last dash (must have space before dash so hyphenated words arent stripped)
     RegExp(r'\s+-\s*[\w\.]+$'),
     // common tags
