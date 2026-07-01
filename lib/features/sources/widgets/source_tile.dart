@@ -18,7 +18,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
   @override
   Widget build(BuildContext context) {
     final source = widget.source;
-    final itemCountAsync = ref.watch(mediaItemsBySourceProvider(source.id));
+    final folderCountAsync = ref.watch(
+      indexedFoldersCountBySourceProvider(source.id),
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -41,10 +43,10 @@ class _SourceTileState extends ConsumerState<SourceTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                itemCountAsync.when(
-                  data: (items) => Text('${items.length} items indexed'),
+                folderCountAsync.when(
+                  data: (count) => Text('$count folders indexed'),
                   loading: () => const Text('Loading...'),
-                  error: (e, st) => const Text('0 items'),
+                  error: (e, st) => const Text('0 folders indexed'),
                 ),
                 if (source.lastScraped != null)
                   Text(

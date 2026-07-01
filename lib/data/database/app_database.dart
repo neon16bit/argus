@@ -157,6 +157,15 @@ class AppDatabase extends _$AppDatabase {
     return result.read(count) ?? 0;
   }
 
+  Future<int> getIndexedFolderCountBySource(int sourceId) async {
+    final count = countAll();
+    final query = selectOnly(indexedFolders)
+      ..addColumns([count])
+      ..where(indexedFolders.sourceId.equals(sourceId));
+    final result = await query.getSingle();
+    return result.read(count) ?? 0;
+  }
+
   // indexed folder operations
   Future<void> insertIndexedFoldersBatch(
     List<IndexedFoldersCompanion> folders,

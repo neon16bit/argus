@@ -25,6 +25,14 @@ final mediaItemsBySourceProvider = FutureProvider.family<List<MediaItem>, int>((
   return db.getMediaItemsBySource(sourceId);
 });
 
+final indexedFoldersCountBySourceProvider = FutureProvider.family<int, int>((
+  ref,
+  sourceId,
+) {
+  final db = ref.watch(databaseProvider);
+  return db.getIndexedFolderCountBySource(sourceId);
+});
+
 final sourceActionsProvider = Provider<SourceActions>((ref) {
   return SourceActions(ref.watch(databaseProvider));
 });
@@ -131,7 +139,10 @@ class SourceActions {
     // shallow mode: index top level folders only
     if (!fullScrape) {
       yield const ScrapeProgress(message: 'Indexing folders...', urlsQueued: 1);
-      final folders = await DirectoryScraper.shallowIndex(source.baseUrl, maxDepth: maxDepth);
+      final folders = await DirectoryScraper.shallowIndex(
+        source.baseUrl,
+        maxDepth: maxDepth,
+      );
 
       // null = show level sourcee
       if (folders != null) {
