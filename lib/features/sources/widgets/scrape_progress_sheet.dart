@@ -11,12 +11,15 @@ class ScrapeProgressSheet extends ConsumerStatefulWidget {
   final void Function(int count) onDone;
   final void Function(String error) onError;
 
+  final int maxDepth;
+
   const ScrapeProgressSheet({
     super.key,
     required this.sourceActions,
     required this.source,
     required this.onDone,
     required this.onError,
+    this.maxDepth = 1,
   });
 
   @override
@@ -45,7 +48,11 @@ class _ScrapeProgressSheetState extends ConsumerState<ScrapeProgressSheet> {
     final fullScrape =
         ref.read(settingsProvider).value?.fullScrapeMode ?? false;
     _subscription = widget.sourceActions
-        .scrapeSourceWithProgress(widget.source, fullScrape: fullScrape)
+        .scrapeSourceWithProgress(
+          widget.source,
+          fullScrape: fullScrape,
+          maxDepth: widget.maxDepth,
+        )
         .listen(
           (progress) {
             if (!mounted) return;

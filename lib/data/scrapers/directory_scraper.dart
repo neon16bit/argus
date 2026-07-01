@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/utils/name_cleaner.dart';
 import 'package:argus/core/utils/url_utils.dart';
@@ -41,45 +42,138 @@ class FolderEntry {
 }
 
 class DirectoryScraper {
+  static const int _initialDepth = 0;
+
+  static final _seasonFolderPattern = RegExp(
+    r'\b(?:Season\s*|S)(\d{1,2})\b',
+    caseSensitive: false,
+  );
+  static final _episodeNumberPattern = RegExp(r'\b(\d{1,4})\b');
+  static final _specialFolderPattern = RegExp(
+    r'^(specials?|movies?|extras?|ovas?|nc|op-?ed|op|ed|s00?)$',
+  );
+
   // fetches only the root page and returns top level directory entries
   // returns null if the page looks like a show level source (dirs are season folders)
-  static Future<List<FolderEntry>?> shallowIndex(String baseUrl) async {
+  static Future<List<FolderEntry>?> shallowIndex(
+    String baseUrl, {
+    int maxDepth = 1,
+  }) async {
     final baseUri = Uri.parse(baseUrl);
+    final results = <FolderEntry>[];
+    final success = await _shallowIndexRecurse(
+      baseUri,
+      baseUri,
+      results,
+      _initialDepth,
+      maxDepth,
+    );
+    if (!success) return null;
+    return results;
+  }
+
+  static Future<bool> _shallowIndexRecurse(
+    Uri baseUri,
+    Uri currentUri,
+    List<FolderEntry> results,
+    int depth,
+    int maxDepth,
+  ) async {
+    if (depth > maxDepth) return true;
     try {
-      final response = await http.get(baseUri).timeout(kScrapeTimeout);
-      if (response.statusCode != 200) return [];
+      final response = await http.get(currentUri).timeout(kScrapeTimeout);
+      if (response.statusCode != 200) return true;
+
       final links = html_parser
           .parse(response.body)
           .querySelectorAll('a[href]');
+
       final dirs = <FolderEntry>[];
       int seasonLike = 0;
+      final needsRecursion = depth < maxDepth - 1;
+      final nextLevelDirs = <Uri>[];
+      bool hasMediaFiles = false;
+
       for (final link in links) {
         final href = link.attributes['href'];
-        if (href == null || !isDirectoryPath(href) || isNavigationLink(href)) {
-          continue;
-        }
-        final resolved = resolveUrl(baseUri, href);
+        if (href == null || href.isEmpty) continue;
+        if (isNavigationLink(href)) continue;
+
+        final resolved = resolveUrl(currentUri, href);
         if (!isSubpath(baseUri, resolved)) continue;
-        final rawName = resolved.pathSegments.where((s) => s.isNotEmpty).last;
-        if (isSeasonFolder(rawName) || isFolderToClimb(rawName)) {
-          seasonLike++;
-          continue;
+
+        if (isDirectoryPath(href)) {
+          final rawName = resolved.pathSegments
+              .where((s) => s.isNotEmpty)
+              .lastOrNull;
+          if (rawName == null) continue;
+
+          if (isFolderToClimb(rawName)) {
+            seasonLike++;
+            continue;
+          }
+
+          if (needsRecursion) {
+            nextLevelDirs.add(resolved);
+          } else {
+            final cleaned = NameCleaner.cleanFolderName(rawName);
+            dirs.add(
+              FolderEntry(
+                rawName: rawName,
+                cleanTitle: cleaned.title.isEmpty ? rawName : cleaned.title,
+                folderUrl: resolved.toString(),
+                year: cleaned.year,
+              ),
+            );
+          }
+        } else if (depth > 0 && !hasMediaFiles) {
+          // only check for media files inside subdirectories (leaf detection)
+          final filename = filenameFromUrl(resolved);
+          final ext = extensionFromFilename(filename);
+          if (ext != null && kMediaExtensions.contains(ext)) {
+            hasMediaFiles = true;
+          }
         }
-        final cleaned = NameCleaner.cleanFolderName(rawName);
-        dirs.add(
-          FolderEntry(
-            rawName: rawName,
-            cleanTitle: cleaned.title,
-            folderUrl: resolved.toString(),
-            year: cleaned.year,
-          ),
-        );
       }
-      // if majority of dirs look like season folders, this is a show level source
-      if (seasonLike > dirs.length) return null;
-      return dirs;
+
+      if (depth > 0 &&
+          (hasMediaFiles || (dirs.isEmpty && nextLevelDirs.isEmpty))) {
+        final rawName =
+            currentUri.pathSegments.where((s) => s.isNotEmpty).lastOrNull ?? '';
+        if (rawName.isNotEmpty) {
+          final cleaned = NameCleaner.cleanFolderName(rawName);
+          results.add(
+            FolderEntry(
+              rawName: rawName,
+              cleanTitle: cleaned.title.isEmpty ? rawName : cleaned.title,
+              folderUrl: currentUri.toString(),
+              year: cleaned.year,
+            ),
+          );
+        }
+        return true;
+      }
+
+      if (seasonLike > (dirs.length + nextLevelDirs.length)) {
+        return depth > 0;
+      }
+
+      results.addAll(dirs);
+
+      for (final groupUri in nextLevelDirs) {
+        final ok = await _shallowIndexRecurse(
+          baseUri,
+          groupUri,
+          results,
+          depth + 1,
+          maxDepth,
+        );
+        if (!ok) return false;
+      }
+
+      return true;
     } catch (_) {
-      return [];
+      return true;
     }
   }
 
@@ -91,7 +185,7 @@ class DirectoryScraper {
     final baseUri = Uri.parse(baseUrl);
     final results = <ScrapeResult>[];
     final visited = <String>{};
-    final queue = <String>[baseUrl];
+    final queue = Queue<String>()..add(baseUrl);
     int urlsVisited = 0;
 
     yield ScrapeProgress(
@@ -101,7 +195,7 @@ class DirectoryScraper {
     );
 
     while (queue.isNotEmpty) {
-      final url = queue.removeAt(0);
+      final url = queue.removeFirst();
       if (visited.contains(url)) continue;
       visited.add(url);
       urlsVisited++;
@@ -185,10 +279,7 @@ class DirectoryScraper {
                 if (segments.length >= 2) {
                   final parent = segments[segments.length - 2];
                   if (isSeasonFolder(parent)) {
-                    final match = RegExp(
-                      r'\b(?:Season\s*|S)(\d{1,2})\b',
-                      caseSensitive: false,
-                    ).firstMatch(parent);
+                    final match = _seasonFolderPattern.firstMatch(parent);
                     if (match != null) {
                       season = int.tryParse(match.group(1)!);
                       if (episode == null) {
@@ -203,9 +294,9 @@ class DirectoryScraper {
                               .trim();
                         }
 
-                        final epMatch = RegExp(
-                          r'\b(\d{1,4})\b',
-                        ).firstMatch(tempTitle);
+                        final epMatch = _episodeNumberPattern.firstMatch(
+                          tempTitle,
+                        );
                         if (epMatch != null) {
                           episode = int.tryParse(epMatch.group(1)!);
                           title = tempTitle
@@ -219,9 +310,7 @@ class DirectoryScraper {
                     }
                   } else {
                     final cleanParent = parent.trim().toLowerCase();
-                    if (RegExp(
-                      r'^(specials?|movies?|extras?|ovas?|nc|op-?ed|op|ed|s00?)$',
-                    ).hasMatch(cleanParent)) {
+                    if (_specialFolderPattern.hasMatch(cleanParent)) {
                       if (parentFolder.trim().toLowerCase() != cleanParent) {
                         season = 0;
                       }

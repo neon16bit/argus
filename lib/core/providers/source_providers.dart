@@ -126,11 +126,12 @@ class SourceActions {
   Stream<ScrapeProgress> scrapeSourceWithProgress(
     Source source, {
     bool fullScrape = false,
+    int maxDepth = 1,
   }) async* {
     // shallow mode: index top level folders only
     if (!fullScrape) {
       yield const ScrapeProgress(message: 'Indexing folders...', urlsQueued: 1);
-      final folders = await DirectoryScraper.shallowIndex(source.baseUrl);
+      final folders = await DirectoryScraper.shallowIndex(source.baseUrl, maxDepth: maxDepth);
 
       // null = show level sourcee
       if (folders != null) {

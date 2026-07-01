@@ -129,9 +129,101 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     }
   }
 
-  void _scrapeWithProgress(Source source) {
+  void _scrapeWithProgress(Source source) async {
+    const int kFlatScrapeDepth = 1;
+    const int kGroupedScrapeDepth = 2;
+    final int? selectedDepth = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        int tempDepth = kFlatScrapeDepth;
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Scrape Options'),
+              content: SizedBox(
+                width: 320,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Grouped structure'),
+                      subtitle: const Text(
+                        'Nested by year or letter (e.g. /2010/)',
+                      ),
+                      value: tempDepth == kGroupedScrapeDepth,
+                      onChanged: (bool val) {
+                        setStateDialog(() {
+                          tempDepth = val
+                              ? kGroupedScrapeDepth
+                              : kFlatScrapeDepth;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Expected folder structure:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Text(
+                        tempDepth == kFlatScrapeDepth
+                            ? 'root/\n└── [Show or Movie Folder]/'
+                                  '\n└── [Show or Movie Folder]/'
+                            : 'root/\n└── [Year / Alphabet Group]/'
+                                  '\n     └── [Show or Movie Folder]/'
+                                  '\n     └── [Show or Movie Folder]/'
+                                  '\n└── [Year / Alphabet Group]/'
+                                  '\n     └── [Show or Movie Folder]/'
+                                  '\n     └── [Show or Movie Folder]/',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, tempDepth),
+                  child: const Text('Scrape'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedDepth == null) return;
+
     setState(() => _isScraping = true);
     final actions = ref.read(sourceActionsProvider);
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -140,6 +232,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
       builder: (ctx) => ScrapeProgressSheet(
         sourceActions: actions,
         source: source,
+        maxDepth: selectedDepth,
         onDone: (count) {
           Navigator.pop(ctx);
           setState(() => _isScraping = false);
