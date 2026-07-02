@@ -174,28 +174,26 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                       label: const Text('Ping'),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _isScraping
-                          ? null
-                          : () => _scrapeWithProgress(source),
-                      icon: _isScraping
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
+                    _isScraping
+                        ? FilledButton.icon(
+                            onPressed: _abortScrape,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red[800],
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.cancel_rounded, size: 18),
+                            label: const Text('Abort'),
+                          )
+                        : FilledButton.icon(
+                            onPressed: () => _scrapeWithProgress(source),
+                            icon: Icon(
                               hasBeenScraped
                                   ? Icons.refresh_rounded
                                   : Icons.downloading_outlined,
                               size: 18,
                             ),
-                      label: Text(
-                        _isScraping
-                            ? 'Scraping...'
-                            : (hasBeenScraped ? 'Refresh' : 'Scrape'),
-                      ),
-                    ),
+                            label: Text(hasBeenScraped ? 'Refresh' : 'Scrape'),
+                          ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => _showEditDialog(source),
@@ -242,6 +240,14 @@ class _SourceTileState extends ConsumerState<SourceTile> {
         ref.invalidate(mediaItemCountProvider);
       }
     }
+  }
+
+  void _abortScrape() {
+    _scrapeSubscription?.cancel();
+    setState(() {
+      _isScraping = false;
+      _progress = ScrapeProgress(message: 'Scrape aborted.', isDone: true);
+    });
   }
 
   void _scrapeWithProgress(Source source) {

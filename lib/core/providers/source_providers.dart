@@ -248,6 +248,10 @@ class SourceActions {
     // shallow mode: index top level folders only
     if (!fullScrape) {
       final controller = StreamController<ScrapeProgress>();
+      bool isCancelled = false;
+      controller.onCancel = () {
+        isCancelled = true;
+      };
 
       controller.add(
         const ScrapeProgress(
@@ -261,6 +265,7 @@ class SourceActions {
             source.baseUrl,
             maxDepth: maxDepth,
             onProgress: (pages, folders) {
+              if (isCancelled) return;
               controller.add(
                 ScrapeProgress(
                   message: 'Indexing folders...',
@@ -273,10 +278,12 @@ class SourceActions {
             },
           )
           .then((folders) async {
+            if (isCancelled) return;
             if (folders != null) {
               final existingFolders = await db.getIndexedFoldersBySource(
                 source.id,
               );
+              if (isCancelled) return;
               final existingMap = {
                 for (final f in existingFolders) f.folderUrl: f,
               };
@@ -289,12 +296,14 @@ class SourceActions {
                   .where((f) => !existingMap.containsKey(f.folderUrl))
                   .toList();
 
+              if (isCancelled) return;
               if (foldersToDelete.isNotEmpty) {
                 final idsToDelete = foldersToDelete.map((f) => f.id).toList();
                 await db.deleteIndexedFoldersByIds(idsToDelete);
 
                 // Also delete media items from deleted folders to keep DB clean
                 for (final f in foldersToDelete) {
+                  if (isCancelled) return;
                   await (db.delete(db.mediaItems)..where(
                         (m) =>
                             m.sourceId.equals(source.id) &
@@ -304,6 +313,7 @@ class SourceActions {
                 }
               }
 
+              if (isCancelled) return;
               final isFirstScrape = existingFolders.isEmpty;
 
               if (foldersToInsert.isNotEmpty) {
@@ -322,12 +332,14 @@ class SourceActions {
                 );
               }
 
+              if (isCancelled) return;
               await db.setSourceLastScraped(source.id, DateTime.now());
               await db.setSourceOnline(source.id, true);
               await ref
                   .read(scrapedSourcesProvider.notifier)
                   .markScraped(source.id);
 
+              if (isCancelled) return;
               controller.add(
                 ScrapeProgress(
                   message: isFirstScrape
@@ -344,6 +356,7 @@ class SourceActions {
                 ),
               );
             } else {
+              if (isCancelled) return;
               controller.add(
                 const ScrapeProgress(
                   message: 'Show level source detected, full scraping...',
@@ -354,6 +367,7 @@ class SourceActions {
             controller.close();
           })
           .catchError((err) {
+            if (isCancelled) return;
             controller.addError(err);
             controller.close();
           });
