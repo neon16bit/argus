@@ -64,8 +64,18 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final commonSlivers = [
       SliverAppBar(
-        expandedHeight: 280,
+        expandedHeight: 200,
         pinned: true,
+        leading: Center(
+          child: IconButton(
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black38,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
         actions: [
           if (isAnyUnscraped)
             const Padding(
@@ -74,36 +84,73 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 child: SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
           if (folders.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.cloud_sync_rounded),
-              tooltip: 'Re-scrape Folder',
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black38,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.cloud_sync_rounded),
+                tooltip: 'Refresh Folder',
+                onPressed: () async {
+                  final db = ref.read(databaseProvider);
+                  // clear media items for this show across all matching sources
+                  await (db.delete(db.mediaItems)..where(
+                        (m) => m.groupTitle.equals(widget.result.groupTitle),
+                      ))
+                      .go();
+                  for (final folder in folders) {
+                    await (db.update(db.indexedFolders)
+                          ..where((f) => f.folderUrl.equals(folder.folderUrl)))
+                        .write(
+                          const IndexedFoldersCompanion(
+                            isScraped: Value(false),
+                          ),
+                        );
+                    ref
+                        .read(scrapeQueueProvider.notifier)
+                        .prioritize(folder.folderUrl);
+                  }
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Refreshing folders for ${widget.result.displayTitle}...',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black38,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'Refresh Metadata',
               onPressed: () async {
                 final db = ref.read(databaseProvider);
-                // clear media items for this show across all matching sources
-                await (db.delete(db.mediaItems)..where(
-                      (m) => m.groupTitle.equals(widget.result.groupTitle),
-                    ))
-                    .go();
-                for (final folder in folders) {
-                  await (db.update(
-                    db.indexedFolders,
-                  )..where((f) => f.folderUrl.equals(folder.folderUrl))).write(
-                    const IndexedFoldersCompanion(isScraped: Value(false)),
-                  );
-                  ref
-                      .read(scrapeQueueProvider.notifier)
-                      .prioritize(folder.folderUrl);
-                }
+                await db.clearShowCache(widget.result.groupTitle);
+                ref.invalidate(metadataProvider(widget.result.groupTitle));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Re-scraping folders for ${widget.result.displayTitle}...',
+                        'Refreshing metadata for ${widget.result.displayTitle}...',
                       ),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -111,37 +158,20 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 }
               },
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh Metadata',
-            onPressed: () async {
-              final db = ref.read(databaseProvider);
-              await db.clearShowCache(widget.result.groupTitle);
-              ref.invalidate(metadataProvider(widget.result.groupTitle));
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Refreshing metadata for ${widget.result.displayTitle}...',
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
           ),
         ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
             metadata?.titleEn ?? metadata?.title ?? widget.result.displayTitle,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
               color: Colors.white,
               shadows: [
                 Shadow(
-                  blurRadius: 4,
-                  color: Colors.black,
-                  offset: Offset(1, 1),
+                  blurRadius: 6,
+                  color: Colors.black87,
+                  offset: Offset(1.5, 1.5),
                 ),
               ],
             ),

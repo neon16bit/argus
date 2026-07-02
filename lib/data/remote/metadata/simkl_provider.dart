@@ -278,8 +278,9 @@ class SimklProvider extends MetadataProvider {
       String? posterPath = mediaObject['poster'] as String?;
       String? fanartPath = mediaObject['fanart'] as String?;
       String? overview = _unescapeHtml(mediaObject['overview'] as String?);
-      String? titleEn =
-          _unescapeHtml((mediaObject['en_title'] ?? mediaObject['title_en']) as String?);
+      String? titleEn = _unescapeHtml(
+        (mediaObject['en_title'] ?? mediaObject['title_en']) as String?,
+      );
 
       String? imdbId = ids['imdb'] as String?;
       String? tmdbId = (ids['tmdbtv'] ?? ids['tmdb'])?.toString();
@@ -368,7 +369,7 @@ class SimklProvider extends MetadataProvider {
   // _c (compact), _cm (compact medium), _s (small/40px).
   static String? posterUrl(
     String? posterPath, {
-    String size = '_w',
+    String size = '_m',
     String ext = '.jpg',
   }) {
     if (posterPath == null || posterPath.isEmpty) return null;
@@ -389,7 +390,9 @@ class SimklProvider extends MetadataProvider {
 
   ShowMetadata _parseResult(Map<String, dynamic> data) {
     final title = _unescapeHtml((data['title'] ?? '') as String) ?? '';
-    final titleEn = _unescapeHtml((data['en_title'] ?? data['title_en']) as String?);
+    final titleEn = _unescapeHtml(
+      (data['en_title'] ?? data['title_en']) as String?,
+    );
     final year = data['year'] as int?;
     final poster = data['poster'] as String?;
     final fanart = data['fanart'] as String?;
