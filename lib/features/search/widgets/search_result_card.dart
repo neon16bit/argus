@@ -116,8 +116,7 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
                               widget.result.isScraped
                                   ? '${widget.result.itemCount} items'
                                   : 'Indexing...',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey[400]),
+                              style: Theme.of(context).textTheme.bodySmall,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -129,10 +128,13 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
                 ),
               ),
 
-              const Padding(
-                padding: EdgeInsets.only(right: 16),
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
                 child: Center(
-                  child: Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -144,8 +146,13 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
 
   Widget _defaultPoster(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      child: const Center(child: Icon(Icons.movie_rounded, color: Colors.grey)),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Icon(
+          Icons.movie_rounded,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

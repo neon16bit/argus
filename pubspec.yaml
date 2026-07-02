@@ -44,12 +44,14 @@ dependencies:
   html: ^0.15.6
   http: ^1.6.0
   flutter_riverpod: ^3.3.2
-  package_info_plus: ^10.1.0
+  package_info_plus: ^10.2.0
   cached_network_image: ^3.4.1
-  sqlite3: ^3.3.3
+  sqlite3: ^3.3.4
   url_launcher: ^6.3.2
   android_intent_plus: ^6.0.0
   shared_preferences: ^2.5.3
+  google_fonts: ^8.1.0
+  dynamic_color: ^1.8.1
 
 dev_dependencies:
   flutter_test:
@@ -61,7 +63,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  drift_dev: ^2.33.0
+  drift_dev: ^2.34.0
   build_runner: ^2.15.0
 
 # For information on the generic Dart part of this file, see the

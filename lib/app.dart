@@ -1,17 +1,21 @@
 import 'package:argus/features/shell/app_shell.dart';
+import 'package:argus/core/providers/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ArgusApp extends StatelessWidget {
+class ArgusApp extends ConsumerWidget {
   const ArgusApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeState = ref.watch(appThemeProvider);
+
     return MaterialApp(
       title: 'Argus',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreenAccent),
-      ),
+      theme: themeState.theme,
+      darkTheme: themeState.darkTheme,
+      themeMode: themeState.themeMode,
       home: const AppShell(),
     );
   }

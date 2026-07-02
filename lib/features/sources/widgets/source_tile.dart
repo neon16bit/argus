@@ -79,7 +79,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
           source.baseUrl,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         children: [
           Padding(
@@ -108,7 +108,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                 if (source.lastScraped != null)
                   Text(
                     'Last scraped: ${_formatDate(source.lastScraped!)}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 if (_progress != null) ...[
                   const SizedBox(height: 12),
