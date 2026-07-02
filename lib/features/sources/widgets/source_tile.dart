@@ -126,8 +126,10 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     if (confirm == true) {
       final actions = ref.read(sourceActionsProvider);
       await actions.deleteSource(source.id);
-      ref.invalidate(sourcesProvider);
-      ref.invalidate(mediaItemCountProvider);
+      if (mounted) {
+        ref.invalidate(sourcesProvider);
+        ref.invalidate(mediaItemCountProvider);
+      }
     }
   }
 
@@ -236,25 +238,23 @@ class _SourceTileState extends ConsumerState<SourceTile> {
         source: source,
         maxDepth: selectedDepth,
         onDone: (count) {
+          if (!mounted) return;
           Navigator.pop(ctx);
           setState(() => _isScraping = false);
           ref.invalidate(sourcesProvider);
           ref.invalidate(mediaItemCountProvider);
           ref.invalidate(mediaItemsBySourceProvider(source.id));
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Indexed $count items')));
-          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Indexed $count items')));
         },
         onError: (error) {
+          if (!mounted) return;
           Navigator.pop(ctx);
           setState(() => _isScraping = false);
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error: $error')));
-          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $error')));
         },
       ),
     );

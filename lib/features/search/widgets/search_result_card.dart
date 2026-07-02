@@ -4,31 +4,56 @@ import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SearchResultCard extends ConsumerWidget {
+class SearchResultCard extends ConsumerStatefulWidget {
   final SearchResult result;
 
   const SearchResultCard({super.key, required this.result});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // enqueue background deep scrape when this card becomes visible (on build)
-    if (!result.isScraped && result.folderUrl != null) {
-      Future.microtask(
-        () => ref.read(scrapeQueueProvider.notifier).enqueue(result.folderUrl!),
-      );
-    }
+  ConsumerState<SearchResultCard> createState() => _SearchResultCardState();
+}
 
+class _SearchResultCardState extends ConsumerState<SearchResultCard> {
+  @override
+  void initState() {
+    super.initState();
+    _enqueueScrapeIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(SearchResultCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.result.folderUrl != oldWidget.result.folderUrl ||
+        widget.result.isScraped != oldWidget.result.isScraped) {
+      _enqueueScrapeIfNeeded();
+    }
+  }
+
+  void _enqueueScrapeIfNeeded() {
+    if (!widget.result.isScraped && widget.result.folderUrl != null) {
+      Future.microtask(() {
+        if (mounted) {
+          ref
+              .read(scrapeQueueProvider.notifier)
+              .enqueue(widget.result.folderUrl!);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // only watch metadata for fully scraped results (need filenames for accuracy)
-    final metadataAsync = result.isScraped
-        ? ref.watch(metadataProvider(result.groupTitle))
+    final metadataAsync = widget.result.isScraped
+        ? ref.watch(metadataProvider(widget.result.groupTitle))
         : const AsyncData(null);
     final metadata = metadataAsync.value;
 
     // use cached db result if available, otherwise fallback to live metadata
-    final posterUrl = result.posterUrl ?? metadata?.posterUrl;
-    final displayTitle = result.displayTitle != result.groupTitle
-        ? result.displayTitle
-        : metadata?.titleEn ?? metadata?.title ?? result.displayTitle;
+    final posterUrl = widget.result.posterUrl ?? metadata?.posterUrl;
+    final displayTitle = widget.result.displayTitle != widget.result.groupTitle
+        ? widget.result.displayTitle
+        : metadata?.titleEn ?? metadata?.title ?? widget.result.displayTitle;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -36,7 +61,9 @@ class SearchResultCard extends ConsumerWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ShowDetailScreen(result: result)),
+          MaterialPageRoute(
+            builder: (_) => ShowDetailScreen(result: widget.result),
+          ),
         ),
         child: IntrinsicHeight(
           child: Row(
@@ -75,19 +102,19 @@ class SearchResultCard extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            result.isScraped
+                            widget.result.isScraped
                                 ? Icons.storage_rounded
                                 : Icons.cloud_sync_rounded,
                             size: 14,
-                            color: result.isScraped
+                            color: widget.result.isScraped
                                 ? Theme.of(context).colorScheme.primary
                                 : Colors.orange,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              result.isScraped
-                                  ? '${result.itemCount} items'
+                              widget.result.isScraped
+                                  ? '${widget.result.itemCount} items'
                                   : 'Indexing...',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: Colors.grey[400]),

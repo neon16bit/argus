@@ -25,8 +25,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     super.initState();
     // prioritize scraping any unscraped folders for this show on any active sources
     Future.microtask(() async {
+      if (!mounted) return;
       final db = ref.read(databaseProvider);
       final folders = await db.getFoldersByGroupTitle(widget.result.groupTitle);
+      if (!mounted) return;
       for (final folder in folders) {
         if (!folder.isScraped) {
           ref.read(scrapeQueueProvider.notifier).prioritize(folder.folderUrl);
