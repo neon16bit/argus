@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
-import 'package:argus/features/sources/widgets/scrape_progress_sheet.dart';
+import 'package:argus/data/scrapers/directory_scraper.dart';
 import 'package:argus/features/sources/widgets/source_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,14 @@ class SourceTile extends ConsumerStatefulWidget {
 
 class _SourceTileState extends ConsumerState<SourceTile> {
   bool _isScraping = false;
+  ScrapeProgress? _progress;
+  StreamSubscription<ScrapeProgress>? _scrapeSubscription;
+
+  @override
+  void dispose() {
+    _scrapeSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +31,8 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     final folderCountAsync = ref.watch(
       indexedFoldersCountBySourceProvider(source.id),
     );
+    final scrapedIds = ref.watch(scrapedSourcesProvider);
+    final hasBeenScraped = scrapedIds.contains(source.id);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -54,6 +65,92 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                     'Last scraped: ${_formatDate(source.lastScraped!)}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
+                if (_progress != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (!_progress!.isDone)
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _progress!.message,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (!_progress!.isDone) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _StatChip(
+                                Icons.language,
+                                '${_progress!.urlsVisited} pages',
+                              ),
+                              const SizedBox(width: 8),
+                              _StatChip(
+                                Icons.queue,
+                                '${_progress!.urlsQueued} queued',
+                              ),
+                              const SizedBox(width: 8),
+                              _StatChip(
+                                _progress!.isShallow
+                                    ? Icons.folder_open_outlined
+                                    : Icons.movie,
+                                '${_progress!.filesFound} ${_progress!.isShallow ? "folders" : "files"}',
+                              ),
+                            ],
+                          ),
+                          if (_progress!.currentUrl != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _progress!.currentUrl!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -87,8 +184,17 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.downloading_outlined, size: 18),
-                      label: Text(_isScraping ? 'Scraping...' : 'Scrape'),
+                          : Icon(
+                              hasBeenScraped
+                                  ? Icons.refresh_rounded
+                                  : Icons.downloading_outlined,
+                              size: 18,
+                            ),
+                      label: Text(
+                        _isScraping
+                            ? 'Scraping...'
+                            : (hasBeenScraped ? 'Refresh' : 'Scrape'),
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
@@ -139,39 +245,50 @@ class _SourceTileState extends ConsumerState<SourceTile> {
   }
 
   void _scrapeWithProgress(Source source) {
-    setState(() => _isScraping = true);
-    final actions = ref.read(sourceActionsProvider);
+    _scrapeSubscription?.cancel();
+    setState(() {
+      _isScraping = true;
+      _progress = null;
+    });
 
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (ctx) => ScrapeProgressSheet(
-        sourceActions: actions,
-        source: source,
-        maxDepth: source.maxDepth,
-        onDone: (count) {
-          if (!mounted) return;
-          Navigator.pop(ctx);
-          setState(() => _isScraping = false);
-          ref.invalidate(sourcesProvider);
-          ref.invalidate(mediaItemCountProvider);
-          ref.invalidate(mediaItemsBySourceProvider(source.id));
-          ref.invalidate(indexedFoldersCountBySourceProvider(source.id));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Indexed $count items')));
-        },
-        onError: (error) {
-          if (!mounted) return;
-          Navigator.pop(ctx);
-          setState(() => _isScraping = false);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $error')));
-        },
-      ),
-    );
+    final actions = ref.read(sourceActionsProvider);
+    final fullScrape = ref.read(settingsProvider).fullScrapeMode;
+
+    _scrapeSubscription = actions
+        .scrapeSourceWithProgress(
+          source,
+          fullScrape: fullScrape,
+          maxDepth: source.maxDepth,
+        )
+        .listen(
+          (progress) {
+            if (!mounted) return;
+            setState(() {
+              _progress = progress;
+              if (progress.isDone) {
+                _isScraping = false;
+                ref.invalidate(sourcesProvider);
+                ref.invalidate(mediaItemCountProvider);
+                ref.invalidate(mediaItemsBySourceProvider(source.id));
+                ref.invalidate(indexedFoldersCountBySourceProvider(source.id));
+              }
+            });
+          },
+          onError: (error) {
+            if (!mounted) return;
+            setState(() {
+              _isScraping = false;
+              _progress = ScrapeProgress(
+                message: 'Error: $error',
+                isDone: true,
+                error: error.toString(),
+              );
+            });
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error: $error')));
+          },
+        );
   }
 
   void _showEditDialog(Source source) {
@@ -202,5 +319,30 @@ class _SourceTileState extends ConsumerState<SourceTile> {
   String _formatDate(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _StatChip(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
   }
 }

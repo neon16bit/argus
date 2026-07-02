@@ -1,6 +1,6 @@
 import 'package:argus/core/constants.dart';
+import 'package:argus/core/providers/database_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 const _kScrapeModeFull = 'scrape_mode_full';
 const _kScrapeDelayMs = 'scrape_delay_ms';
@@ -15,10 +15,10 @@ class AppSettings {
   });
 }
 
-class SettingsNotifier extends AsyncNotifier<AppSettings> {
+class SettingsNotifier extends Notifier<AppSettings> {
   @override
-  Future<AppSettings> build() async {
-    final prefs = await SharedPreferences.getInstance();
+  AppSettings build() {
+    final prefs = ref.read(sharedPreferencesProvider);
     return AppSettings(
       fullScrapeMode: prefs.getBool(_kScrapeModeFull) ?? false,
       scrapeDelay: Duration(
@@ -29,28 +29,21 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
   }
 
   Future<void> setFullScrapeMode(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_kScrapeModeFull, value);
-    state = AsyncData(
-      AppSettings(
-        fullScrapeMode: value,
-        scrapeDelay: state.value?.scrapeDelay ?? kDefaultScrapeDelay,
-      ),
-    );
+    state = AppSettings(fullScrapeMode: value, scrapeDelay: state.scrapeDelay);
   }
 
   Future<void> setScrapeDelay(Duration value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_kScrapeDelayMs, value.inMilliseconds);
-    state = AsyncData(
-      AppSettings(
-        fullScrapeMode: state.value?.fullScrapeMode ?? false,
-        scrapeDelay: value,
-      ),
+    state = AppSettings(
+      fullScrapeMode: state.fullScrapeMode,
+      scrapeDelay: value,
     );
   }
 }
 
-final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
   SettingsNotifier.new,
 );

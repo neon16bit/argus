@@ -51,8 +51,8 @@ class ScrapeQueueNotifier extends Notifier<void> {
     final folder = await db.getFolderByUrl(folderUrl);
     if (folder == null || folder.isScraped) return;
 
-    final settings = ref.read(settingsProvider).value;
-    final delay = settings?.scrapeDelay ?? kDefaultScrapeDelay;
+    final settings = ref.read(settingsProvider);
+    final delay = settings.scrapeDelay;
 
     final actions = ref.read(sourceActionsProvider);
     await actions.deepScrapeFolder(folder, requestDelay: delay);
@@ -63,7 +63,10 @@ final scrapeQueueProvider = NotifierProvider<ScrapeQueueNotifier, void>(
   ScrapeQueueNotifier.new,
 );
 
-final showFoldersProvider = StreamProvider.family<List<IndexedFolder>, String>((ref, groupTitle) {
+final showFoldersProvider = StreamProvider.family<List<IndexedFolder>, String>((
+  ref,
+  groupTitle,
+) {
   final db = ref.watch(databaseProvider);
   return db.watchFoldersByGroupTitle(groupTitle);
 });

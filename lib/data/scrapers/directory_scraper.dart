@@ -15,6 +15,9 @@ class ScrapeProgress {
   final bool isDone;
   final String? error;
   final List<ScrapeResult> results;
+  final int? addedCount;
+  final int? deletedCount;
+  final bool isShallow;
 
   const ScrapeProgress({
     required this.message,
@@ -25,6 +28,9 @@ class ScrapeProgress {
     this.isDone = false,
     this.error,
     this.results = const [],
+    this.addedCount,
+    this.deletedCount,
+    this.isShallow = false,
   });
 }
 
@@ -58,15 +64,19 @@ class DirectoryScraper {
   static Future<List<FolderEntry>?> shallowIndex(
     String baseUrl, {
     int maxDepth = 1,
+    void Function(int pagesVisited, int foldersFound)? onProgress,
   }) async {
     final baseUri = Uri.parse(baseUrl);
     final results = <FolderEntry>[];
+    final pagesVisited = [0];
     final success = await _shallowIndexRecurse(
       baseUri,
       baseUri,
       results,
       _initialDepth,
       maxDepth,
+      pagesVisited: pagesVisited,
+      onProgress: onProgress,
     );
     if (!success) return null;
     return results;
@@ -77,10 +87,15 @@ class DirectoryScraper {
     Uri currentUri,
     List<FolderEntry> results,
     int depth,
-    int maxDepth,
-  ) async {
+    int maxDepth, {
+    required List<int> pagesVisited,
+    void Function(int pagesVisited, int foldersFound)? onProgress,
+  }) async {
     if (depth > maxDepth) return true;
     try {
+      pagesVisited[0]++;
+      onProgress?.call(pagesVisited[0], results.length);
+
       final response = await http.get(currentUri).timeout(kScrapeTimeout);
       if (response.statusCode != 200) return true;
 
@@ -162,6 +177,7 @@ class DirectoryScraper {
               year: cleaned.year,
             ),
           );
+          onProgress?.call(pagesVisited[0], results.length);
         }
         return true;
       }
@@ -171,6 +187,7 @@ class DirectoryScraper {
       }
 
       results.addAll(dirs);
+      onProgress?.call(pagesVisited[0], results.length);
 
       for (final groupUri in nextLevelDirs) {
         final ok = await _shallowIndexRecurse(
@@ -179,6 +196,8 @@ class DirectoryScraper {
           results,
           depth + 1,
           maxDepth,
+          pagesVisited: pagesVisited,
+          onProgress: onProgress,
         );
         if (!ok) return false;
       }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/database_providers.dart';
 import 'package:argus/data/database/app_database.dart';
@@ -11,6 +12,42 @@ final sourcesProvider = StreamProvider<List<Source>>((ref) {
   final db = ref.watch(databaseProvider);
   return db.watchAllSources();
 });
+
+class ScrapedSourcesNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final keys = prefs.getKeys();
+    final scrapedIds = <int>{};
+    for (final key in keys) {
+      if (key.startsWith('scraped_')) {
+        final idStr = key.substring(8);
+        final id = int.tryParse(idStr);
+        if (id != null && prefs.getBool(key) == true) {
+          scrapedIds.add(id);
+        }
+      }
+    }
+    return scrapedIds;
+  }
+
+  Future<void> markScraped(int sourceId) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool('scraped_$sourceId', true);
+    state = {...state, sourceId};
+  }
+
+  Future<void> clearScraped(int sourceId) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove('scraped_$sourceId');
+    state = {...state}..remove(sourceId);
+  }
+}
+
+final scrapedSourcesProvider =
+    NotifierProvider<ScrapedSourcesNotifier, Set<int>>(
+      ScrapedSourcesNotifier.new,
+    );
 
 final mediaItemCountProvider = FutureProvider<int>((ref) {
   final db = ref.watch(databaseProvider);
@@ -34,7 +71,7 @@ final indexedFoldersCountBySourceProvider = FutureProvider.family<int, int>((
 });
 
 final sourceActionsProvider = Provider<SourceActions>((ref) {
-  return SourceActions(ref.watch(databaseProvider));
+  return SourceActions(ref.watch(databaseProvider), ref);
 });
 
 // converts a ScrapeResult to a MediaItemsCompanion for database insertion
@@ -56,7 +93,8 @@ MediaItemsCompanion _toCompanion(ScrapeResult r, int sourceId) {
 // source actions
 class SourceActions {
   final AppDatabase db;
-  SourceActions(this.db);
+  final Ref ref;
+  SourceActions(this.db, this.ref);
 
   Future<String?> addSource(String name, String url, int maxDepth) async {
     if (!url.endsWith('/')) url = '$url/';
@@ -118,6 +156,7 @@ class SourceActions {
       // clear old scraped items because source URL or structure changed
       await db.deleteMediaItemsBySource(id);
       await db.deleteIndexedFoldersBySource(id);
+      ref.read(scrapedSourcesProvider.notifier).clearScraped(id);
     }
 
     await db.updateSource(
@@ -196,6 +235,7 @@ class SourceActions {
 
     await db.setSourceLastScraped(source.id, DateTime.now());
     await db.setSourceOnline(source.id, true);
+    await ref.read(scrapedSourcesProvider.notifier).markScraped(source.id);
 
     return results.length;
   }
@@ -207,69 +247,127 @@ class SourceActions {
   }) async* {
     // shallow mode: index top level folders only
     if (!fullScrape) {
-      yield const ScrapeProgress(message: 'Indexing folders...', urlsQueued: 1);
-      final folders = await DirectoryScraper.shallowIndex(
-        source.baseUrl,
-        maxDepth: maxDepth,
+      final controller = StreamController<ScrapeProgress>();
+
+      controller.add(
+        const ScrapeProgress(
+          message: 'Indexing folders...',
+          urlsQueued: 1,
+          isShallow: true,
+        ),
       );
 
-      // null = show level sourcee
-      if (folders != null) {
-        final existingFolders = await db.getIndexedFoldersBySource(source.id);
-        final existingMap = {for (final f in existingFolders) f.folderUrl: f};
-        final newUrls = folders.map((f) => f.folderUrl).toSet();
+      DirectoryScraper.shallowIndex(
+            source.baseUrl,
+            maxDepth: maxDepth,
+            onProgress: (pages, folders) {
+              controller.add(
+                ScrapeProgress(
+                  message: 'Indexing folders...',
+                  urlsVisited: pages,
+                  urlsQueued: 1,
+                  filesFound: folders,
+                  isShallow: true,
+                ),
+              );
+            },
+          )
+          .then((folders) async {
+            if (folders != null) {
+              final existingFolders = await db.getIndexedFoldersBySource(
+                source.id,
+              );
+              final existingMap = {
+                for (final f in existingFolders) f.folderUrl: f,
+              };
+              final newUrls = folders.map((f) => f.folderUrl).toSet();
 
-        final foldersToDelete = existingFolders
-            .where((f) => !newUrls.contains(f.folderUrl))
-            .toList();
-        final foldersToInsert = folders
-            .where((f) => !existingMap.containsKey(f.folderUrl))
-            .toList();
+              final foldersToDelete = existingFolders
+                  .where((f) => !newUrls.contains(f.folderUrl))
+                  .toList();
+              final foldersToInsert = folders
+                  .where((f) => !existingMap.containsKey(f.folderUrl))
+                  .toList();
 
-        if (foldersToDelete.isNotEmpty) {
-          final idsToDelete = foldersToDelete.map((f) => f.id).toList();
-          await db.deleteIndexedFoldersByIds(idsToDelete);
+              if (foldersToDelete.isNotEmpty) {
+                final idsToDelete = foldersToDelete.map((f) => f.id).toList();
+                await db.deleteIndexedFoldersByIds(idsToDelete);
 
-          // Also delete media items from deleted folders to keep DB clean
-          for (final f in foldersToDelete) {
-            await (db.delete(db.mediaItems)..where(
-                  (m) =>
-                      m.sourceId.equals(source.id) &
-                      m.directUrl.like('${f.folderUrl}%'),
-                ))
-                .go();
-          }
+                // Also delete media items from deleted folders to keep DB clean
+                for (final f in foldersToDelete) {
+                  await (db.delete(db.mediaItems)..where(
+                        (m) =>
+                            m.sourceId.equals(source.id) &
+                            m.directUrl.like('${f.folderUrl}%'),
+                      ))
+                      .go();
+                }
+              }
+
+              final isFirstScrape = existingFolders.isEmpty;
+
+              if (foldersToInsert.isNotEmpty) {
+                await db.insertIndexedFoldersBatch(
+                  foldersToInsert
+                      .map(
+                        (f) => IndexedFoldersCompanion(
+                          sourceId: Value(source.id),
+                          folderName: Value(f.rawName),
+                          cleanTitle: Value(f.cleanTitle),
+                          folderUrl: Value(f.folderUrl),
+                          year: Value(f.year),
+                        ),
+                      )
+                      .toList(),
+                );
+              }
+
+              await db.setSourceLastScraped(source.id, DateTime.now());
+              await db.setSourceOnline(source.id, true);
+              await ref
+                  .read(scrapedSourcesProvider.notifier)
+                  .markScraped(source.id);
+
+              controller.add(
+                ScrapeProgress(
+                  message: isFirstScrape
+                      ? 'Added ${foldersToInsert.length} folders.'
+                      : (foldersToInsert.isNotEmpty ||
+                                foldersToDelete.isNotEmpty
+                            ? 'Added ${foldersToInsert.length} new, deleted ${foldersToDelete.length} obsolete folders.'
+                            : 'Already up to date.'),
+                  filesFound: folders.length,
+                  addedCount: foldersToInsert.length,
+                  deletedCount: foldersToDelete.length,
+                  isShallow: true,
+                  isDone: true,
+                ),
+              );
+            } else {
+              controller.add(
+                const ScrapeProgress(
+                  message: 'Show level source detected, full scraping...',
+                  isShallow: true,
+                ),
+              );
+            }
+            controller.close();
+          })
+          .catchError((err) {
+            controller.addError(err);
+            controller.close();
+          });
+
+      await for (final progress in controller.stream) {
+        if (progress.message ==
+            'Show level source detected, full scraping...') {
+          break;
         }
-
-        if (foldersToInsert.isNotEmpty) {
-          await db.insertIndexedFoldersBatch(
-            foldersToInsert
-                .map(
-                  (f) => IndexedFoldersCompanion(
-                    sourceId: Value(source.id),
-                    folderName: Value(f.rawName),
-                    cleanTitle: Value(f.cleanTitle),
-                    folderUrl: Value(f.folderUrl),
-                    year: Value(f.year),
-                  ),
-                )
-                .toList(),
-          );
+        yield progress;
+        if (progress.isDone) {
+          return;
         }
-
-        await db.setSourceLastScraped(source.id, DateTime.now());
-        await db.setSourceOnline(source.id, true);
-        yield ScrapeProgress(
-          message: 'Indexed ${folders.length} folders.',
-          filesFound: folders.length,
-          isDone: true,
-        );
-        return;
       }
-      // fall through to deep scrape for show level sources
-      yield const ScrapeProgress(
-        message: 'Show level source detected, full scraping...',
-      );
     }
 
     List<ScrapeResult> collectedResults = [];
@@ -330,12 +428,21 @@ class SourceActions {
       }
     }
 
+    final isFirstScrape = existingItems.isEmpty;
+
     await db.setSourceLastScraped(source.id, DateTime.now());
     await db.setSourceOnline(source.id, true);
+    await ref.read(scrapedSourcesProvider.notifier).markScraped(source.id);
 
     yield ScrapeProgress(
-      message: 'Done! Saved ${collectedResults.length} items.',
+      message: isFirstScrape
+          ? 'Done! Saved ${itemsToInsert.length} items.'
+          : (itemsToInsert.isNotEmpty || itemsToDelete.isNotEmpty
+                ? 'Done! Added ${itemsToInsert.length} new, deleted ${itemsToDelete.length} obsolete files.'
+                : 'Already up to date.'),
       filesFound: collectedResults.length,
+      addedCount: itemsToInsert.length,
+      deletedCount: itemsToDelete.length,
       isDone: true,
     );
   }
@@ -401,5 +508,6 @@ class SourceActions {
     await db.deleteMediaItemsBySource(id);
     await db.deleteIndexedFoldersBySource(id);
     await db.deleteSource(id);
+    ref.read(scrapedSourcesProvider.notifier).clearScraped(id);
   }
 }
