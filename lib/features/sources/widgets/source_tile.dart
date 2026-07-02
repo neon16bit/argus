@@ -20,6 +20,21 @@ class _SourceTileState extends ConsumerState<SourceTile> {
   ScrapeProgress? _progress;
   StreamSubscription<ScrapeProgress>? _scrapeSubscription;
 
+  Future<void> _pingSource() async {
+    final source = widget.source;
+    final messenger = ScaffoldMessenger.of(context);
+    final actions = ref.read(sourceActionsProvider);
+    final online = await actions.pingSource(source);
+    if (mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${source.name} is ${online ? "online" : "offline"}'),
+        ),
+      );
+    }
+    ref.invalidate(sourcesProvider);
+  }
+
   @override
   void dispose() {
     _scrapeSubscription?.cancel();
@@ -37,14 +52,27 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     );
     final scrapedIds = ref.watch(scrapedSourcesProvider);
     final hasBeenScraped = scrapedIds.contains(source.id);
+    final isWide = MediaQuery.of(context).size.width >= 600;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
-        leading: Icon(
-          Icons.circle,
-          size: 12,
-          color: source.isOnline ? Colors.green : Colors.red,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Tooltip(
+          message: 'Tap to check online status',
+          child: InkWell(
+            onTap: _pingSource,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Icon(
+                Icons.circle,
+                size: 12,
+                color: source.isOnline ? Colors.green : Colors.red,
+              ),
+            ),
+          ),
         ),
         title: Text(source.name),
         subtitle: Text(
@@ -171,26 +199,14 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final actions = ref.read(sourceActionsProvider);
-                        final online = await actions.pingSource(source);
-                        if (mounted) {
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${source.name} is ${online ? "online" : "offline"}',
-                              ),
-                            ),
-                          );
-                        }
-                        ref.invalidate(sourcesProvider);
-                      },
-                      icon: const Icon(Icons.wifi_find_rounded, size: 18),
-                      label: const Text('Ping'),
-                    ),
-                    const SizedBox(width: 8),
+                    if (isWide) ...[
+                      OutlinedButton.icon(
+                        onPressed: _pingSource,
+                        icon: const Icon(Icons.wifi_find_rounded, size: 18),
+                        label: const Text('Ping'),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     _isScraping
                         ? FilledButton.icon(
                             onPressed: _abortScrape,
@@ -224,15 +240,73 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                         );
                       },
                     ),
-                    IconButton(
-                      onPressed: () => _showEditDialog(source),
-                      tooltip: 'Edit source',
-                      icon: const Icon(Icons.settings_suggest),
-                    ),
-                    IconButton(
-                      onPressed: () => _confirmDelete(source),
-                      icon: const Icon(Icons.delete_rounded, color: Colors.red),
-                    ),
+                    if (isWide) ...[
+                      IconButton(
+                        onPressed: () => _showEditDialog(source),
+                        tooltip: 'Edit source',
+                        icon: const Icon(Icons.edit_note_rounded),
+                      ),
+                      IconButton(
+                        onPressed: () => _confirmDelete(source),
+                        icon: const Icon(
+                          Icons.delete_rounded,
+                          color: Colors.red,
+                        ),
+                        tooltip: 'Delete source',
+                      ),
+                    ] else
+                      PopupMenuButton<String>(
+                        tooltip: 'More actions',
+                        icon: const Icon(Icons.more_vert_rounded),
+                        onSelected: (value) {
+                          if (value == 'ping') {
+                            _pingSource();
+                          } else if (value == 'edit') {
+                            _showEditDialog(source);
+                          } else if (value == 'delete') {
+                            _confirmDelete(source);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'ping',
+                            child: Row(
+                              children: [
+                                Icon(Icons.wifi_find_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text('Ping status'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_note_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text('Edit source'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.delete_forever_rounded,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Delete source',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ],
