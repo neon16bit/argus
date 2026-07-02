@@ -80,6 +80,18 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _maxDepthMeta = const VerificationMeta(
+    'maxDepth',
+  );
+  @override
+  late final GeneratedColumn<int> maxDepth = GeneratedColumn<int>(
+    'max_depth',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -88,6 +100,7 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     isOnline,
     lastScraped,
     createdAt,
+    maxDepth,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -141,6 +154,12 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('max_depth')) {
+      context.handle(
+        _maxDepthMeta,
+        maxDepth.isAcceptableOrUnknown(data['max_depth']!, _maxDepthMeta),
+      );
+    }
     return context;
   }
 
@@ -174,6 +193,10 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      maxDepth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_depth'],
+      )!,
     );
   }
 
@@ -190,6 +213,7 @@ class Source extends DataClass implements Insertable<Source> {
   final bool isOnline;
   final DateTime? lastScraped;
   final DateTime createdAt;
+  final int maxDepth;
   const Source({
     required this.id,
     required this.name,
@@ -197,6 +221,7 @@ class Source extends DataClass implements Insertable<Source> {
     required this.isOnline,
     this.lastScraped,
     required this.createdAt,
+    required this.maxDepth,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -209,6 +234,7 @@ class Source extends DataClass implements Insertable<Source> {
       map['last_scraped'] = Variable<DateTime>(lastScraped);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['max_depth'] = Variable<int>(maxDepth);
     return map;
   }
 
@@ -222,6 +248,7 @@ class Source extends DataClass implements Insertable<Source> {
           ? const Value.absent()
           : Value(lastScraped),
       createdAt: Value(createdAt),
+      maxDepth: Value(maxDepth),
     );
   }
 
@@ -237,6 +264,7 @@ class Source extends DataClass implements Insertable<Source> {
       isOnline: serializer.fromJson<bool>(json['isOnline']),
       lastScraped: serializer.fromJson<DateTime?>(json['lastScraped']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      maxDepth: serializer.fromJson<int>(json['maxDepth']),
     );
   }
   @override
@@ -249,6 +277,7 @@ class Source extends DataClass implements Insertable<Source> {
       'isOnline': serializer.toJson<bool>(isOnline),
       'lastScraped': serializer.toJson<DateTime?>(lastScraped),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'maxDepth': serializer.toJson<int>(maxDepth),
     };
   }
 
@@ -259,6 +288,7 @@ class Source extends DataClass implements Insertable<Source> {
     bool? isOnline,
     Value<DateTime?> lastScraped = const Value.absent(),
     DateTime? createdAt,
+    int? maxDepth,
   }) => Source(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -266,6 +296,7 @@ class Source extends DataClass implements Insertable<Source> {
     isOnline: isOnline ?? this.isOnline,
     lastScraped: lastScraped.present ? lastScraped.value : this.lastScraped,
     createdAt: createdAt ?? this.createdAt,
+    maxDepth: maxDepth ?? this.maxDepth,
   );
   Source copyWithCompanion(SourcesCompanion data) {
     return Source(
@@ -277,6 +308,7 @@ class Source extends DataClass implements Insertable<Source> {
           ? data.lastScraped.value
           : this.lastScraped,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      maxDepth: data.maxDepth.present ? data.maxDepth.value : this.maxDepth,
     );
   }
 
@@ -288,14 +320,22 @@ class Source extends DataClass implements Insertable<Source> {
           ..write('baseUrl: $baseUrl, ')
           ..write('isOnline: $isOnline, ')
           ..write('lastScraped: $lastScraped, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('maxDepth: $maxDepth')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, baseUrl, isOnline, lastScraped, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    baseUrl,
+    isOnline,
+    lastScraped,
+    createdAt,
+    maxDepth,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -305,7 +345,8 @@ class Source extends DataClass implements Insertable<Source> {
           other.baseUrl == this.baseUrl &&
           other.isOnline == this.isOnline &&
           other.lastScraped == this.lastScraped &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.maxDepth == this.maxDepth);
 }
 
 class SourcesCompanion extends UpdateCompanion<Source> {
@@ -315,6 +356,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
   final Value<bool> isOnline;
   final Value<DateTime?> lastScraped;
   final Value<DateTime> createdAt;
+  final Value<int> maxDepth;
   const SourcesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -322,6 +364,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.isOnline = const Value.absent(),
     this.lastScraped = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.maxDepth = const Value.absent(),
   });
   SourcesCompanion.insert({
     this.id = const Value.absent(),
@@ -330,6 +373,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.isOnline = const Value.absent(),
     this.lastScraped = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.maxDepth = const Value.absent(),
   }) : name = Value(name),
        baseUrl = Value(baseUrl);
   static Insertable<Source> custom({
@@ -339,6 +383,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Expression<bool>? isOnline,
     Expression<DateTime>? lastScraped,
     Expression<DateTime>? createdAt,
+    Expression<int>? maxDepth,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -347,6 +392,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       if (isOnline != null) 'is_online': isOnline,
       if (lastScraped != null) 'last_scraped': lastScraped,
       if (createdAt != null) 'created_at': createdAt,
+      if (maxDepth != null) 'max_depth': maxDepth,
     });
   }
 
@@ -357,6 +403,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Value<bool>? isOnline,
     Value<DateTime?>? lastScraped,
     Value<DateTime>? createdAt,
+    Value<int>? maxDepth,
   }) {
     return SourcesCompanion(
       id: id ?? this.id,
@@ -365,6 +412,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       isOnline: isOnline ?? this.isOnline,
       lastScraped: lastScraped ?? this.lastScraped,
       createdAt: createdAt ?? this.createdAt,
+      maxDepth: maxDepth ?? this.maxDepth,
     );
   }
 
@@ -389,6 +437,9 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (maxDepth.present) {
+      map['max_depth'] = Variable<int>(maxDepth.value);
+    }
     return map;
   }
 
@@ -400,7 +451,8 @@ class SourcesCompanion extends UpdateCompanion<Source> {
           ..write('baseUrl: $baseUrl, ')
           ..write('isOnline: $isOnline, ')
           ..write('lastScraped: $lastScraped, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('maxDepth: $maxDepth')
           ..write(')'))
         .toString();
   }
@@ -2967,6 +3019,7 @@ typedef $$SourcesTableCreateCompanionBuilder =
       Value<bool> isOnline,
       Value<DateTime?> lastScraped,
       Value<DateTime> createdAt,
+      Value<int> maxDepth,
     });
 typedef $$SourcesTableUpdateCompanionBuilder =
     SourcesCompanion Function({
@@ -2976,6 +3029,7 @@ typedef $$SourcesTableUpdateCompanionBuilder =
       Value<bool> isOnline,
       Value<DateTime?> lastScraped,
       Value<DateTime> createdAt,
+      Value<int> maxDepth,
     });
 
 final class $$SourcesTableReferences
@@ -3055,6 +3109,11 @@ class $$SourcesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxDepth => $composableBuilder(
+    column: $table.maxDepth,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3147,6 +3206,11 @@ class $$SourcesTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get maxDepth => $composableBuilder(
+    column: $table.maxDepth,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SourcesTableAnnotationComposer
@@ -3177,6 +3241,9 @@ class $$SourcesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get maxDepth =>
+      $composableBuilder(column: $table.maxDepth, builder: (column) => column);
 
   Expression<T> mediaItemsRefs<T extends Object>(
     Expression<T> Function($$MediaItemsTableAnnotationComposer a) f,
@@ -3263,6 +3330,7 @@ class $$SourcesTableTableManager
                 Value<bool> isOnline = const Value.absent(),
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int> maxDepth = const Value.absent(),
               }) => SourcesCompanion(
                 id: id,
                 name: name,
@@ -3270,6 +3338,7 @@ class $$SourcesTableTableManager
                 isOnline: isOnline,
                 lastScraped: lastScraped,
                 createdAt: createdAt,
+                maxDepth: maxDepth,
               ),
           createCompanionCallback:
               ({
@@ -3279,6 +3348,7 @@ class $$SourcesTableTableManager
                 Value<bool> isOnline = const Value.absent(),
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int> maxDepth = const Value.absent(),
               }) => SourcesCompanion.insert(
                 id: id,
                 name: name,
@@ -3286,6 +3356,7 @@ class $$SourcesTableTableManager
                 isOnline: isOnline,
                 lastScraped: lastScraped,
                 createdAt: createdAt,
+                maxDepth: maxDepth,
               ),
           withReferenceMapper: (p0) => p0
               .map(

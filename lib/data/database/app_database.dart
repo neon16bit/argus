@@ -20,7 +20,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +61,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(indexedFolders);
+      }
+      if (from < 6) {
+        await m.addColumn(sources, sources.maxDepth);
       }
     },
   );
@@ -192,6 +195,15 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<IndexedFolder>> watchFoldersBySource(int sourceId) => (select(
     indexedFolders,
   )..where((f) => f.sourceId.equals(sourceId))).watch();
+
+  Future<List<IndexedFolder>> getIndexedFoldersBySource(int sourceId) =>
+      (select(indexedFolders)..where((f) => f.sourceId.equals(sourceId))).get();
+
+  Future<void> deleteIndexedFoldersByIds(List<int> ids) =>
+      (delete(indexedFolders)..where((f) => f.id.isIn(ids))).go();
+
+  Future<void> deleteMediaItemsByIds(List<int> ids) =>
+      (delete(mediaItems)..where((m) => m.id.isIn(ids))).go();
 
   // media show operations
   Future<MediaShow?> getShowByGroupTitle(String groupTitle) => (select(

@@ -3,6 +3,7 @@ import 'package:argus/features/sources/widgets/source_tile.dart';
 import 'package:argus/features/settings/settings_screen.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:argus/features/sources/widgets/source_form_dialog.dart';
 
 class SourcesScreen extends ConsumerStatefulWidget {
   const SourcesScreen({super.key});
@@ -65,60 +66,18 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
   }
 
   void _showAddDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Source'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'Movies Folder',
-                hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(
-                labelText: 'URL',
-                hintText: 'http://ftp.example.com/',
-                hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              keyboardType: TextInputType.url,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              final url = urlController.text.trim();
-              if (name.isEmpty || url.isEmpty) return;
-
-              Navigator.pop(ctx);
-              final messenger = ScaffoldMessenger.of(context);
-              final actions = ref.read(sourceActionsProvider);
-              final warning = await actions.addSource(name, url);
-              if (mounted && warning != null) {
-                messenger.showSnackBar(SnackBar(content: Text(warning)));
-              }
-              ref.invalidate(sourcesProvider);
-              ref.invalidate(mediaItemCountProvider);
-            },
-            child: const Text('Add'),
-          ),
-        ],
+      builder: (ctx) => SourceFormDialog(
+        onSave: (name, url, maxDepth) async {
+          final actions = ref.read(sourceActionsProvider);
+          final result = await actions.addSource(name, url, maxDepth);
+          if (mounted) {
+            ref.invalidate(sourcesProvider);
+            ref.invalidate(mediaItemCountProvider);
+          }
+          return result;
+        },
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
+import 'package:argus/core/constants.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ScrapeProgressSheet extends ConsumerStatefulWidget {
@@ -19,7 +20,7 @@ class ScrapeProgressSheet extends ConsumerStatefulWidget {
     required this.source,
     required this.onDone,
     required this.onError,
-    this.maxDepth = 1,
+    this.maxDepth = kFlatScrapeDepth,
   });
 
   @override

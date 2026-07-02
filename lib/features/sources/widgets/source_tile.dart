@@ -1,6 +1,7 @@
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/sources/widgets/scrape_progress_sheet.dart';
+import 'package:argus/features/sources/widgets/source_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -91,6 +92,10 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                     ),
                     const Spacer(),
                     IconButton(
+                      onPressed: () => _showEditDialog(source),
+                      icon: const Icon(Icons.settings_suggest),
+                    ),
+                    IconButton(
                       onPressed: () => _confirmDelete(source),
                       icon: const Icon(Icons.delete_rounded, color: Colors.red),
                     ),
@@ -133,101 +138,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     }
   }
 
-  void _scrapeWithProgress(Source source) async {
-    const int kFlatScrapeDepth = 1;
-    const int kGroupedScrapeDepth = 2;
-    final int? selectedDepth = await showDialog<int>(
-      context: context,
-      builder: (ctx) {
-        int tempDepth = kFlatScrapeDepth;
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Scrape Options'),
-              content: SizedBox(
-                width: 320,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Grouped structure'),
-                      subtitle: const Text(
-                        'Nested by year or letter (e.g. /2010/)',
-                      ),
-                      value: tempDepth == kGroupedScrapeDepth,
-                      onChanged: (bool val) {
-                        setStateDialog(() {
-                          tempDepth = val
-                              ? kGroupedScrapeDepth
-                              : kFlatScrapeDepth;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Expected folder structure:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                      ),
-                      child: Text(
-                        tempDepth == kFlatScrapeDepth
-                            ? 'root/\n└── [Show or Movie Folder]/'
-                                  '\n└── [Show or Movie Folder]/'
-                            : 'root/\n└── [Year / Alphabet Group]/'
-                                  '\n     └── [Show or Movie Folder]/'
-                                  '\n     └── [Show or Movie Folder]/'
-                                  '\n└── [Year / Alphabet Group]/'
-                                  '\n     └── [Show or Movie Folder]/'
-                                  '\n     └── [Show or Movie Folder]/',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, tempDepth),
-                  child: const Text('Scrape'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (selectedDepth == null) return;
-
+  void _scrapeWithProgress(Source source) {
     setState(() => _isScraping = true);
     final actions = ref.read(sourceActionsProvider);
-
-    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -236,7 +149,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
       builder: (ctx) => ScrapeProgressSheet(
         sourceActions: actions,
         source: source,
-        maxDepth: selectedDepth,
+        maxDepth: source.maxDepth,
         onDone: (count) {
           if (!mounted) return;
           Navigator.pop(ctx);
@@ -244,6 +157,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
           ref.invalidate(sourcesProvider);
           ref.invalidate(mediaItemCountProvider);
           ref.invalidate(mediaItemsBySourceProvider(source.id));
+          ref.invalidate(indexedFoldersCountBySourceProvider(source.id));
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Indexed $count items')));
@@ -255,6 +169,31 @@ class _SourceTileState extends ConsumerState<SourceTile> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: $error')));
+        },
+      ),
+    );
+  }
+
+  void _showEditDialog(Source source) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SourceFormDialog(
+        source: source,
+        onSave: (name, url, maxDepth) async {
+          final actions = ref.read(sourceActionsProvider);
+          final warning = await actions.updateSource(
+            source.id,
+            name,
+            url,
+            maxDepth,
+          );
+          if (mounted) {
+            ref.invalidate(sourcesProvider);
+            ref.invalidate(mediaItemCountProvider);
+            ref.invalidate(mediaItemsBySourceProvider(source.id));
+            ref.invalidate(indexedFoldersCountBySourceProvider(source.id));
+          }
+          return warning;
         },
       ),
     );

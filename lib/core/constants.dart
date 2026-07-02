@@ -44,5 +44,8 @@ const int kMaxConcurrentRequests = 2;
 const Duration kDefaultScrapeDelay = Duration(milliseconds: 200);
 const int kInsertBatchSize = 100;
 
+const int kFlatScrapeDepth = 1;
+const int kGroupedScrapeDepth = 2;
+
 const String kSimklBaseUrl = 'https://api.simkl.com';
 const String kSimklImageBase = 'https://wsrv.nl/?url=https://simkl.in';

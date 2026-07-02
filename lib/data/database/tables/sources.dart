@@ -7,4 +7,5 @@ class Sources extends Table {
   BoolColumn get isOnline => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastScraped => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  IntColumn get maxDepth => integer().withDefault(const Constant(1))();
 }

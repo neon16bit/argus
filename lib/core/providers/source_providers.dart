@@ -58,7 +58,7 @@ class SourceActions {
   final AppDatabase db;
   SourceActions(this.db);
 
-  Future<String?> addSource(String name, String url) async {
+  Future<String?> addSource(String name, String url, int maxDepth) async {
     if (!url.endsWith('/')) url = '$url/';
     if (!url.startsWith('http')) url = 'http://$url';
 
@@ -76,10 +76,63 @@ class SourceActions {
         name: Value(name),
         baseUrl: Value(url),
         isOnline: Value(online),
+        maxDepth: Value(maxDepth),
       ),
     );
 
     return online ? null : 'Source saved but appears offline';
+  }
+
+  Future<String?> updateSource(
+    int id,
+    String name,
+    String url,
+    int maxDepth,
+  ) async {
+    if (!url.endsWith('/')) url = '$url/';
+    if (!url.startsWith('http')) url = 'http://$url';
+
+    final current = await db.getSource(id);
+    final urlChanged = current.baseUrl != url;
+    final depthChanged = current.maxDepth != maxDepth;
+    final dataCleared = urlChanged || depthChanged;
+
+    if (urlChanged) {
+      final existing = await db.getSourceByUrl(url);
+      if (existing != null) {
+        return 'Another source with this URL already exists';
+      }
+    }
+
+    bool online = current.isOnline;
+    if (urlChanged) {
+      try {
+        final response = await http.get(Uri.parse(url)).timeout(kPingTimeout);
+        online = response.statusCode == 200;
+      } catch (_) {
+        online = false;
+      }
+    }
+
+    if (dataCleared) {
+      // clear old scraped items because source URL or structure changed
+      await db.deleteMediaItemsBySource(id);
+      await db.deleteIndexedFoldersBySource(id);
+    }
+
+    await db.updateSource(
+      Source(
+        id: id,
+        name: name,
+        baseUrl: url,
+        isOnline: online,
+        lastScraped: dataCleared ? null : current.lastScraped,
+        createdAt: current.createdAt,
+        maxDepth: maxDepth,
+      ),
+    );
+
+    return null;
   }
 
   Future<bool> pingSource(Source source) async {
@@ -109,9 +162,25 @@ class SourceActions {
 
     if (results.isEmpty) return 0;
 
-    await db.deleteMediaItemsBySource(source.id);
+    final existingItems = await db.getMediaItemsBySource(source.id);
+    final existingMap = {for (final m in existingItems) m.directUrl: m};
+    final newUrls = results.map((r) => r.directUrl).toSet();
 
-    final companions = results.map((r) => _toCompanion(r, source.id)).toList();
+    final itemsToDelete = existingItems
+        .where((m) => !newUrls.contains(m.directUrl))
+        .toList();
+    final itemsToInsert = results
+        .where((r) => !existingMap.containsKey(r.directUrl))
+        .toList();
+
+    if (itemsToDelete.isNotEmpty) {
+      final idsToDelete = itemsToDelete.map((m) => m.id).toList();
+      await db.deleteMediaItemsByIds(idsToDelete);
+    }
+
+    final companions = itemsToInsert
+        .map((r) => _toCompanion(r, source.id))
+        .toList();
 
     for (var i = 0; i < companions.length; i += kInsertBatchSize) {
       final end = (i + kInsertBatchSize).clamp(0, companions.length);
@@ -128,7 +197,7 @@ class SourceActions {
     await db.setSourceLastScraped(source.id, DateTime.now());
     await db.setSourceOnline(source.id, true);
 
-    return companions.length;
+    return results.length;
   }
 
   Stream<ScrapeProgress> scrapeSourceWithProgress(
@@ -146,10 +215,35 @@ class SourceActions {
 
       // null = show level sourcee
       if (folders != null) {
-        await db.deleteIndexedFoldersBySource(source.id);
-        if (folders.isNotEmpty) {
+        final existingFolders = await db.getIndexedFoldersBySource(source.id);
+        final existingMap = {for (final f in existingFolders) f.folderUrl: f};
+        final newUrls = folders.map((f) => f.folderUrl).toSet();
+
+        final foldersToDelete = existingFolders
+            .where((f) => !newUrls.contains(f.folderUrl))
+            .toList();
+        final foldersToInsert = folders
+            .where((f) => !existingMap.containsKey(f.folderUrl))
+            .toList();
+
+        if (foldersToDelete.isNotEmpty) {
+          final idsToDelete = foldersToDelete.map((f) => f.id).toList();
+          await db.deleteIndexedFoldersByIds(idsToDelete);
+
+          // Also delete media items from deleted folders to keep DB clean
+          for (final f in foldersToDelete) {
+            await (db.delete(db.mediaItems)..where(
+                  (m) =>
+                      m.sourceId.equals(source.id) &
+                      m.directUrl.like('${f.folderUrl}%'),
+                ))
+                .go();
+          }
+        }
+
+        if (foldersToInsert.isNotEmpty) {
           await db.insertIndexedFoldersBatch(
-            folders
+            foldersToInsert
                 .map(
                   (f) => IndexedFoldersCompanion(
                     sourceId: Value(source.id),
@@ -162,6 +256,7 @@ class SourceActions {
                 .toList(),
           );
         }
+
         await db.setSourceLastScraped(source.id, DateTime.now());
         await db.setSourceOnline(source.id, true);
         yield ScrapeProgress(
@@ -203,9 +298,23 @@ class SourceActions {
       filesFound: collectedResults.length,
     );
 
-    await db.deleteMediaItemsBySource(source.id);
+    final existingItems = await db.getMediaItemsBySource(source.id);
+    final existingMap = {for (final m in existingItems) m.directUrl: m};
+    final newUrls = collectedResults.map((r) => r.directUrl).toSet();
 
-    final companions = collectedResults
+    final itemsToDelete = existingItems
+        .where((m) => !newUrls.contains(m.directUrl))
+        .toList();
+    final itemsToInsert = collectedResults
+        .where((r) => !existingMap.containsKey(r.directUrl))
+        .toList();
+
+    if (itemsToDelete.isNotEmpty) {
+      final idsToDelete = itemsToDelete.map((m) => m.id).toList();
+      await db.deleteMediaItemsByIds(idsToDelete);
+    }
+
+    final companions = itemsToInsert
         .map((r) => _toCompanion(r, source.id))
         .toList();
 
@@ -225,8 +334,8 @@ class SourceActions {
     await db.setSourceOnline(source.id, true);
 
     yield ScrapeProgress(
-      message: 'Done! Saved ${companions.length} items.',
-      filesFound: companions.length,
+      message: 'Done! Saved ${collectedResults.length} items.',
+      filesFound: collectedResults.length,
       isDone: true,
     );
   }
@@ -251,15 +360,33 @@ class SourceActions {
       await db.markFolderScraped(folder.id);
       return;
     }
-    final companions = results
+
+    final existingItems =
+        await (db.select(db.mediaItems)..where(
+              (m) =>
+                  m.sourceId.equals(folder.sourceId) &
+                  m.directUrl.like('${folder.folderUrl}%'),
+            ))
+            .get();
+    final existingMap = {for (final m in existingItems) m.directUrl: m};
+    final newUrls = results.map((r) => r.directUrl).toSet();
+
+    final itemsToDelete = existingItems
+        .where((m) => !newUrls.contains(m.directUrl))
+        .toList();
+    final itemsToInsert = results
+        .where((r) => !existingMap.containsKey(r.directUrl))
+        .toList();
+
+    if (itemsToDelete.isNotEmpty) {
+      final idsToDelete = itemsToDelete.map((m) => m.id).toList();
+      await db.deleteMediaItemsByIds(idsToDelete);
+    }
+
+    final companions = itemsToInsert
         .map((r) => _toCompanion(r, folder.sourceId))
         .toList();
-    await (db.delete(db.mediaItems)..where(
-          (m) =>
-              m.sourceId.equals(folder.sourceId) &
-              m.directUrl.like('${folder.folderUrl}%'),
-        ))
-        .go();
+
     for (var i = 0; i < companions.length; i += kInsertBatchSize) {
       final end = (i + kInsertBatchSize).clamp(0, companions.length);
       await db.insertMediaItemsBatch(companions.sublist(i, end));
