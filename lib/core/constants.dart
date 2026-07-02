@@ -3,9 +3,9 @@ const Set<String> kMediaExtensions = {
   'mkv', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'ts', 'mpg',
   'mpeg', '3gp', 'ogv', 'rmvb',
   // audio
-  'mp3', 'flac', 'aac', 'ogg', 'wma', 'wav', 'm4a', 'opus',
+  // 'mp3', 'flac', 'aac', 'ogg', 'wma', 'wav', 'm4a', 'opus',
   // subtitle
-  'srt', 'ass', 'ssa', 'sub', 'vtt',
+  // 'srt', 'ass', 'ssa', 'sub', 'vtt',
 };
 
 const Set<String> kVideoExtensions = {

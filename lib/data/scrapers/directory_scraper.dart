@@ -117,10 +117,16 @@ class DirectoryScraper {
             nextLevelDirs.add(resolved);
           } else {
             final cleaned = NameCleaner.cleanFolderName(rawName);
+            final baseCleanTitle = cleaned.title.isEmpty
+                ? rawName
+                : cleaned.title;
+            final cleanTitleWithYear = (cleaned.year != null)
+                ? '$baseCleanTitle (${cleaned.year})'
+                : baseCleanTitle;
             dirs.add(
               FolderEntry(
                 rawName: rawName,
-                cleanTitle: cleaned.title.isEmpty ? rawName : cleaned.title,
+                cleanTitle: cleanTitleWithYear,
                 folderUrl: resolved.toString(),
                 year: cleaned.year,
               ),
@@ -142,10 +148,16 @@ class DirectoryScraper {
             currentUri.pathSegments.where((s) => s.isNotEmpty).lastOrNull ?? '';
         if (rawName.isNotEmpty) {
           final cleaned = NameCleaner.cleanFolderName(rawName);
+          final baseCleanTitle = cleaned.title.isEmpty
+              ? rawName
+              : cleaned.title;
+          final cleanTitleWithYear = (cleaned.year != null)
+              ? '$baseCleanTitle (${cleaned.year})'
+              : baseCleanTitle;
           results.add(
             FolderEntry(
               rawName: rawName,
-              cleanTitle: cleaned.title.isEmpty ? rawName : cleaned.title,
+              cleanTitle: cleanTitleWithYear,
               folderUrl: currentUri.toString(),
               year: cleaned.year,
             ),
@@ -187,6 +199,10 @@ class DirectoryScraper {
     final visited = <String>{};
     final queue = Queue<String>()..add(baseUrl);
     int urlsVisited = 0;
+
+    final groupFromParam = groupTitle != null
+        ? NameCleaner.cleanFolderName(groupTitle)
+        : null;
 
     yield ScrapeProgress(
       message: 'Starting scrape of ${baseUri.host}...',
@@ -258,11 +274,12 @@ class DirectoryScraper {
             final ext = extensionFromFilename(filename);
             if (ext != null && kMediaExtensions.contains(ext)) {
               final cleaned = NameCleaner.clean(filename);
+
               final String parentFolder;
               final CleanResult group;
               if (groupTitle != null) {
                 parentFolder = groupTitle;
-                group = CleanResult(title: groupTitle);
+                group = groupFromParam!;
               } else {
                 parentFolder = extractShowFolder(baseUri, resolved);
                 group = NameCleaner.cleanFolderName(parentFolder);
@@ -319,12 +336,24 @@ class DirectoryScraper {
                 }
               }
 
+              if (cleaned.isSample && season == null && episode == null) {
+                continue;
+              }
+
+              final cleanGroupTitle = group.title.isEmpty
+                  ? cleaned.title
+                  : group.title;
+              final year = group.year ?? cleaned.year;
+              final groupTitleWithYear = (year != null)
+                  ? '$cleanGroupTitle ($year)'
+                  : cleanGroupTitle;
+
               results.add(
                 ScrapeResult(
                   rawName: filename,
                   cleanTitle: title,
-                  groupTitle: group.title.isEmpty ? cleaned.title : group.title,
-                  year: group.year ?? cleaned.year,
+                  groupTitle: groupTitleWithYear,
+                  year: year,
                   directUrl: resolvedStr,
                   type: ScrapeItemType.file,
                   season: season,

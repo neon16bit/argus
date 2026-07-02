@@ -4,6 +4,7 @@ class CleanResult {
   final int? episode;
   final String? extension;
   final int? year;
+  final bool isSample;
 
   const CleanResult({
     required this.title,
@@ -11,6 +12,7 @@ class CleanResult {
     this.episode,
     this.extension,
     this.year,
+    this.isSample = false,
   });
 
   @override
@@ -138,6 +140,11 @@ class NameCleaner {
       rawName = rawName.substring(0, extMatch.start);
     }
 
+    final isSample = RegExp(
+      r'(?:^|[\._\-\s])sample$',
+      caseSensitive: false,
+    ).hasMatch(rawName);
+
     // extract season and episode before cleaning
     int? season;
     int? episode;
@@ -194,6 +201,7 @@ class NameCleaner {
       episode: episode,
       extension: ext,
       year: year,
+      isSample: isSample,
     );
   }
 
