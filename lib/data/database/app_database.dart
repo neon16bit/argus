@@ -20,7 +20,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,6 +64,17 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await m.addColumn(sources, sources.maxDepth);
+      }
+      if (from < 7) {
+        // composite indexes for browse source pagination
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_folders_source_title '
+          'ON indexed_folders (source_id, clean_title)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_items_source_group '
+          'ON media_items (source_id, group_title)',
+        );
       }
     },
   );
@@ -357,6 +368,47 @@ class AppDatabase extends _$AppDatabase {
     ).watch().map(
       (rows) => rows.map((row) => indexedFolders.map(row.data)).toList(),
     );
+  }
+
+  Future<List<String>> getShowTitlesBySource(
+    int sourceId, {
+    String? searchQuery,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    // try indexed_folders first (grouped sources)
+    final foldersQuery = selectOnly(indexedFolders)
+      ..addColumns([indexedFolders.cleanTitle])
+      ..where(indexedFolders.sourceId.equals(sourceId));
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      foldersQuery.where(indexedFolders.cleanTitle.like('%$searchQuery%'));
+    }
+    foldersQuery
+      ..groupBy([indexedFolders.cleanTitle])
+      ..orderBy([OrderingTerm(expression: indexedFolders.cleanTitle)])
+      ..limit(limit, offset: offset);
+    final foldersResult = await foldersQuery.get();
+
+    // if we got results, or weare past the first page, use folders
+    if (foldersResult.isNotEmpty || offset > 0) {
+      return foldersResult
+          .map((r) => r.read(indexedFolders.cleanTitle)!)
+          .toList();
+    }
+
+    // fallback to media_items distinct group titles (flat sources)
+    final itemsQuery = selectOnly(mediaItems)
+      ..addColumns([mediaItems.groupTitle])
+      ..where(mediaItems.sourceId.equals(sourceId));
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      itemsQuery.where(mediaItems.groupTitle.like('%$searchQuery%'));
+    }
+    itemsQuery
+      ..groupBy([mediaItems.groupTitle])
+      ..orderBy([OrderingTerm(expression: mediaItems.groupTitle)])
+      ..limit(limit, offset: offset);
+    final itemsResult = await itemsQuery.get();
+    return itemsResult.map((r) => r.read(mediaItems.groupTitle)!).toList();
   }
 
   static QueryExecutor _openConnection() {

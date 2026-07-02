@@ -2999,6 +2999,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MediaItemsTable mediaItems = $MediaItemsTable(this);
   late final $MediaShowsTable mediaShows = $MediaShowsTable(this);
   late final $IndexedFoldersTable indexedFolders = $IndexedFoldersTable(this);
+  late final Index idxItemsSourceGroup = Index(
+    'idx_items_source_group',
+    'CREATE INDEX idx_items_source_group ON media_items (source_id, group_title)',
+  );
+  late final Index idxFoldersSourceTitle = Index(
+    'idx_folders_source_title',
+    'CREATE INDEX idx_folders_source_title ON indexed_folders (source_id, clean_title)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3008,6 +3016,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mediaItems,
     mediaShows,
     indexedFolders,
+    idxItemsSourceGroup,
+    idxFoldersSourceTitle,
   ];
 }
 

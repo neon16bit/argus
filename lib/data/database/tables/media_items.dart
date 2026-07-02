@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:argus/data/scrapers/scrape_result.dart';
 import 'sources.dart';
 
+@TableIndex(name: 'idx_items_source_group', columns: {#sourceId, #groupTitle})
 class MediaItems extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get sourceId => integer().references(Sources, #id)();

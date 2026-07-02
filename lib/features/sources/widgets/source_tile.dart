@@ -3,6 +3,7 @@ import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
 import 'package:argus/features/sources/widgets/source_form_dialog.dart';
+import 'package:argus/features/sources/source_items_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -212,7 +213,20 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                           ),
                     const Spacer(),
                     IconButton(
+                      tooltip: 'Browse items',
+                      icon: const Icon(Icons.folder_shared_outlined),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SourceItemsScreen(source: source),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
                       onPressed: () => _showEditDialog(source),
+                      tooltip: 'Edit source',
                       icon: const Icon(Icons.settings_suggest),
                     ),
                     IconButton(

@@ -1,6 +1,7 @@
 import 'package:argus/data/database/tables/sources.dart';
 import 'package:drift/drift.dart';
 
+@TableIndex(name: 'idx_folders_source_title', columns: {#sourceId, #cleanTitle})
 class IndexedFolders extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get sourceId => integer().references(Sources, #id)();
