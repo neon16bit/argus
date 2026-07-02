@@ -70,6 +70,14 @@ final indexedFoldersCountBySourceProvider = FutureProvider.family<int, int>((
   return db.getIndexedFolderCountBySource(sourceId);
 });
 
+final mediaItemsCountBySourceProvider = FutureProvider.family<int, int>((
+  ref,
+  sourceId,
+) {
+  final db = ref.watch(databaseProvider);
+  return db.getMediaItemCountBySource(sourceId);
+});
+
 final sourceActionsProvider = Provider<SourceActions>((ref) {
   return SourceActions(ref.watch(databaseProvider), ref);
 });

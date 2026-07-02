@@ -31,6 +31,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     final folderCountAsync = ref.watch(
       indexedFoldersCountBySourceProvider(source.id),
     );
+    final mediaItemsCountAsync = ref.watch(
+      mediaItemsCountBySourceProvider(source.id),
+    );
     final scrapedIds = ref.watch(scrapedSourcesProvider);
     final hasBeenScraped = scrapedIds.contains(source.id);
 
@@ -56,9 +59,22 @@ class _SourceTileState extends ConsumerState<SourceTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 folderCountAsync.when(
-                  data: (count) => Text('$count folders indexed'),
+                  data: (foldersCount) {
+                    if (foldersCount > 0) {
+                      return Text('$foldersCount folders indexed');
+                    }
+                    return mediaItemsCountAsync.when(
+                      data: (itemsCount) => Text('$itemsCount items indexed'),
+                      loading: () => const Text('Loading items...'),
+                      error: (err, stack) => const Text('0 folders indexed'),
+                    );
+                  },
                   loading: () => const Text('Loading...'),
-                  error: (e, st) => const Text('0 folders indexed'),
+                  error: (e, st) => mediaItemsCountAsync.when(
+                    data: (itemsCount) => Text('$itemsCount items indexed'),
+                    loading: () => const Text('Loading items...'),
+                    error: (err, stack) => const Text('0 folders indexed'),
+                  ),
                 ),
                 if (source.lastScraped != null)
                   Text(
@@ -185,7 +201,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                             label: const Text('Abort'),
                           )
                         : FilledButton.icon(
-                            onPressed: () => _scrapeWithProgress(source),
+                            onPressed: () => _startScrapeFlow(source),
                             icon: Icon(
                               hasBeenScraped
                                   ? Icons.refresh_rounded
@@ -250,6 +266,46 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     });
   }
 
+  void _startScrapeFlow(Source source) async {
+    final fullScrape = ref.read(settingsProvider).fullScrapeMode;
+    if (fullScrape) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Full Scrape Warning'),
+            ],
+          ),
+          content: const Text(
+            'Full scrape mode is currently enabled in settings. '
+            'This will scrape all media files recursively, which can take a lot of time and network requests. '
+            'This might get rate-limited or blocked by the provider. '
+            'Do you want to proceed?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              child: const Text('Proceed'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+    _scrapeWithProgress(source);
+  }
+
   void _scrapeWithProgress(Source source) {
     _scrapeSubscription?.cancel();
     setState(() {
@@ -276,6 +332,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                 ref.invalidate(sourcesProvider);
                 ref.invalidate(mediaItemCountProvider);
                 ref.invalidate(mediaItemsBySourceProvider(source.id));
+                ref.invalidate(mediaItemsCountBySourceProvider(source.id));
                 ref.invalidate(indexedFoldersCountBySourceProvider(source.id));
               }
             });
