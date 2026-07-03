@@ -188,11 +188,14 @@ class AppDatabase extends _$AppDatabase {
         b.insertAll(indexedFolders, folders, mode: InsertMode.insertOrReplace),
   );
 
-  Future<void> markFolderScraped(int id) =>
+  Future<void> markFolderScraped(int id, {String? cleanTitle}) =>
       (update(indexedFolders)..where((f) => f.id.equals(id))).write(
         IndexedFoldersCompanion(
           isScraped: const Value(true),
           lastScraped: Value(DateTime.now()),
+          cleanTitle: cleanTitle != null
+              ? Value(cleanTitle)
+              : const Value.absent(),
         ),
       );
 

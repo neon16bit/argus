@@ -523,7 +523,10 @@ class SourceActions {
     for (final r in results) {
       if (r.year != null) await db.insertShowStub(r.groupTitle, r.year!);
     }
-    await db.markFolderScraped(folder.id);
+    final String? cleanTitle = results.isNotEmpty
+        ? results.first.groupTitle
+        : null;
+    await db.markFolderScraped(folder.id, cleanTitle: cleanTitle);
   }
 
   Future<void> deleteSource(int id) async {
