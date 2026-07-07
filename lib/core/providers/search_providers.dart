@@ -15,6 +15,7 @@ class SearchResult {
   final int itemCount;
   final String? folderUrl; // non-null if from indexed_folders (not yet scraped)
   final bool isScraped;
+  final bool autoScrape; // whether this source auto index on search
 
   const SearchResult({
     required this.groupTitle,
@@ -26,6 +27,7 @@ class SearchResult {
     this.itemCount = 0,
     this.folderUrl,
     this.isScraped = true,
+    this.autoScrape = true,
   });
 
   // title to show in the ui (titleEn > resolvedTitle > groupTitle)
@@ -80,6 +82,7 @@ final searchResultsProvider = StreamProvider<List<SearchResult>>((ref) {
                 itemCount: row['item_count'] as int? ?? 0,
                 folderUrl: row['folder_url'] as String?,
                 isScraped: (row['is_scraped'] as int? ?? 1) == 1,
+                autoScrape: (row['auto_scrape'] as int? ?? 1) == 1,
               ),
             )
             .toList(),

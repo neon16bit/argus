@@ -92,6 +92,21 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _autoScrapeMeta = const VerificationMeta(
+    'autoScrape',
+  );
+  @override
+  late final GeneratedColumn<bool> autoScrape = GeneratedColumn<bool>(
+    'auto_scrape',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_scrape" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -101,6 +116,7 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     lastScraped,
     createdAt,
     maxDepth,
+    autoScrape,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -160,6 +176,12 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         maxDepth.isAcceptableOrUnknown(data['max_depth']!, _maxDepthMeta),
       );
     }
+    if (data.containsKey('auto_scrape')) {
+      context.handle(
+        _autoScrapeMeta,
+        autoScrape.isAcceptableOrUnknown(data['auto_scrape']!, _autoScrapeMeta),
+      );
+    }
     return context;
   }
 
@@ -197,6 +219,10 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         DriftSqlType.int,
         data['${effectivePrefix}max_depth'],
       )!,
+      autoScrape: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_scrape'],
+      )!,
     );
   }
 
@@ -214,6 +240,7 @@ class Source extends DataClass implements Insertable<Source> {
   final DateTime? lastScraped;
   final DateTime createdAt;
   final int maxDepth;
+  final bool autoScrape;
   const Source({
     required this.id,
     required this.name,
@@ -222,6 +249,7 @@ class Source extends DataClass implements Insertable<Source> {
     this.lastScraped,
     required this.createdAt,
     required this.maxDepth,
+    required this.autoScrape,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -235,6 +263,7 @@ class Source extends DataClass implements Insertable<Source> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['max_depth'] = Variable<int>(maxDepth);
+    map['auto_scrape'] = Variable<bool>(autoScrape);
     return map;
   }
 
@@ -249,6 +278,7 @@ class Source extends DataClass implements Insertable<Source> {
           : Value(lastScraped),
       createdAt: Value(createdAt),
       maxDepth: Value(maxDepth),
+      autoScrape: Value(autoScrape),
     );
   }
 
@@ -265,6 +295,7 @@ class Source extends DataClass implements Insertable<Source> {
       lastScraped: serializer.fromJson<DateTime?>(json['lastScraped']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       maxDepth: serializer.fromJson<int>(json['maxDepth']),
+      autoScrape: serializer.fromJson<bool>(json['autoScrape']),
     );
   }
   @override
@@ -278,6 +309,7 @@ class Source extends DataClass implements Insertable<Source> {
       'lastScraped': serializer.toJson<DateTime?>(lastScraped),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'maxDepth': serializer.toJson<int>(maxDepth),
+      'autoScrape': serializer.toJson<bool>(autoScrape),
     };
   }
 
@@ -289,6 +321,7 @@ class Source extends DataClass implements Insertable<Source> {
     Value<DateTime?> lastScraped = const Value.absent(),
     DateTime? createdAt,
     int? maxDepth,
+    bool? autoScrape,
   }) => Source(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -297,6 +330,7 @@ class Source extends DataClass implements Insertable<Source> {
     lastScraped: lastScraped.present ? lastScraped.value : this.lastScraped,
     createdAt: createdAt ?? this.createdAt,
     maxDepth: maxDepth ?? this.maxDepth,
+    autoScrape: autoScrape ?? this.autoScrape,
   );
   Source copyWithCompanion(SourcesCompanion data) {
     return Source(
@@ -309,6 +343,9 @@ class Source extends DataClass implements Insertable<Source> {
           : this.lastScraped,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       maxDepth: data.maxDepth.present ? data.maxDepth.value : this.maxDepth,
+      autoScrape: data.autoScrape.present
+          ? data.autoScrape.value
+          : this.autoScrape,
     );
   }
 
@@ -321,7 +358,8 @@ class Source extends DataClass implements Insertable<Source> {
           ..write('isOnline: $isOnline, ')
           ..write('lastScraped: $lastScraped, ')
           ..write('createdAt: $createdAt, ')
-          ..write('maxDepth: $maxDepth')
+          ..write('maxDepth: $maxDepth, ')
+          ..write('autoScrape: $autoScrape')
           ..write(')'))
         .toString();
   }
@@ -335,6 +373,7 @@ class Source extends DataClass implements Insertable<Source> {
     lastScraped,
     createdAt,
     maxDepth,
+    autoScrape,
   );
   @override
   bool operator ==(Object other) =>
@@ -346,7 +385,8 @@ class Source extends DataClass implements Insertable<Source> {
           other.isOnline == this.isOnline &&
           other.lastScraped == this.lastScraped &&
           other.createdAt == this.createdAt &&
-          other.maxDepth == this.maxDepth);
+          other.maxDepth == this.maxDepth &&
+          other.autoScrape == this.autoScrape);
 }
 
 class SourcesCompanion extends UpdateCompanion<Source> {
@@ -357,6 +397,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
   final Value<DateTime?> lastScraped;
   final Value<DateTime> createdAt;
   final Value<int> maxDepth;
+  final Value<bool> autoScrape;
   const SourcesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -365,6 +406,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.lastScraped = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.maxDepth = const Value.absent(),
+    this.autoScrape = const Value.absent(),
   });
   SourcesCompanion.insert({
     this.id = const Value.absent(),
@@ -374,6 +416,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.lastScraped = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.maxDepth = const Value.absent(),
+    this.autoScrape = const Value.absent(),
   }) : name = Value(name),
        baseUrl = Value(baseUrl);
   static Insertable<Source> custom({
@@ -384,6 +427,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Expression<DateTime>? lastScraped,
     Expression<DateTime>? createdAt,
     Expression<int>? maxDepth,
+    Expression<bool>? autoScrape,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -393,6 +437,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       if (lastScraped != null) 'last_scraped': lastScraped,
       if (createdAt != null) 'created_at': createdAt,
       if (maxDepth != null) 'max_depth': maxDepth,
+      if (autoScrape != null) 'auto_scrape': autoScrape,
     });
   }
 
@@ -404,6 +449,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Value<DateTime?>? lastScraped,
     Value<DateTime>? createdAt,
     Value<int>? maxDepth,
+    Value<bool>? autoScrape,
   }) {
     return SourcesCompanion(
       id: id ?? this.id,
@@ -413,6 +459,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       lastScraped: lastScraped ?? this.lastScraped,
       createdAt: createdAt ?? this.createdAt,
       maxDepth: maxDepth ?? this.maxDepth,
+      autoScrape: autoScrape ?? this.autoScrape,
     );
   }
 
@@ -440,6 +487,9 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     if (maxDepth.present) {
       map['max_depth'] = Variable<int>(maxDepth.value);
     }
+    if (autoScrape.present) {
+      map['auto_scrape'] = Variable<bool>(autoScrape.value);
+    }
     return map;
   }
 
@@ -452,7 +502,8 @@ class SourcesCompanion extends UpdateCompanion<Source> {
           ..write('isOnline: $isOnline, ')
           ..write('lastScraped: $lastScraped, ')
           ..write('createdAt: $createdAt, ')
-          ..write('maxDepth: $maxDepth')
+          ..write('maxDepth: $maxDepth, ')
+          ..write('autoScrape: $autoScrape')
           ..write(')'))
         .toString();
   }
@@ -3030,6 +3081,7 @@ typedef $$SourcesTableCreateCompanionBuilder =
       Value<DateTime?> lastScraped,
       Value<DateTime> createdAt,
       Value<int> maxDepth,
+      Value<bool> autoScrape,
     });
 typedef $$SourcesTableUpdateCompanionBuilder =
     SourcesCompanion Function({
@@ -3040,6 +3092,7 @@ typedef $$SourcesTableUpdateCompanionBuilder =
       Value<DateTime?> lastScraped,
       Value<DateTime> createdAt,
       Value<int> maxDepth,
+      Value<bool> autoScrape,
     });
 
 final class $$SourcesTableReferences
@@ -3124,6 +3177,11 @@ class $$SourcesTableFilterComposer
 
   ColumnFilters<int> get maxDepth => $composableBuilder(
     column: $table.maxDepth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoScrape => $composableBuilder(
+    column: $table.autoScrape,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3221,6 +3279,11 @@ class $$SourcesTableOrderingComposer
     column: $table.maxDepth,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get autoScrape => $composableBuilder(
+    column: $table.autoScrape,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SourcesTableAnnotationComposer
@@ -3254,6 +3317,11 @@ class $$SourcesTableAnnotationComposer
 
   GeneratedColumn<int> get maxDepth =>
       $composableBuilder(column: $table.maxDepth, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoScrape => $composableBuilder(
+    column: $table.autoScrape,
+    builder: (column) => column,
+  );
 
   Expression<T> mediaItemsRefs<T extends Object>(
     Expression<T> Function($$MediaItemsTableAnnotationComposer a) f,
@@ -3341,6 +3409,7 @@ class $$SourcesTableTableManager
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> maxDepth = const Value.absent(),
+                Value<bool> autoScrape = const Value.absent(),
               }) => SourcesCompanion(
                 id: id,
                 name: name,
@@ -3349,6 +3418,7 @@ class $$SourcesTableTableManager
                 lastScraped: lastScraped,
                 createdAt: createdAt,
                 maxDepth: maxDepth,
+                autoScrape: autoScrape,
               ),
           createCompanionCallback:
               ({
@@ -3359,6 +3429,7 @@ class $$SourcesTableTableManager
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> maxDepth = const Value.absent(),
+                Value<bool> autoScrape = const Value.absent(),
               }) => SourcesCompanion.insert(
                 id: id,
                 name: name,
@@ -3367,6 +3438,7 @@ class $$SourcesTableTableManager
                 lastScraped: lastScraped,
                 createdAt: createdAt,
                 maxDepth: maxDepth,
+                autoScrape: autoScrape,
               ),
           withReferenceMapper: (p0) => p0
               .map(

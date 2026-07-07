@@ -104,7 +104,12 @@ class SourceActions {
   final Ref ref;
   SourceActions(this.db, this.ref);
 
-  Future<String?> addSource(String name, String url, int maxDepth) async {
+  Future<String?> addSource(
+    String name,
+    String url,
+    int maxDepth,
+    bool autoScrape,
+  ) async {
     if (!url.endsWith('/')) url = '$url/';
     if (!url.startsWith('http')) url = 'http://$url';
 
@@ -123,6 +128,7 @@ class SourceActions {
         baseUrl: Value(url),
         isOnline: Value(online),
         maxDepth: Value(maxDepth),
+        autoScrape: Value(autoScrape),
       ),
     );
 
@@ -134,6 +140,7 @@ class SourceActions {
     String name,
     String url,
     int maxDepth,
+    bool autoScrape,
   ) async {
     if (!url.endsWith('/')) url = '$url/';
     if (!url.startsWith('http')) url = 'http://$url';
@@ -176,6 +183,7 @@ class SourceActions {
         lastScraped: dataCleared ? null : current.lastScraped,
         createdAt: current.createdAt,
         maxDepth: maxDepth,
+        autoScrape: autoScrape,
       ),
     );
 

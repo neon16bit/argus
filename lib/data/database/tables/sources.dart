@@ -8,4 +8,5 @@ class Sources extends Table {
   DateTimeColumn get lastScraped => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   IntColumn get maxDepth => integer().withDefault(const Constant(1))();
+  BoolColumn get autoScrape => boolean().withDefault(const Constant(false))();
 }

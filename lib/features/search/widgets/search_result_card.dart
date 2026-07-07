@@ -30,7 +30,9 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
   }
 
   void _enqueueScrapeIfNeeded() {
-    if (!widget.result.isScraped && widget.result.folderUrl != null) {
+    if (!widget.result.isScraped &&
+        widget.result.folderUrl != null &&
+        widget.result.autoScrape) {
       Future.microtask(() {
         if (mounted) {
           ref
@@ -104,18 +106,24 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
                           Icon(
                             widget.result.isScraped
                                 ? Icons.storage_rounded
-                                : Icons.cloud_sync_rounded,
+                                : widget.result.autoScrape
+                                ? Icons.cloud_sync_rounded
+                                : Icons.cloud_off_rounded,
                             size: 14,
                             color: widget.result.isScraped
                                 ? Theme.of(context).colorScheme.primary
-                                : Colors.orange,
+                                : widget.result.autoScrape
+                                ? Colors.orange
+                                : Colors.grey,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               widget.result.isScraped
                                   ? '${widget.result.itemCount} items'
-                                  : 'Indexing...',
+                                  : widget.result.autoScrape
+                                  ? 'Indexing...'
+                                  : 'Not indexed',
                               style: Theme.of(context).textTheme.bodySmall,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

@@ -4,7 +4,13 @@ import 'package:argus/core/constants.dart';
 
 class SourceFormDialog extends StatefulWidget {
   final Source? source;
-  final Future<String?> Function(String name, String url, int maxDepth) onSave;
+  final Future<String?> Function(
+    String name,
+    String url,
+    int maxDepth,
+    bool autoScrape,
+  )
+  onSave;
 
   const SourceFormDialog({super.key, this.source, required this.onSave});
 
@@ -16,6 +22,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _urlController;
   late int _selectedDepth;
+  late bool _autoScrape;
   bool _urlModified = false;
 
   @override
@@ -24,6 +31,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     _nameController = TextEditingController(text: widget.source?.name ?? '');
     _urlController = TextEditingController(text: widget.source?.baseUrl ?? '');
     _selectedDepth = widget.source?.maxDepth ?? kFlatScrapeDepth;
+    _autoScrape = widget.source?.autoScrape ?? false;
 
     if (widget.source != null) {
       _urlController.addListener(_checkIfModified);
@@ -96,6 +104,20 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                         : kFlatScrapeDepth;
                   });
                   _checkIfModified();
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Auto-index on search'),
+                subtitle: const Text(
+                  'Only enable for sources you own or that won\'t rate-limit you',
+                  style: TextStyle(fontSize: 11),
+                ),
+                value: _autoScrape,
+                onChanged: (bool val) {
+                  setState(() {
+                    _autoScrape = val;
+                  });
                 },
               ),
               const SizedBox(height: 16),
@@ -172,7 +194,12 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
 
             Navigator.pop(context);
             final messenger = ScaffoldMessenger.of(context);
-            final warning = await widget.onSave(name, url, _selectedDepth);
+            final warning = await widget.onSave(
+              name,
+              url,
+              _selectedDepth,
+              _autoScrape,
+            );
             if (context.mounted && warning != null) {
               messenger.showSnackBar(SnackBar(content: Text(warning)));
             }

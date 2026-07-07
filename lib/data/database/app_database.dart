@@ -20,7 +20,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -75,6 +75,9 @@ class AppDatabase extends _$AppDatabase {
           'CREATE INDEX IF NOT EXISTS idx_items_source_group '
           'ON media_items (source_id, group_title)',
         );
+      }
+      if (from < 8) {
+        await m.addColumn(sources, sources.autoScrape);
       }
     },
   );
@@ -286,7 +289,8 @@ class AppDatabase extends _$AppDatabase {
       s.resolved_title, s.title_en, s.poster_path, s.media_type, s.year,
       COUNT(m.id) as item_count,
       NULL as folder_url,
-      1 as is_scraped
+      1 as is_scraped,
+      1 as auto_scrape
     FROM media_items m
     LEFT JOIN media_shows s ON m.group_title = s.group_title
     WHERE m.id IN (
@@ -307,9 +311,11 @@ class AppDatabase extends _$AppDatabase {
       COALESCE(s.year, f.year) as year,
       0 as item_count,
       f.folder_url as folder_url,
-      f.is_scraped as is_scraped
+      f.is_scraped as is_scraped,
+      src.auto_scrape as auto_scrape
     FROM indexed_folders f
     LEFT JOIN media_shows s ON f.clean_title = s.group_title
+    LEFT JOIN sources src ON f.source_id = src.id
     WHERE f.clean_title LIKE ?2
     AND NOT EXISTS (
       SELECT 1 FROM media_items m3 WHERE m3.group_title = f.clean_title
