@@ -39,18 +39,26 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final metadataAsync = ref.watch(metadataProvider(widget.result.groupTitle));
+    String activeGroupTitle = widget.result.groupTitle;
+    if (widget.result.folderUrl != null) {
+      final resultFolder = ref
+          .watch(folderByUrlProvider(widget.result.folderUrl!))
+          .value;
+      if (resultFolder != null) {
+        activeGroupTitle = resultFolder.cleanTitle;
+      }
+    }
+
+    final metadataAsync = ref.watch(metadataProvider(activeGroupTitle));
     final metadata = metadataAsync.value;
 
-    final itemsAsync = ref.watch(showItemsProvider(widget.result.groupTitle));
+    final itemsAsync = ref.watch(showItemsProvider(activeGroupTitle));
     final items = itemsAsync.value ?? [];
 
     final sourcesAsync = ref.watch(sourcesProvider);
     final allSources = sourcesAsync.value ?? [];
 
-    final foldersAsync = ref.watch(
-      showFoldersProvider(widget.result.groupTitle),
-    );
+    final foldersAsync = ref.watch(showFoldersProvider(activeGroupTitle));
     final folders = foldersAsync.value ?? [];
     final isAnyUnscraped =
         folders.isNotEmpty && folders.any((f) => !f.isScraped);
@@ -104,10 +112,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 onPressed: () async {
                   final db = ref.read(databaseProvider);
                   // clear media items for this show across all matching sources
-                  await (db.delete(db.mediaItems)..where(
-                        (m) => m.groupTitle.equals(widget.result.groupTitle),
-                      ))
-                      .go();
+                  await (db.delete(
+                    db.mediaItems,
+                  )..where((m) => m.groupTitle.equals(activeGroupTitle))).go();
                   for (final folder in folders) {
                     await (db.update(db.indexedFolders)
                           ..where((f) => f.folderUrl.equals(folder.folderUrl)))
@@ -124,7 +131,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Refreshing folders for ${widget.result.displayTitle}...',
+                          'Refreshing folders for $activeGroupTitle...',
                         ),
                         behavior: SnackBarBehavior.floating,
                       ),

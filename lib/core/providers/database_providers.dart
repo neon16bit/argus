@@ -21,3 +21,13 @@ final showItemsProvider = StreamProvider.family<List<MediaItem>, String>((
   final db = ref.watch(databaseProvider);
   return db.watchMediaItemsByGroupTitle(groupTitle);
 });
+
+final folderByUrlProvider = StreamProvider.family<IndexedFolder?, String>((
+  ref,
+  url,
+) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(
+    db.indexedFolders,
+  )..where((f) => f.folderUrl.equals(url))).watchSingleOrNull();
+});
