@@ -25,6 +25,32 @@ class ScrapeResult {
     this.year,
   });
 
+  ScrapeResult copyWith({
+    String? rawName,
+    String? cleanTitle,
+    String? groupTitle,
+    String? directUrl,
+    ScrapeItemType? type,
+    int? season,
+    int? episode,
+    String? fileExtension,
+    int? fileSize,
+    int? year,
+  }) {
+    return ScrapeResult(
+      rawName: rawName ?? this.rawName,
+      cleanTitle: cleanTitle ?? this.cleanTitle,
+      groupTitle: groupTitle ?? this.groupTitle,
+      directUrl: directUrl ?? this.directUrl,
+      type: type ?? this.type,
+      season: season ?? this.season,
+      episode: episode ?? this.episode,
+      fileExtension: fileExtension ?? this.fileExtension,
+      fileSize: fileSize ?? this.fileSize,
+      year: year ?? this.year,
+    );
+  }
+
   @override
   String toString() {
     if (type == ScrapeItemType.folder) {

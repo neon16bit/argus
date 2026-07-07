@@ -498,6 +498,18 @@ class SourceActions {
       return;
     }
 
+    // prevents items missing a year tag from being orphaned under a different title
+    final canonicalResult = results.firstWhere(
+      (r) => r.year != null,
+      orElse: () => results.first,
+    );
+    for (var i = 0; i < results.length; i++) {
+      results[i] = results[i].copyWith(
+        groupTitle: canonicalResult.groupTitle,
+        year: canonicalResult.year,
+      );
+    }
+
     final existingItems =
         await (db.select(db.mediaItems)..where(
               (m) =>
