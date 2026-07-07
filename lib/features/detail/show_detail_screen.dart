@@ -63,6 +63,20 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final isAnyUnscraped =
         folders.isNotEmpty && folders.any((f) => !f.isScraped);
 
+    // invalidate metadata when scraping finishes
+    ref.listen<bool>(
+      showFoldersProvider(activeGroupTitle).select((v) {
+        final folderList = v.value ?? [];
+        return folderList.isNotEmpty &&
+            folderList.any((folder) => !folder.isScraped);
+      }),
+      (previous, currentIsUnscraped) {
+        if (previous == true && currentIsUnscraped == false) {
+          ref.invalidate(metadataProvider(activeGroupTitle));
+        }
+      },
+    );
+
     // reactive filtering, grouping and sorting calculations
     final viewModel = ShowViewModel.compute(
       items: items,
