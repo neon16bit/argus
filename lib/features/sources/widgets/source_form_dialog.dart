@@ -9,6 +9,7 @@ class SourceFormDialog extends StatefulWidget {
     String url,
     int maxDepth,
     bool autoScrape,
+    int? requestDelayMs,
   )
   onSave;
 
@@ -23,6 +24,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
   late final TextEditingController _urlController;
   late int _selectedDepth;
   late bool _autoScrape;
+  int? _requestDelayMs;
   bool _urlModified = false;
 
   @override
@@ -32,6 +34,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     _urlController = TextEditingController(text: widget.source?.baseUrl ?? '');
     _selectedDepth = widget.source?.maxDepth ?? kFlatScrapeDepth;
     _autoScrape = widget.source?.autoScrape ?? false;
+    _requestDelayMs = widget.source?.requestDelayMs;
 
     if (widget.source != null) {
       _urlController.addListener(_checkIfModified);
@@ -121,6 +124,34 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 },
               ),
               const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: _requestDelayMs,
+                decoration: const InputDecoration(
+                  labelText: 'Request delay',
+                  helperText: 'Override global delay for this source',
+                  helperMaxLines: 2,
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text('Default (Global)'),
+                  ),
+                  DropdownMenuItem(value: 0, child: Text('0ms (None)')),
+                  DropdownMenuItem(value: 100, child: Text('100ms')),
+                  DropdownMenuItem(value: 250, child: Text('250ms')),
+                  DropdownMenuItem(value: 500, child: Text('500ms')),
+                  DropdownMenuItem(value: 1000, child: Text('1s')),
+                  DropdownMenuItem(value: 2000, child: Text('2s')),
+                  DropdownMenuItem(value: 3000, child: Text('3s')),
+                  DropdownMenuItem(value: 5000, child: Text('5s')),
+                ],
+                onChanged: (val) {
+                  setState(() {
+                    _requestDelayMs = val;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Expected folder structure:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -199,6 +230,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
               url,
               _selectedDepth,
               _autoScrape,
+              _requestDelayMs,
             );
             if (context.mounted && warning != null) {
               messenger.showSnackBar(SnackBar(content: Text(warning)));

@@ -9,4 +9,6 @@ class Sources extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   IntColumn get maxDepth => integer().withDefault(const Constant(1))();
   BoolColumn get autoScrape => boolean().withDefault(const Constant(false))();
+  IntColumn get requestDelayMs =>
+      integer().nullable()(); // source delay override (ms)
 }

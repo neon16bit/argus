@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/database_providers.dart';
 import 'package:argus/data/database/app_database.dart';
@@ -109,6 +110,7 @@ class SourceActions {
     String url,
     int maxDepth,
     bool autoScrape,
+    int? requestDelayMs,
   ) async {
     if (!url.endsWith('/')) url = '$url/';
     if (!url.startsWith('http')) url = 'http://$url';
@@ -129,6 +131,7 @@ class SourceActions {
         isOnline: Value(online),
         maxDepth: Value(maxDepth),
         autoScrape: Value(autoScrape),
+        requestDelayMs: Value(requestDelayMs),
       ),
     );
 
@@ -141,6 +144,7 @@ class SourceActions {
     String url,
     int maxDepth,
     bool autoScrape,
+    int? requestDelayMs,
   ) async {
     if (!url.endsWith('/')) url = '$url/';
     if (!url.startsWith('http')) url = 'http://$url';
@@ -184,6 +188,7 @@ class SourceActions {
         createdAt: current.createdAt,
         maxDepth: maxDepth,
         autoScrape: autoScrape,
+        requestDelayMs: requestDelayMs,
       ),
     );
 
@@ -483,6 +488,7 @@ class SourceActions {
     Duration requestDelay = Duration.zero,
   }) async {
     final results = <ScrapeResult>[];
+    Set<String> failedUrls = {};
     await for (final p in DirectoryScraper.scrapeWithProgress(
       folder.folderUrl,
       requestDelay: requestDelay,
@@ -490,11 +496,12 @@ class SourceActions {
     )) {
       if (p.isDone) {
         results.addAll(p.results);
+        failedUrls = p.failedUrls;
         break;
       }
     }
     if (results.isEmpty) {
-      await db.markFolderScraped(folder.id);
+      await db.markFolderScraped(folder.id, failedUrls: failedUrls.toList());
       return;
     }
 
@@ -546,7 +553,86 @@ class SourceActions {
     final String? cleanTitle = results.isNotEmpty
         ? results.first.groupTitle
         : null;
-    await db.markFolderScraped(folder.id, cleanTitle: cleanTitle);
+    await db.markFolderScraped(
+      folder.id,
+      cleanTitle: cleanTitle,
+      failedUrls: failedUrls.toList(),
+    );
+  }
+
+  // retries only the URLs that failed during a previous scrape
+  Future<void> retryScrapeErrors(
+    IndexedFolder folder, {
+    Duration requestDelay = Duration.zero,
+  }) async {
+    if (folder.scrapeErrors == null) return;
+    final List<dynamic> errorUrls;
+    try {
+      errorUrls = jsonDecode(folder.scrapeErrors!) as List<dynamic>;
+    } catch (_) {
+      return;
+    }
+    if (errorUrls.isEmpty) return;
+
+    final allResults = <ScrapeResult>[];
+    final remainingErrors = <String>{};
+
+    for (final errorUrl in errorUrls) {
+      final url = errorUrl as String;
+      await for (final p in DirectoryScraper.scrapeWithProgress(
+        url,
+        requestDelay: requestDelay,
+        groupTitle: folder.cleanTitle,
+      )) {
+        if (p.isDone) {
+          allResults.addAll(p.results);
+          remainingErrors.addAll(p.failedUrls);
+          break;
+        }
+      }
+    }
+
+    if (allResults.isNotEmpty) {
+      // normalize group title to match existing items
+      final canonicalResult = allResults.firstWhere(
+        (r) => r.year != null,
+        orElse: () => allResults.first,
+      );
+      for (var i = 0; i < allResults.length; i++) {
+        allResults[i] = allResults[i].copyWith(
+          groupTitle: canonicalResult.groupTitle,
+          year: canonicalResult.year,
+        );
+      }
+
+      // insert only merge, dont delete existing items from good seasons
+      final existingItems =
+          await (db.select(db.mediaItems)..where(
+                (m) =>
+                    m.sourceId.equals(folder.sourceId) &
+                    m.directUrl.like('${folder.folderUrl}%'),
+              ))
+              .get();
+      final existingMap = {for (final m in existingItems) m.directUrl: m};
+      final itemsToInsert = allResults
+          .where((r) => !existingMap.containsKey(r.directUrl))
+          .toList();
+
+      final companions = itemsToInsert
+          .map((r) => _toCompanion(r, folder.sourceId))
+          .toList();
+
+      for (var i = 0; i < companions.length; i += kInsertBatchSize) {
+        final end = (i + kInsertBatchSize).clamp(0, companions.length);
+        await db.insertMediaItemsBatch(companions.sublist(i, end));
+      }
+      for (final r in allResults) {
+        if (r.year != null) await db.insertShowStub(r.groupTitle, r.year!);
+      }
+    }
+
+    // update scrape errors, clear if all succeeded, or update with remaining
+    await db.markFolderScraped(folder.id, failedUrls: remainingErrors.toList());
   }
 
   Future<void> deleteSource(int id) async {

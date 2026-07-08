@@ -52,7 +52,11 @@ class ScrapeQueueNotifier extends Notifier<void> {
     if (folder == null || folder.isScraped) return;
 
     final settings = ref.read(settingsProvider);
-    final delay = settings.scrapeDelay;
+    final source = await db.getSource(folder.sourceId);
+
+    final delay = source.requestDelayMs != null
+        ? Duration(milliseconds: source.requestDelayMs!)
+        : settings.scrapeDelay;
 
     final actions = ref.read(sourceActionsProvider);
     await actions.deepScrapeFolder(folder, requestDelay: delay);

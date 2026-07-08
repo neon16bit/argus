@@ -107,6 +107,17 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _requestDelayMsMeta = const VerificationMeta(
+    'requestDelayMs',
+  );
+  @override
+  late final GeneratedColumn<int> requestDelayMs = GeneratedColumn<int>(
+    'request_delay_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -117,6 +128,7 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
     createdAt,
     maxDepth,
     autoScrape,
+    requestDelayMs,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -182,6 +194,15 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         autoScrape.isAcceptableOrUnknown(data['auto_scrape']!, _autoScrapeMeta),
       );
     }
+    if (data.containsKey('request_delay_ms')) {
+      context.handle(
+        _requestDelayMsMeta,
+        requestDelayMs.isAcceptableOrUnknown(
+          data['request_delay_ms']!,
+          _requestDelayMsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -223,6 +244,10 @@ class $SourcesTable extends Sources with TableInfo<$SourcesTable, Source> {
         DriftSqlType.bool,
         data['${effectivePrefix}auto_scrape'],
       )!,
+      requestDelayMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}request_delay_ms'],
+      ),
     );
   }
 
@@ -241,6 +266,7 @@ class Source extends DataClass implements Insertable<Source> {
   final DateTime createdAt;
   final int maxDepth;
   final bool autoScrape;
+  final int? requestDelayMs;
   const Source({
     required this.id,
     required this.name,
@@ -250,6 +276,7 @@ class Source extends DataClass implements Insertable<Source> {
     required this.createdAt,
     required this.maxDepth,
     required this.autoScrape,
+    this.requestDelayMs,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -264,6 +291,9 @@ class Source extends DataClass implements Insertable<Source> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['max_depth'] = Variable<int>(maxDepth);
     map['auto_scrape'] = Variable<bool>(autoScrape);
+    if (!nullToAbsent || requestDelayMs != null) {
+      map['request_delay_ms'] = Variable<int>(requestDelayMs);
+    }
     return map;
   }
 
@@ -279,6 +309,9 @@ class Source extends DataClass implements Insertable<Source> {
       createdAt: Value(createdAt),
       maxDepth: Value(maxDepth),
       autoScrape: Value(autoScrape),
+      requestDelayMs: requestDelayMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requestDelayMs),
     );
   }
 
@@ -296,6 +329,7 @@ class Source extends DataClass implements Insertable<Source> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       maxDepth: serializer.fromJson<int>(json['maxDepth']),
       autoScrape: serializer.fromJson<bool>(json['autoScrape']),
+      requestDelayMs: serializer.fromJson<int?>(json['requestDelayMs']),
     );
   }
   @override
@@ -310,6 +344,7 @@ class Source extends DataClass implements Insertable<Source> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'maxDepth': serializer.toJson<int>(maxDepth),
       'autoScrape': serializer.toJson<bool>(autoScrape),
+      'requestDelayMs': serializer.toJson<int?>(requestDelayMs),
     };
   }
 
@@ -322,6 +357,7 @@ class Source extends DataClass implements Insertable<Source> {
     DateTime? createdAt,
     int? maxDepth,
     bool? autoScrape,
+    Value<int?> requestDelayMs = const Value.absent(),
   }) => Source(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -331,6 +367,9 @@ class Source extends DataClass implements Insertable<Source> {
     createdAt: createdAt ?? this.createdAt,
     maxDepth: maxDepth ?? this.maxDepth,
     autoScrape: autoScrape ?? this.autoScrape,
+    requestDelayMs: requestDelayMs.present
+        ? requestDelayMs.value
+        : this.requestDelayMs,
   );
   Source copyWithCompanion(SourcesCompanion data) {
     return Source(
@@ -346,6 +385,9 @@ class Source extends DataClass implements Insertable<Source> {
       autoScrape: data.autoScrape.present
           ? data.autoScrape.value
           : this.autoScrape,
+      requestDelayMs: data.requestDelayMs.present
+          ? data.requestDelayMs.value
+          : this.requestDelayMs,
     );
   }
 
@@ -359,7 +401,8 @@ class Source extends DataClass implements Insertable<Source> {
           ..write('lastScraped: $lastScraped, ')
           ..write('createdAt: $createdAt, ')
           ..write('maxDepth: $maxDepth, ')
-          ..write('autoScrape: $autoScrape')
+          ..write('autoScrape: $autoScrape, ')
+          ..write('requestDelayMs: $requestDelayMs')
           ..write(')'))
         .toString();
   }
@@ -374,6 +417,7 @@ class Source extends DataClass implements Insertable<Source> {
     createdAt,
     maxDepth,
     autoScrape,
+    requestDelayMs,
   );
   @override
   bool operator ==(Object other) =>
@@ -386,7 +430,8 @@ class Source extends DataClass implements Insertable<Source> {
           other.lastScraped == this.lastScraped &&
           other.createdAt == this.createdAt &&
           other.maxDepth == this.maxDepth &&
-          other.autoScrape == this.autoScrape);
+          other.autoScrape == this.autoScrape &&
+          other.requestDelayMs == this.requestDelayMs);
 }
 
 class SourcesCompanion extends UpdateCompanion<Source> {
@@ -398,6 +443,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
   final Value<DateTime> createdAt;
   final Value<int> maxDepth;
   final Value<bool> autoScrape;
+  final Value<int?> requestDelayMs;
   const SourcesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -407,6 +453,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.createdAt = const Value.absent(),
     this.maxDepth = const Value.absent(),
     this.autoScrape = const Value.absent(),
+    this.requestDelayMs = const Value.absent(),
   });
   SourcesCompanion.insert({
     this.id = const Value.absent(),
@@ -417,6 +464,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     this.createdAt = const Value.absent(),
     this.maxDepth = const Value.absent(),
     this.autoScrape = const Value.absent(),
+    this.requestDelayMs = const Value.absent(),
   }) : name = Value(name),
        baseUrl = Value(baseUrl);
   static Insertable<Source> custom({
@@ -428,6 +476,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Expression<DateTime>? createdAt,
     Expression<int>? maxDepth,
     Expression<bool>? autoScrape,
+    Expression<int>? requestDelayMs,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -438,6 +487,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       if (createdAt != null) 'created_at': createdAt,
       if (maxDepth != null) 'max_depth': maxDepth,
       if (autoScrape != null) 'auto_scrape': autoScrape,
+      if (requestDelayMs != null) 'request_delay_ms': requestDelayMs,
     });
   }
 
@@ -450,6 +500,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     Value<DateTime>? createdAt,
     Value<int>? maxDepth,
     Value<bool>? autoScrape,
+    Value<int?>? requestDelayMs,
   }) {
     return SourcesCompanion(
       id: id ?? this.id,
@@ -460,6 +511,7 @@ class SourcesCompanion extends UpdateCompanion<Source> {
       createdAt: createdAt ?? this.createdAt,
       maxDepth: maxDepth ?? this.maxDepth,
       autoScrape: autoScrape ?? this.autoScrape,
+      requestDelayMs: requestDelayMs ?? this.requestDelayMs,
     );
   }
 
@@ -490,6 +542,9 @@ class SourcesCompanion extends UpdateCompanion<Source> {
     if (autoScrape.present) {
       map['auto_scrape'] = Variable<bool>(autoScrape.value);
     }
+    if (requestDelayMs.present) {
+      map['request_delay_ms'] = Variable<int>(requestDelayMs.value);
+    }
     return map;
   }
 
@@ -503,7 +558,8 @@ class SourcesCompanion extends UpdateCompanion<Source> {
           ..write('lastScraped: $lastScraped, ')
           ..write('createdAt: $createdAt, ')
           ..write('maxDepth: $maxDepth, ')
-          ..write('autoScrape: $autoScrape')
+          ..write('autoScrape: $autoScrape, ')
+          ..write('requestDelayMs: $requestDelayMs')
           ..write(')'))
         .toString();
   }
@@ -2597,6 +2653,17 @@ class $IndexedFoldersTable extends IndexedFolders
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _scrapeErrorsMeta = const VerificationMeta(
+    'scrapeErrors',
+  );
+  @override
+  late final GeneratedColumn<String> scrapeErrors = GeneratedColumn<String>(
+    'scrape_errors',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2608,6 +2675,7 @@ class $IndexedFoldersTable extends IndexedFolders
     isScraped,
     lastScraped,
     indexedAt,
+    scrapeErrors,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2683,6 +2751,15 @@ class $IndexedFoldersTable extends IndexedFolders
         indexedAt.isAcceptableOrUnknown(data['indexed_at']!, _indexedAtMeta),
       );
     }
+    if (data.containsKey('scrape_errors')) {
+      context.handle(
+        _scrapeErrorsMeta,
+        scrapeErrors.isAcceptableOrUnknown(
+          data['scrape_errors']!,
+          _scrapeErrorsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2728,6 +2805,10 @@ class $IndexedFoldersTable extends IndexedFolders
         DriftSqlType.dateTime,
         data['${effectivePrefix}indexed_at'],
       )!,
+      scrapeErrors: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scrape_errors'],
+      ),
     );
   }
 
@@ -2747,6 +2828,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
   final bool isScraped;
   final DateTime? lastScraped;
   final DateTime indexedAt;
+  final String? scrapeErrors;
   const IndexedFolder({
     required this.id,
     required this.sourceId,
@@ -2757,6 +2839,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
     required this.isScraped,
     this.lastScraped,
     required this.indexedAt,
+    this.scrapeErrors,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2774,6 +2857,9 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
       map['last_scraped'] = Variable<DateTime>(lastScraped);
     }
     map['indexed_at'] = Variable<DateTime>(indexedAt);
+    if (!nullToAbsent || scrapeErrors != null) {
+      map['scrape_errors'] = Variable<String>(scrapeErrors);
+    }
     return map;
   }
 
@@ -2790,6 +2876,9 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
           ? const Value.absent()
           : Value(lastScraped),
       indexedAt: Value(indexedAt),
+      scrapeErrors: scrapeErrors == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scrapeErrors),
     );
   }
 
@@ -2808,6 +2897,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
       isScraped: serializer.fromJson<bool>(json['isScraped']),
       lastScraped: serializer.fromJson<DateTime?>(json['lastScraped']),
       indexedAt: serializer.fromJson<DateTime>(json['indexedAt']),
+      scrapeErrors: serializer.fromJson<String?>(json['scrapeErrors']),
     );
   }
   @override
@@ -2823,6 +2913,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
       'isScraped': serializer.toJson<bool>(isScraped),
       'lastScraped': serializer.toJson<DateTime?>(lastScraped),
       'indexedAt': serializer.toJson<DateTime>(indexedAt),
+      'scrapeErrors': serializer.toJson<String?>(scrapeErrors),
     };
   }
 
@@ -2836,6 +2927,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
     bool? isScraped,
     Value<DateTime?> lastScraped = const Value.absent(),
     DateTime? indexedAt,
+    Value<String?> scrapeErrors = const Value.absent(),
   }) => IndexedFolder(
     id: id ?? this.id,
     sourceId: sourceId ?? this.sourceId,
@@ -2846,6 +2938,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
     isScraped: isScraped ?? this.isScraped,
     lastScraped: lastScraped.present ? lastScraped.value : this.lastScraped,
     indexedAt: indexedAt ?? this.indexedAt,
+    scrapeErrors: scrapeErrors.present ? scrapeErrors.value : this.scrapeErrors,
   );
   IndexedFolder copyWithCompanion(IndexedFoldersCompanion data) {
     return IndexedFolder(
@@ -2864,6 +2957,9 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
           ? data.lastScraped.value
           : this.lastScraped,
       indexedAt: data.indexedAt.present ? data.indexedAt.value : this.indexedAt,
+      scrapeErrors: data.scrapeErrors.present
+          ? data.scrapeErrors.value
+          : this.scrapeErrors,
     );
   }
 
@@ -2878,7 +2974,8 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
           ..write('year: $year, ')
           ..write('isScraped: $isScraped, ')
           ..write('lastScraped: $lastScraped, ')
-          ..write('indexedAt: $indexedAt')
+          ..write('indexedAt: $indexedAt, ')
+          ..write('scrapeErrors: $scrapeErrors')
           ..write(')'))
         .toString();
   }
@@ -2894,6 +2991,7 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
     isScraped,
     lastScraped,
     indexedAt,
+    scrapeErrors,
   );
   @override
   bool operator ==(Object other) =>
@@ -2907,7 +3005,8 @@ class IndexedFolder extends DataClass implements Insertable<IndexedFolder> {
           other.year == this.year &&
           other.isScraped == this.isScraped &&
           other.lastScraped == this.lastScraped &&
-          other.indexedAt == this.indexedAt);
+          other.indexedAt == this.indexedAt &&
+          other.scrapeErrors == this.scrapeErrors);
 }
 
 class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
@@ -2920,6 +3019,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
   final Value<bool> isScraped;
   final Value<DateTime?> lastScraped;
   final Value<DateTime> indexedAt;
+  final Value<String?> scrapeErrors;
   const IndexedFoldersCompanion({
     this.id = const Value.absent(),
     this.sourceId = const Value.absent(),
@@ -2930,6 +3030,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
     this.isScraped = const Value.absent(),
     this.lastScraped = const Value.absent(),
     this.indexedAt = const Value.absent(),
+    this.scrapeErrors = const Value.absent(),
   });
   IndexedFoldersCompanion.insert({
     this.id = const Value.absent(),
@@ -2941,6 +3042,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
     this.isScraped = const Value.absent(),
     this.lastScraped = const Value.absent(),
     this.indexedAt = const Value.absent(),
+    this.scrapeErrors = const Value.absent(),
   }) : sourceId = Value(sourceId),
        folderName = Value(folderName),
        cleanTitle = Value(cleanTitle),
@@ -2955,6 +3057,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
     Expression<bool>? isScraped,
     Expression<DateTime>? lastScraped,
     Expression<DateTime>? indexedAt,
+    Expression<String>? scrapeErrors,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2966,6 +3069,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
       if (isScraped != null) 'is_scraped': isScraped,
       if (lastScraped != null) 'last_scraped': lastScraped,
       if (indexedAt != null) 'indexed_at': indexedAt,
+      if (scrapeErrors != null) 'scrape_errors': scrapeErrors,
     });
   }
 
@@ -2979,6 +3083,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
     Value<bool>? isScraped,
     Value<DateTime?>? lastScraped,
     Value<DateTime>? indexedAt,
+    Value<String?>? scrapeErrors,
   }) {
     return IndexedFoldersCompanion(
       id: id ?? this.id,
@@ -2990,6 +3095,7 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
       isScraped: isScraped ?? this.isScraped,
       lastScraped: lastScraped ?? this.lastScraped,
       indexedAt: indexedAt ?? this.indexedAt,
+      scrapeErrors: scrapeErrors ?? this.scrapeErrors,
     );
   }
 
@@ -3023,6 +3129,9 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
     if (indexedAt.present) {
       map['indexed_at'] = Variable<DateTime>(indexedAt.value);
     }
+    if (scrapeErrors.present) {
+      map['scrape_errors'] = Variable<String>(scrapeErrors.value);
+    }
     return map;
   }
 
@@ -3037,7 +3146,8 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
           ..write('year: $year, ')
           ..write('isScraped: $isScraped, ')
           ..write('lastScraped: $lastScraped, ')
-          ..write('indexedAt: $indexedAt')
+          ..write('indexedAt: $indexedAt, ')
+          ..write('scrapeErrors: $scrapeErrors')
           ..write(')'))
         .toString();
   }
@@ -3082,6 +3192,7 @@ typedef $$SourcesTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<int> maxDepth,
       Value<bool> autoScrape,
+      Value<int?> requestDelayMs,
     });
 typedef $$SourcesTableUpdateCompanionBuilder =
     SourcesCompanion Function({
@@ -3093,6 +3204,7 @@ typedef $$SourcesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<int> maxDepth,
       Value<bool> autoScrape,
+      Value<int?> requestDelayMs,
     });
 
 final class $$SourcesTableReferences
@@ -3182,6 +3294,11 @@ class $$SourcesTableFilterComposer
 
   ColumnFilters<bool> get autoScrape => $composableBuilder(
     column: $table.autoScrape,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get requestDelayMs => $composableBuilder(
+    column: $table.requestDelayMs,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3284,6 +3401,11 @@ class $$SourcesTableOrderingComposer
     column: $table.autoScrape,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get requestDelayMs => $composableBuilder(
+    column: $table.requestDelayMs,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SourcesTableAnnotationComposer
@@ -3320,6 +3442,11 @@ class $$SourcesTableAnnotationComposer
 
   GeneratedColumn<bool> get autoScrape => $composableBuilder(
     column: $table.autoScrape,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get requestDelayMs => $composableBuilder(
+    column: $table.requestDelayMs,
     builder: (column) => column,
   );
 
@@ -3410,6 +3537,7 @@ class $$SourcesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> maxDepth = const Value.absent(),
                 Value<bool> autoScrape = const Value.absent(),
+                Value<int?> requestDelayMs = const Value.absent(),
               }) => SourcesCompanion(
                 id: id,
                 name: name,
@@ -3419,6 +3547,7 @@ class $$SourcesTableTableManager
                 createdAt: createdAt,
                 maxDepth: maxDepth,
                 autoScrape: autoScrape,
+                requestDelayMs: requestDelayMs,
               ),
           createCompanionCallback:
               ({
@@ -3430,6 +3559,7 @@ class $$SourcesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> maxDepth = const Value.absent(),
                 Value<bool> autoScrape = const Value.absent(),
+                Value<int?> requestDelayMs = const Value.absent(),
               }) => SourcesCompanion.insert(
                 id: id,
                 name: name,
@@ -3439,6 +3569,7 @@ class $$SourcesTableTableManager
                 createdAt: createdAt,
                 maxDepth: maxDepth,
                 autoScrape: autoScrape,
+                requestDelayMs: requestDelayMs,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4534,6 +4665,7 @@ typedef $$IndexedFoldersTableCreateCompanionBuilder =
       Value<bool> isScraped,
       Value<DateTime?> lastScraped,
       Value<DateTime> indexedAt,
+      Value<String?> scrapeErrors,
     });
 typedef $$IndexedFoldersTableUpdateCompanionBuilder =
     IndexedFoldersCompanion Function({
@@ -4546,6 +4678,7 @@ typedef $$IndexedFoldersTableUpdateCompanionBuilder =
       Value<bool> isScraped,
       Value<DateTime?> lastScraped,
       Value<DateTime> indexedAt,
+      Value<String?> scrapeErrors,
     });
 
 final class $$IndexedFoldersTableReferences
@@ -4623,6 +4756,11 @@ class $$IndexedFoldersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get scrapeErrors => $composableBuilder(
+    column: $table.scrapeErrors,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SourcesTableFilterComposer get sourceId {
     final $$SourcesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -4696,6 +4834,11 @@ class $$IndexedFoldersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get scrapeErrors => $composableBuilder(
+    column: $table.scrapeErrors,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SourcesTableOrderingComposer get sourceId {
     final $$SourcesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4758,6 +4901,11 @@ class $$IndexedFoldersTableAnnotationComposer
 
   GeneratedColumn<DateTime> get indexedAt =>
       $composableBuilder(column: $table.indexedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get scrapeErrors => $composableBuilder(
+    column: $table.scrapeErrors,
+    builder: (column) => column,
+  );
 
   $$SourcesTableAnnotationComposer get sourceId {
     final $$SourcesTableAnnotationComposer composer = $composerBuilder(
@@ -4822,6 +4970,7 @@ class $$IndexedFoldersTableTableManager
                 Value<bool> isScraped = const Value.absent(),
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> indexedAt = const Value.absent(),
+                Value<String?> scrapeErrors = const Value.absent(),
               }) => IndexedFoldersCompanion(
                 id: id,
                 sourceId: sourceId,
@@ -4832,6 +4981,7 @@ class $$IndexedFoldersTableTableManager
                 isScraped: isScraped,
                 lastScraped: lastScraped,
                 indexedAt: indexedAt,
+                scrapeErrors: scrapeErrors,
               ),
           createCompanionCallback:
               ({
@@ -4844,6 +4994,7 @@ class $$IndexedFoldersTableTableManager
                 Value<bool> isScraped = const Value.absent(),
                 Value<DateTime?> lastScraped = const Value.absent(),
                 Value<DateTime> indexedAt = const Value.absent(),
+                Value<String?> scrapeErrors = const Value.absent(),
               }) => IndexedFoldersCompanion.insert(
                 id: id,
                 sourceId: sourceId,
@@ -4854,6 +5005,7 @@ class $$IndexedFoldersTableTableManager
                 isScraped: isScraped,
                 lastScraped: lastScraped,
                 indexedAt: indexedAt,
+                scrapeErrors: scrapeErrors,
               ),
           withReferenceMapper: (p0) => p0
               .map(

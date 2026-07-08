@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/utils/name_cleaner.dart';
@@ -18,6 +19,8 @@ class ScrapeProgress {
   final int? addedCount;
   final int? deletedCount;
   final bool isShallow;
+  final bool isRetrying;
+  final Set<String> failedUrls;
 
   const ScrapeProgress({
     required this.message,
@@ -31,6 +34,8 @@ class ScrapeProgress {
     this.addedCount,
     this.deletedCount,
     this.isShallow = false,
+    this.isRetrying = false,
+    this.failedUrls = const {},
   });
 }
 
@@ -217,6 +222,7 @@ class DirectoryScraper {
     final results = <ScrapeResult>[];
     final visited = <String>{};
     final queue = Queue<String>()..add(baseUrl);
+    final failedUrls = <String>{};
     int urlsVisited = 0;
 
     final groupFromParam = groupTitle != null
@@ -246,19 +252,76 @@ class DirectoryScraper {
       try {
         final uri = Uri.parse(url);
         if (requestDelay > Duration.zero) await Future.delayed(requestDelay);
-        final response = await http.get(uri).timeout(kScrapeTimeout);
 
-        if (response.statusCode != 200) {
-          yield ScrapeProgress(
-            message: 'HTTP ${response.statusCode} — skipping',
-            currentUrl: url,
-            urlsVisited: urlsVisited,
-            urlsQueued: queue.length,
-            filesFound: results.length,
-            error: 'HTTP ${response.statusCode}',
-          );
-          continue;
+        http.Response? response;
+        bool succeeded = false;
+
+        // retry loop for rate limiting (429)
+        for (int attempt = 0; attempt <= 3; attempt++) {
+          if (attempt > 0) {
+            final backoff = Duration(seconds: 1 << (attempt)); // 2s, 4s, 8s
+            yield ScrapeProgress(
+              message:
+                  'Rate limited - retrying in ${backoff.inSeconds}s (attempt $attempt/3)...',
+              currentUrl: url,
+              urlsVisited: urlsVisited,
+              urlsQueued: queue.length,
+              filesFound: results.length,
+              isRetrying: true,
+            );
+            await Future.delayed(backoff);
+          }
+
+          try {
+            response = await http.get(uri).timeout(kScrapeTimeout);
+          } on TimeoutException {
+            if (attempt == 3) {
+              failedUrls.add(url);
+              yield ScrapeProgress(
+                message: 'Timeout after retries - skipping',
+                currentUrl: url,
+                urlsVisited: urlsVisited,
+                urlsQueued: queue.length,
+                filesFound: results.length,
+                error: 'Timeout',
+              );
+            }
+            continue;
+          }
+
+          if (response.statusCode == 429) {
+            if (attempt == 3) {
+              failedUrls.add(url);
+              yield ScrapeProgress(
+                message: 'Rate limited - giving up after 3 retries',
+                currentUrl: url,
+                urlsVisited: urlsVisited,
+                urlsQueued: queue.length,
+                filesFound: results.length,
+                error: 'HTTP 429 (rate limited)',
+              );
+            }
+            continue;
+          }
+
+          if (response.statusCode != 200) {
+            failedUrls.add(url);
+            yield ScrapeProgress(
+              message: 'HTTP ${response.statusCode} — skipping',
+              currentUrl: url,
+              urlsVisited: urlsVisited,
+              urlsQueued: queue.length,
+              filesFound: results.length,
+              error: 'HTTP ${response.statusCode}',
+            );
+            break; // non-retryable error
+          }
+
+          succeeded = true;
+          break;
         }
+
+        if (!succeeded || response == null) continue;
 
         final document = html_parser.parse(response.body);
         final links = document.querySelectorAll('a[href]');
@@ -396,6 +459,7 @@ class DirectoryScraper {
           filesFound: results.length,
         );
       } catch (e) {
+        failedUrls.add(url);
         yield ScrapeProgress(
           message: 'Error: $e',
           currentUrl: url,
@@ -408,13 +472,18 @@ class DirectoryScraper {
       }
     }
 
+    final doneMessage = failedUrls.isEmpty
+        ? 'Done! Found ${results.length} files in $urlsVisited pages.'
+        : 'Done with ${failedUrls.length} error(s). Found ${results.length} files in $urlsVisited pages.';
+
     yield ScrapeProgress(
-      message: 'Done! Found ${results.length} files in $urlsVisited pages.',
+      message: doneMessage,
       urlsVisited: urlsVisited,
       urlsQueued: 0,
       filesFound: results.length,
       isDone: true,
       results: results,
+      failedUrls: failedUrls,
     );
   }
 }

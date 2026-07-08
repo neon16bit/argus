@@ -19,6 +19,7 @@ class ShowDetailScreen extends ConsumerStatefulWidget {
 
 class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   int? _selectedSourceId;
+  bool _isRetryingErrors = false;
 
   @override
   void initState() {
@@ -62,6 +63,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final folders = foldersAsync.value ?? [];
     final isAnyUnscraped =
         folders.isNotEmpty && folders.any((f) => !f.isScraped);
+    final foldersWithErrors = folders
+        .where((f) => f.scrapeErrors != null)
+        .toList();
 
     // invalidate metadata when scraping finishes
     ref.listen<bool>(
@@ -216,6 +220,75 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         ),
       ),
       SliverToBoxAdapter(child: MetadataCard(metadata: metadata)),
+      if (foldersWithErrors.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Material(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Some folders couldn\'t be fully indexed due to rate limits or errors.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (_isRetryingErrors)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          setState(() {
+                            _isRetryingErrors = true;
+                          });
+                          final actions = ref.read(sourceActionsProvider);
+                          final settings = ref.read(settingsProvider);
+                          final db = ref.read(databaseProvider);
+
+                          for (final folder in foldersWithErrors) {
+                            final source = await db.getSource(folder.sourceId);
+                            final delay = source.requestDelayMs != null
+                                ? Duration(milliseconds: source.requestDelayMs!)
+                                : settings.scrapeDelay;
+
+                            await actions.retryScrapeErrors(
+                              folder,
+                              requestDelay: delay,
+                            );
+                          }
+
+                          if (mounted) {
+                            setState(() {
+                              _isRetryingErrors = false;
+                            });
+                          }
+                        },
+                        child: const Text('Retry Failed'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       SliverToBoxAdapter(
         child: SourceFilterBar(
           viewModel: viewModel,

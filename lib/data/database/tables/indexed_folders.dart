@@ -13,4 +13,6 @@ class IndexedFolders extends Table {
   BoolColumn get isScraped => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastScraped => dateTime().nullable()();
   DateTimeColumn get indexedAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get scrapeErrors =>
+      text().nullable()(); // JSON list of failed URLs
 }

@@ -69,13 +69,14 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
     showDialog(
       context: context,
       builder: (ctx) => SourceFormDialog(
-        onSave: (name, url, maxDepth, autoScrape) async {
+        onSave: (name, url, maxDepth, autoScrape, requestDelayMs) async {
           final actions = ref.read(sourceActionsProvider);
           final result = await actions.addSource(
             name,
             url,
             maxDepth,
             autoScrape,
+            requestDelayMs,
           );
           if (mounted) {
             ref.invalidate(sourcesProvider);

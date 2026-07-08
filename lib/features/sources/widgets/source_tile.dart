@@ -447,7 +447,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
       context: context,
       builder: (ctx) => SourceFormDialog(
         source: source,
-        onSave: (name, url, maxDepth, autoScrape) async {
+        onSave: (name, url, maxDepth, autoScrape, requestDelayMs) async {
           final actions = ref.read(sourceActionsProvider);
           final warning = await actions.updateSource(
             source.id,
@@ -455,6 +455,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
             url,
             maxDepth,
             autoScrape,
+            requestDelayMs,
           );
           if (mounted) {
             ref.invalidate(sourcesProvider);

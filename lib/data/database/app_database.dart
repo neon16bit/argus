@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -20,7 +21,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +79,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.addColumn(sources, sources.autoScrape);
+      }
+      if (from < 9) {
+        await m.addColumn(sources, sources.requestDelayMs);
+        await m.addColumn(indexedFolders, indexedFolders.scrapeErrors);
       }
     },
   );
@@ -191,16 +196,20 @@ class AppDatabase extends _$AppDatabase {
         b.insertAll(indexedFolders, folders, mode: InsertMode.insertOrReplace),
   );
 
-  Future<void> markFolderScraped(int id, {String? cleanTitle}) =>
-      (update(indexedFolders)..where((f) => f.id.equals(id))).write(
-        IndexedFoldersCompanion(
-          isScraped: const Value(true),
-          lastScraped: Value(DateTime.now()),
-          cleanTitle: cleanTitle != null
-              ? Value(cleanTitle)
-              : const Value.absent(),
-        ),
-      );
+  Future<void> markFolderScraped(
+    int id, {
+    String? cleanTitle,
+    List<String>? failedUrls,
+  }) => (update(indexedFolders)..where((f) => f.id.equals(id))).write(
+    IndexedFoldersCompanion(
+      isScraped: const Value(true),
+      lastScraped: Value(DateTime.now()),
+      cleanTitle: cleanTitle != null ? Value(cleanTitle) : const Value.absent(),
+      scrapeErrors: failedUrls != null && failedUrls.isNotEmpty
+          ? Value(jsonEncode(failedUrls))
+          : const Value(null),
+    ),
+  );
 
   Future<IndexedFolder?> getFolderByUrl(String url) => (select(
     indexedFolders,
