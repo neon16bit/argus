@@ -5,20 +5,9 @@ import 'catppuccin.dart';
 class AppTheme {
   AppTheme._();
 
-  // default argus palette
-  static const Color argusBackground = Color(0xFF0A0A0F);
-  static const Color argusSurface = Color(0xFF141420);
-  static const Color argusSurfaceVariant = Color(0xFF1C1C2E);
-  static const Color argusCard = Color(0xFF1A1A2E);
-  static const Color argusAccent = Color(0xFF6C63FF);
-  static const Color argusTextPrimary = Color(0xFFEAEAEA);
-  static const Color argusTextSecondary = Color(0xFF9E9E9E);
-  static const Color argusTextMuted = Color(0xFF616161);
-  static const Color argusDivider = Color(0xFF2A2A3E);
-
   // status colors
-  static const Color online = Color(0xFF66BB6A);
-  static const Color offline = Color(0xFFEF5350);
+  static const Color online = Colors.green;
+  static const Color offline = Colors.red;
 
   static CatppuccinPalette getPalette(String flavor) {
     switch (flavor.toLowerCase()) {
@@ -82,6 +71,8 @@ class AppTheme {
         onPrimary: isDark ? palette.crust : palette.base,
         secondary: palette.sapphire,
         onSecondary: isDark ? palette.crust : palette.base,
+        tertiary: palette.peach,
+        onTertiary: isDark ? palette.crust : palette.base,
         error: palette.red,
         onError: isDark ? palette.crust : palette.base,
         surface: resolvedBase,

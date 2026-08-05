@@ -30,7 +30,11 @@ class DetailHeader extends StatelessWidget {
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerHigh,
       child: Center(
-        child: Icon(Icons.movie_rounded, size: 64, color: Colors.grey[700]),
+        child: Icon(
+          Icons.movie_rounded,
+          size: 64,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }

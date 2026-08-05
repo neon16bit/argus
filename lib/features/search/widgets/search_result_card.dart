@@ -78,8 +78,11 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
                     ? CachedNetworkImage(
                         imageUrl: posterUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: Colors.grey[800]),
+                        placeholder: (context, url) => Container(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                        ),
                         errorWidget: (context, url, error) =>
                             _defaultPoster(context),
                       )
@@ -113,8 +116,10 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
                             color: widget.result.isScraped
                                 ? Theme.of(context).colorScheme.primary
                                 : widget.result.autoScrape
-                                ? Colors.orange
-                                : Colors.grey,
+                                ? Theme.of(context).colorScheme.tertiary
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Expanded(

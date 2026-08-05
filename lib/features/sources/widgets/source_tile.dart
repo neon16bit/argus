@@ -4,6 +4,7 @@ import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
 import 'package:argus/features/sources/widgets/source_form_dialog.dart';
 import 'package:argus/features/sources/source_items_screen.dart';
+import 'package:argus/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -69,7 +70,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
               child: Icon(
                 Icons.circle,
                 size: 12,
-                color: source.isOnline ? Colors.green : Colors.red,
+                color: source.isOnline
+                    ? AppTheme.online
+                    : Theme.of(context).colorScheme.error,
               ),
             ),
           ),
@@ -138,9 +141,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                                 ),
                               )
                             else
-                              const Icon(
+                              Icon(
                                 Icons.check_circle_rounded,
-                                color: Colors.green,
+                                color: AppTheme.online,
                                 size: 16,
                               ),
                             const SizedBox(width: 8),
@@ -211,8 +214,12 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                         ? FilledButton.icon(
                             onPressed: _abortScrape,
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.red[800],
-                              foregroundColor: Colors.white,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.error,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onError,
                             ),
                             icon: const Icon(Icons.cancel_rounded, size: 18),
                             label: const Text('Abort'),
@@ -248,9 +255,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                       ),
                       IconButton(
                         onPressed: () => _confirmDelete(source),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_rounded,
-                          color: Colors.red,
+                          color: Theme.of(context).colorScheme.error,
                         ),
                         tooltip: 'Delete source',
                       ),
@@ -288,19 +295,21 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                               ],
                             ),
                           ),
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'delete',
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.delete_forever_rounded,
-                                  color: Colors.red,
+                                  color: Theme.of(context).colorScheme.error,
                                   size: 20,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
                                   'Delete source',
-                                  style: TextStyle(color: Colors.red),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                 ),
                               ],
                             ),
@@ -330,7 +339,9 @@ class _SourceTileState extends ConsumerState<SourceTile> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -360,11 +371,14 @@ class _SourceTileState extends ConsumerState<SourceTile> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Full Scrape Warning'),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+              const SizedBox(width: 8),
+              const Text('Full Scrape Warning'),
             ],
           ),
           content: const Text(

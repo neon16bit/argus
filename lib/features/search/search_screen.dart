@@ -57,11 +57,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search_rounded, size: 64, color: Colors.grey[700]),
+                  Icon(Icons.search_rounded, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Search your indexed sources',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),

@@ -48,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
                 color: color,
                 shape: BoxShape.circle,
                 border: isSelected
-                    ? Border.all(color: Colors.white, width: 2.5)
+                    ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 2.5)
                     : null,
                 boxShadow: isSelected
                     ? [
@@ -160,10 +160,7 @@ class SettingsScreen extends ConsumerWidget {
                               border: Border.all(
                                 color: isSelected
                                     ? accentColor
-                                    : (Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.white24
-                                          : Colors.black26),
+                                    : Theme.of(context).colorScheme.outline,
                                 width: isSelected ? 2 : 1,
                               ),
                               gradient: baseColor == null
@@ -243,7 +240,7 @@ class SettingsScreen extends ConsumerWidget {
                       ? (isDark
                             ? dynamicColors.dark.primary
                             : dynamicColors.light.primary)
-                      : Colors.grey;
+                      : Theme.of(context).colorScheme.onSurfaceVariant;
 
                   return GestureDetector(
                     onTap: () => ref
@@ -277,7 +274,7 @@ class SettingsScreen extends ConsumerWidget {
                                     )
                                   : null,
                               border: isSelected
-                                  ? Border.all(color: Colors.white, width: 2.5)
+                                  ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 2.5)
                                   : null,
                               boxShadow: isSelected
                                   ? [

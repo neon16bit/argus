@@ -31,7 +31,7 @@ class SourceFilterBar extends StatelessWidget {
             selectedSourceId == null
                 ? '$totalItems items'
                 : '$filteredCount of $totalItems items',
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           if (contributingSources.length > 1) ...[
             const SizedBox(height: 8),

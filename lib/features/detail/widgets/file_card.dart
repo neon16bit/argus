@@ -42,7 +42,7 @@ class FileCard extends StatelessWidget {
         ),
         trailing: Text(
           isMulti ? '' : (item.fileExtension?.toUpperCase() ?? ''),
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
+          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         onTap: () => _showPlayOptionsBottomSheet(context, titleStr, group),
       ),

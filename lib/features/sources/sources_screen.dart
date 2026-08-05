@@ -37,13 +37,13 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.dns_rounded, size: 64, color: Colors.grey[700]),
+                  Icon(Icons.dns_rounded, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   const SizedBox(height: 16),
                   const Text('No sources yet'),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Add an open directory URL to get started',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),

@@ -81,7 +81,6 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Name',
                   hintText: 'Movies Folder',
-                  hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 12),
@@ -90,7 +89,6 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 decoration: const InputDecoration(
                   labelText: 'URL',
                   hintText: 'http://ftp.example.com/',
-                  hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 keyboardType: TextInputType.url,
               ),
@@ -189,18 +187,14 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
+                    const Icon(Icons.warning_amber_rounded, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Changing the URL or folder structure will reset scrape state and delete all indexed items from this source.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.orange[800],
+                          color: Theme.of(context).colorScheme.tertiary,
                           height: 1.3,
                         ),
                       ),
