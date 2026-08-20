@@ -38,8 +38,53 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     });
   }
 
+  Future<void> _refreshFolders(
+    BuildContext context,
+    String activeGroupTitle,
+    List<IndexedFolder> folders,
+  ) async {
+    final db = ref.read(databaseProvider);
+    // clear media items for this show across all matching sources
+    await (db.delete(
+      db.mediaItems,
+    )..where((m) => m.groupTitle.equals(activeGroupTitle))).go();
+    for (final folder in folders) {
+      await (db.update(db.indexedFolders)
+            ..where((f) => f.folderUrl.equals(folder.folderUrl)))
+          .write(const IndexedFoldersCompanion(isScraped: Value(false)));
+      ref.read(scrapeQueueProvider.notifier).prioritize(folder.folderUrl);
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Refreshing folders for $activeGroupTitle...'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _refreshMetadata(
+    BuildContext context,
+    String groupTitle,
+    String displayTitle,
+  ) async {
+    final db = ref.read(databaseProvider);
+    await db.clearShowCache(groupTitle);
+    ref.invalidate(metadataProvider(groupTitle));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Refreshing metadata for $displayTitle...'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width >= 600;
     String activeGroupTitle = widget.result.groupTitle;
     if (widget.result.folderUrl != null) {
       final resultFolder = ref
@@ -117,7 +162,21 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 ),
               ),
             ),
-          if (folders.isNotEmpty)
+          if (isWide) ...[
+            if (folders.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black38,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.cloud_sync_rounded),
+                  tooltip: 'Refresh Folder',
+                  onPressed: () =>
+                      _refreshFolders(context, activeGroupTitle, folders),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: IconButton(
@@ -125,65 +184,68 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   backgroundColor: Colors.black38,
                   foregroundColor: Colors.white,
                 ),
-                icon: const Icon(Icons.cloud_sync_rounded),
-                tooltip: 'Refresh Folder',
-                onPressed: () async {
-                  final db = ref.read(databaseProvider);
-                  // clear media items for this show across all matching sources
-                  await (db.delete(
-                    db.mediaItems,
-                  )..where((m) => m.groupTitle.equals(activeGroupTitle))).go();
-                  for (final folder in folders) {
-                    await (db.update(db.indexedFolders)
-                          ..where((f) => f.folderUrl.equals(folder.folderUrl)))
-                        .write(
-                          const IndexedFoldersCompanion(
-                            isScraped: Value(false),
-                          ),
-                        );
-                    ref
-                        .read(scrapeQueueProvider.notifier)
-                        .prioritize(folder.folderUrl);
-                  }
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Refreshing folders for $activeGroupTitle...',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Refresh Metadata',
+                onPressed: () => _refreshMetadata(
+                  context,
+                  widget.result.groupTitle,
+                  widget.result.displayTitle,
+                ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.black38,
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Refresh Metadata',
-              onPressed: () async {
-                final db = ref.read(databaseProvider);
-                await db.clearShowCache(widget.result.groupTitle);
-                ref.invalidate(metadataProvider(widget.result.groupTitle));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Refreshing metadata for ${widget.result.displayTitle}...',
-                      ),
-                      behavior: SnackBarBehavior.floating,
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                  ),
+                  child: PopupMenuButton<String>(
+                    tooltip: 'More actions',
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
                     ),
-                  );
-                }
-              },
+                    onSelected: (value) {
+                      if (value == 'refresh_folder') {
+                        _refreshFolders(context, activeGroupTitle, folders);
+                      } else if (value == 'refresh_metadata') {
+                        _refreshMetadata(
+                          context,
+                          widget.result.groupTitle,
+                          widget.result.displayTitle,
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (folders.isNotEmpty)
+                        const PopupMenuItem(
+                          value: 'refresh_folder',
+                          child: Row(
+                            children: [
+                              Icon(Icons.cloud_sync_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('Refresh Folder'),
+                            ],
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'refresh_metadata',
+                        child: Row(
+                          children: [
+                            Icon(Icons.refresh_rounded, size: 20),
+                            SizedBox(width: 8),
+                            Text('Refresh Metadata'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
         ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
