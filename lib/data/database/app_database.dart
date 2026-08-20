@@ -169,6 +169,18 @@ class AppDatabase extends _$AppDatabase {
   Future<int> deleteMediaItemsBySource(int sourceId) =>
       (delete(mediaItems)..where((m) => m.sourceId.equals(sourceId))).go();
 
+  Future<void> updateEpisodeNumbers(Map<int, int> itemIdToEpisode) async {
+    await batch((b) {
+      for (final entry in itemIdToEpisode.entries) {
+        b.update(
+          mediaItems,
+          MediaItemsCompanion(episode: Value(entry.value)),
+          where: ($MediaItemsTable m) => m.id.equals(entry.key),
+        );
+      }
+    });
+  }
+
   Future<int> getMediaItemCount() async {
     final count = countAll();
     final query = selectOnly(mediaItems)..addColumns([count]);

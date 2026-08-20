@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
-import 'package:drift/drift.dart';
+import 'package:argus/core/utils/episode_fixer.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/widgets/metadata_card.dart';
 import 'package:argus/features/detail/widgets/file_card.dart';
@@ -79,6 +80,88 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _fixEpisodeNumbers(
+    BuildContext context,
+    String activeGroupTitle,
+  ) async {
+    final db = ref.read(databaseProvider);
+    final items = await db.getMediaItemsByGroupTitle(activeGroupTitle);
+    final result = EpisodeFixer.detect(items);
+
+    if (result.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No episode number issues detected'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    final seasonSummary = result.seasonItemCounts.entries
+        .map((e) {
+          final seasonLabel = e.key == null
+              ? 'Extras'
+              : e.key == 0
+              ? 'Specials'
+              : 'Season ${e.key}';
+          return '$seasonLabel: ${e.value} episodes';
+        })
+        .join('\n');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fix Episode Listing'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Detected sequential episode numbers for '
+              '${result.totalFixed} items:',
+            ),
+            const SizedBox(height: 12),
+            Text(seasonSummary, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            Text(
+              'Apply these changes?',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await db.updateEpisodeNumbers(result.updates);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Fixed episode numbers for ${result.totalFixed} items',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -229,6 +312,18 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black38,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.auto_fix_high_rounded),
+                tooltip: 'Fix Episode Listing',
+                onPressed: () => _fixEpisodeNumbers(context, activeGroupTitle),
+              ),
+            ),
           ] else
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -253,6 +348,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           widget.result.groupTitle,
                           widget.result.displayTitle,
                         );
+                      } else if (value == 'fix_episodes') {
+                        _fixEpisodeNumbers(context, activeGroupTitle);
                       }
                     },
                     itemBuilder: (context) => [
@@ -274,6 +371,16 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             Icon(Icons.refresh_rounded, size: 20),
                             SizedBox(width: 8),
                             Text('Refresh Metadata'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'fix_episodes',
+                        child: Row(
+                          children: [
+                            Icon(Icons.auto_fix_high_rounded, size: 20),
+                            SizedBox(width: 8),
+                            Text('Fix Episode Listing'),
                           ],
                         ),
                       ),
