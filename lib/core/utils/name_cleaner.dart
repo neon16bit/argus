@@ -31,19 +31,26 @@ class CleanResult {
 class NameCleaner {
   // season/episode patterns, ordered by specificity
   static final _sePatterns = [
-    // S01E02, S1E2
-    RegExp(r'[Ss](\d{1,2})\s*[Ee](\d{1,3})'),
-    // Season 1 Episode 2
-    RegExp(r'Season\s*(\d{1,2})\s*Episode\s*(\d{1,3})', caseSensitive: false),
-    // 1x02
-    RegExp(r'(\d{1,2})[xX](\d{2,3})'),
+    // S01E02, S1E2, S01.E02
+    RegExp(r'\b[Ss](\d{1,2})[\s._-]*[Ee](\d{1,3})\b'),
+    // Season 1 Episode 2, season.01.ep.02, Season_1_Ep.03
+    RegExp(
+      r'\bSeason[\s._-]*(\d{1,2})[\s._-]*(?:Episode|[Ee]p?\.?)[\s._-]*(\d{1,3})\b',
+      caseSensitive: false,
+    ),
+    // 1x02, 01x02 (strictly not part of a resolution like 1280x720 or 1024x576)
+    RegExp(r'(?<!\d)(\d{1,2})[xX](\d{2,3})(?!\d)'),
     // Episode 2, Ep.02, Ep02 (episode only)
-    RegExp(r'\b[Ee]p(?:isode)?\.?\s*(\d{1,3})(?!\d)', caseSensitive: false),
+    RegExp(
+      r'\b[Ee]p(?:isode)?\.?\s*(\d{1,4})(?!\d|[pk]\b)',
+      caseSensitive: false,
+    ),
     // E02 (episode only)
-    RegExp(r'\b[Ee](\d{2,3})(?!\d)'),
+    RegExp(r'\b[Ee](\d{2,4})(?!\d|[pk]\b)'),
+    // Anime dash episode format: " - 01 ", " - 14", " - 001"
+    RegExp(r'(?:^|[\s_.-]+)-\s*(\d{1,4})(?!\d|[pk]\b|bit\b|fps\b)'),
     // format: title roman_numeral episode (e.g. Index II 01, Overlord III 05)
     // the number should not be followed by resolution/codec letters like 'p', 'k', or 'bit'
-    // TODO: could be prone to false positives need to do more checks
     RegExp(
       r'(?<![a-zA-Z])(II|III|IV|V|VI|VII|VIII|IX|X)[\s_.-]+(\d{2,3})(?!\d|[pk]\b|bit\b)',
     ),
@@ -84,7 +91,7 @@ class NameCleaner {
     ),
     RegExp(r'\bMAX\b'),
     // release group after last dash (must have space before dash so hyphenated words arent stripped)
-    RegExp(r'\s+-\s*[\w\.]+$'),
+    RegExp(r'\s+-\s*(?=[^\s]*[a-zA-Z])[\w\.]+$'),
     // common tags
     RegExp(
       r'\b(?:PROPER|REPACK|INTERNAL|EXTENDED|UNRATED|DIRECTORS\.?CUT)\b',
@@ -145,7 +152,18 @@ class NameCleaner {
       caseSensitive: false,
     ).hasMatch(rawName);
 
-    // extract season and episode before cleaning
+    // Extract year
+    int? year;
+    final yearMatch = _yearPattern.firstMatch(rawName);
+    if (yearMatch != null) {
+      year = int.tryParse(yearMatch.group(1)!);
+      rawName = rawName.replaceFirst(yearMatch.group(0)!, ' ');
+    }
+
+    // strip entire brackets content [SubGroup], {info}
+    rawName = rawName.replaceAll(RegExp(r'\[.*?\]'), ' ');
+    rawName = rawName.replaceAll(RegExp(r'\{.*?\}'), ' ');
+
     int? season;
     int? episode;
     for (final pattern in _sePatterns) {
@@ -164,18 +182,6 @@ class NameCleaner {
         break;
       }
     }
-
-    // Extract year
-    int? year;
-    final yearMatch = _yearPattern.firstMatch(rawName);
-    if (yearMatch != null) {
-      year = int.tryParse(yearMatch.group(1)!);
-      rawName = rawName.replaceFirst(yearMatch.group(0)!, ' ');
-    }
-
-    // strip entire brackets content [SubGroup], {info}
-    rawName = rawName.replaceAll(RegExp(r'\[.*?\]'), ' ');
-    rawName = rawName.replaceAll(RegExp(r'\{.*?\}'), ' ');
 
     // replace underscores and remaining brackets/parentheses with spaces
     rawName = rawName.replaceAll(RegExp(r'[_\[\]\(\)]'), ' ');
@@ -209,8 +215,8 @@ class NameCleaner {
     if (input.isEmpty) {
       return input;
     }
-    if (input.toLowerCase() != input) {
-      return input; // if it has uppercase, assume it's already formatted
+    if (input.toLowerCase() != input && input.toUpperCase() != input) {
+      return input;
     }
     return input
         .split(' ')
