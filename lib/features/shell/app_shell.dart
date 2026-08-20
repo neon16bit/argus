@@ -1,5 +1,5 @@
 import 'package:argus/features/home/home_screen.dart';
-import 'package:argus/features/search/search_screen.dart';
+import 'package:argus/features/library/library_screen.dart';
 import 'package:argus/features/sources/sources_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,7 +22,7 @@ class AppShell extends ConsumerWidget {
 
   static const List<Widget> _screens = [
     HomeScreen(),
-    SearchScreen(),
+    LibraryScreen(),
     SourcesScreen(),
   ];
 
@@ -44,9 +44,9 @@ class AppShell extends ConsumerWidget {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Search',
+            icon: Icon(Icons.video_library_outlined),
+            selectedIcon: Icon(Icons.video_library),
+            label: 'Library',
           ),
           NavigationDestination(
             icon: Icon(Icons.folder_outlined),
