@@ -10,10 +10,13 @@ import 'tables/sources.dart';
 import 'tables/media_items.dart';
 import 'tables/media_shows.dart';
 import 'tables/indexed_folders.dart';
+import 'tables/saved_shows.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Sources, MediaItems, MediaShows, IndexedFolders])
+@DriftDatabase(
+  tables: [Sources, MediaItems, MediaShows, IndexedFolders, SavedShows],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
 
@@ -21,7 +24,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -83,6 +86,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await m.addColumn(sources, sources.requestDelayMs);
         await m.addColumn(indexedFolders, indexedFolders.scrapeErrors);
+      }
+      if (from < 10) {
+        await m.createTable(savedShows);
       }
     },
   );
@@ -427,6 +433,62 @@ class AppDatabase extends _$AppDatabase {
       ..limit(limit, offset: offset);
     final itemsResult = await itemsQuery.get();
     return itemsResult.map((r) => r.read(mediaItems.groupTitle)!).toList();
+  }
+
+  // saved shows
+
+  Future<bool> isShowSaved(String groupTitle) async {
+    final row = await (select(
+      savedShows,
+    )..where((b) => b.groupTitle.equals(groupTitle))).getSingleOrNull();
+    return row != null;
+  }
+
+  Stream<bool> watchIsShowSaved(String groupTitle) {
+    return (select(savedShows)..where((b) => b.groupTitle.equals(groupTitle)))
+        .watchSingleOrNull()
+        .map((row) => row != null);
+  }
+
+  Future<void> saveShow(String groupTitle) => into(savedShows).insert(
+    SavedShowsCompanion(groupTitle: Value(groupTitle)),
+    mode: InsertMode.insertOrIgnore,
+  );
+
+  Future<int> removeSavedShow(String groupTitle) =>
+      (delete(savedShows)..where((b) => b.groupTitle.equals(groupTitle))).go();
+
+  Future<bool> toggleSaveShow(String groupTitle) async {
+    final exists = await isShowSaved(groupTitle);
+    if (exists) {
+      await removeSavedShow(groupTitle);
+      return false;
+    } else {
+      await saveShow(groupTitle);
+      return true;
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> watchSavedShows() {
+    return customSelect(
+      '''
+      SELECT
+        b.group_title,
+        s.resolved_title,
+        s.title_en,
+        s.poster_path,
+        s.media_type,
+        s.year,
+        (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = b.group_title) as item_count,
+        (SELECT f.folder_url FROM indexed_folders f WHERE f.clean_title = b.group_title LIMIT 1) as folder_url,
+        1 as is_scraped,
+        1 as auto_scrape
+      FROM saved_shows b
+      LEFT JOIN media_shows s ON b.group_title = s.group_title
+      ORDER BY b.saved_at DESC
+      ''',
+      readsFrom: {savedShows, mediaShows, mediaItems, indexedFolders},
+    ).watch().map((rows) => rows.map((row) => row.data).toList());
   }
 
   static QueryExecutor _openConnection() {

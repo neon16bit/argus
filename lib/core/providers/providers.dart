@@ -5,3 +5,4 @@ export 'search_providers.dart';
 export 'settings_provider.dart';
 export 'folder_providers.dart';
 export 'theme_provider.dart';
+export 'library_providers.dart';

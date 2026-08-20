@@ -133,6 +133,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       selectedSourceId: _selectedSourceId,
     );
 
+    final isSaved =
+        ref.watch(isShowSavedProvider(activeGroupTitle)).value ?? false;
+
     final commonSlivers = [
       SliverAppBar(
         expandedHeight: 200,
@@ -162,6 +165,39 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black38,
+                foregroundColor: isSaved
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white,
+              ),
+              icon: Icon(
+                isSaved
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
+              ),
+              tooltip: isSaved ? 'In Library' : 'Add to Library',
+              onPressed: () async {
+                final db = ref.read(databaseProvider);
+                final nowSaved = await db.toggleSaveShow(activeGroupTitle);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        nowSaved
+                            ? 'Added "${widget.result.displayTitle}" to Library'
+                            : 'Removed "${widget.result.displayTitle}" from Library',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
           if (isWide) ...[
             if (folders.isNotEmpty)
               Padding(

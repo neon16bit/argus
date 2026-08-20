@@ -3153,6 +3153,258 @@ class IndexedFoldersCompanion extends UpdateCompanion<IndexedFolder> {
   }
 }
 
+class $SavedShowsTable extends SavedShows
+    with TableInfo<$SavedShowsTable, SavedShow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SavedShowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupTitleMeta = const VerificationMeta(
+    'groupTitle',
+  );
+  @override
+  late final GeneratedColumn<String> groupTitle = GeneratedColumn<String>(
+    'group_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _savedAtMeta = const VerificationMeta(
+    'savedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> savedAt = GeneratedColumn<DateTime>(
+    'saved_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, groupTitle, savedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'saved_shows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SavedShow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_title')) {
+      context.handle(
+        _groupTitleMeta,
+        groupTitle.isAcceptableOrUnknown(data['group_title']!, _groupTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupTitleMeta);
+    }
+    if (data.containsKey('saved_at')) {
+      context.handle(
+        _savedAtMeta,
+        savedAt.isAcceptableOrUnknown(data['saved_at']!, _savedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SavedShow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SavedShow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_title'],
+      )!,
+      savedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}saved_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SavedShowsTable createAlias(String alias) {
+    return $SavedShowsTable(attachedDatabase, alias);
+  }
+}
+
+class SavedShow extends DataClass implements Insertable<SavedShow> {
+  final int id;
+  final String groupTitle;
+  final DateTime savedAt;
+  const SavedShow({
+    required this.id,
+    required this.groupTitle,
+    required this.savedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_title'] = Variable<String>(groupTitle);
+    map['saved_at'] = Variable<DateTime>(savedAt);
+    return map;
+  }
+
+  SavedShowsCompanion toCompanion(bool nullToAbsent) {
+    return SavedShowsCompanion(
+      id: Value(id),
+      groupTitle: Value(groupTitle),
+      savedAt: Value(savedAt),
+    );
+  }
+
+  factory SavedShow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SavedShow(
+      id: serializer.fromJson<int>(json['id']),
+      groupTitle: serializer.fromJson<String>(json['groupTitle']),
+      savedAt: serializer.fromJson<DateTime>(json['savedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupTitle': serializer.toJson<String>(groupTitle),
+      'savedAt': serializer.toJson<DateTime>(savedAt),
+    };
+  }
+
+  SavedShow copyWith({int? id, String? groupTitle, DateTime? savedAt}) =>
+      SavedShow(
+        id: id ?? this.id,
+        groupTitle: groupTitle ?? this.groupTitle,
+        savedAt: savedAt ?? this.savedAt,
+      );
+  SavedShow copyWithCompanion(SavedShowsCompanion data) {
+    return SavedShow(
+      id: data.id.present ? data.id.value : this.id,
+      groupTitle: data.groupTitle.present
+          ? data.groupTitle.value
+          : this.groupTitle,
+      savedAt: data.savedAt.present ? data.savedAt.value : this.savedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedShow(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('savedAt: $savedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, groupTitle, savedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SavedShow &&
+          other.id == this.id &&
+          other.groupTitle == this.groupTitle &&
+          other.savedAt == this.savedAt);
+}
+
+class SavedShowsCompanion extends UpdateCompanion<SavedShow> {
+  final Value<int> id;
+  final Value<String> groupTitle;
+  final Value<DateTime> savedAt;
+  const SavedShowsCompanion({
+    this.id = const Value.absent(),
+    this.groupTitle = const Value.absent(),
+    this.savedAt = const Value.absent(),
+  });
+  SavedShowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String groupTitle,
+    this.savedAt = const Value.absent(),
+  }) : groupTitle = Value(groupTitle);
+  static Insertable<SavedShow> custom({
+    Expression<int>? id,
+    Expression<String>? groupTitle,
+    Expression<DateTime>? savedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupTitle != null) 'group_title': groupTitle,
+      if (savedAt != null) 'saved_at': savedAt,
+    });
+  }
+
+  SavedShowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? groupTitle,
+    Value<DateTime>? savedAt,
+  }) {
+    return SavedShowsCompanion(
+      id: id ?? this.id,
+      groupTitle: groupTitle ?? this.groupTitle,
+      savedAt: savedAt ?? this.savedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupTitle.present) {
+      map['group_title'] = Variable<String>(groupTitle.value);
+    }
+    if (savedAt.present) {
+      map['saved_at'] = Variable<DateTime>(savedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedShowsCompanion(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('savedAt: $savedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3160,6 +3412,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MediaItemsTable mediaItems = $MediaItemsTable(this);
   late final $MediaShowsTable mediaShows = $MediaShowsTable(this);
   late final $IndexedFoldersTable indexedFolders = $IndexedFoldersTable(this);
+  late final $SavedShowsTable savedShows = $SavedShowsTable(this);
   late final Index idxItemsSourceGroup = Index(
     'idx_items_source_group',
     'CREATE INDEX idx_items_source_group ON media_items (source_id, group_title)',
@@ -3177,6 +3430,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mediaItems,
     mediaShows,
     indexedFolders,
+    savedShows,
     idxItemsSourceGroup,
     idxFoldersSourceTitle,
   ];
@@ -5075,6 +5329,161 @@ typedef $$IndexedFoldersTableProcessedTableManager =
       IndexedFolder,
       PrefetchHooks Function({bool sourceId})
     >;
+typedef $$SavedShowsTableCreateCompanionBuilder =
+    SavedShowsCompanion Function({
+      Value<int> id,
+      required String groupTitle,
+      Value<DateTime> savedAt,
+    });
+typedef $$SavedShowsTableUpdateCompanionBuilder =
+    SavedShowsCompanion Function({
+      Value<int> id,
+      Value<String> groupTitle,
+      Value<DateTime> savedAt,
+    });
+
+class $$SavedShowsTableFilterComposer
+    extends Composer<_$AppDatabase, $SavedShowsTable> {
+  $$SavedShowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get savedAt => $composableBuilder(
+    column: $table.savedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SavedShowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SavedShowsTable> {
+  $$SavedShowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get savedAt => $composableBuilder(
+    column: $table.savedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SavedShowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SavedShowsTable> {
+  $$SavedShowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get savedAt =>
+      $composableBuilder(column: $table.savedAt, builder: (column) => column);
+}
+
+class $$SavedShowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SavedShowsTable,
+          SavedShow,
+          $$SavedShowsTableFilterComposer,
+          $$SavedShowsTableOrderingComposer,
+          $$SavedShowsTableAnnotationComposer,
+          $$SavedShowsTableCreateCompanionBuilder,
+          $$SavedShowsTableUpdateCompanionBuilder,
+          (
+            SavedShow,
+            BaseReferences<_$AppDatabase, $SavedShowsTable, SavedShow>,
+          ),
+          SavedShow,
+          PrefetchHooks Function()
+        > {
+  $$SavedShowsTableTableManager(_$AppDatabase db, $SavedShowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SavedShowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SavedShowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SavedShowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> groupTitle = const Value.absent(),
+                Value<DateTime> savedAt = const Value.absent(),
+              }) => SavedShowsCompanion(
+                id: id,
+                groupTitle: groupTitle,
+                savedAt: savedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String groupTitle,
+                Value<DateTime> savedAt = const Value.absent(),
+              }) => SavedShowsCompanion.insert(
+                id: id,
+                groupTitle: groupTitle,
+                savedAt: savedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SavedShowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SavedShowsTable,
+      SavedShow,
+      $$SavedShowsTableFilterComposer,
+      $$SavedShowsTableOrderingComposer,
+      $$SavedShowsTableAnnotationComposer,
+      $$SavedShowsTableCreateCompanionBuilder,
+      $$SavedShowsTableUpdateCompanionBuilder,
+      (SavedShow, BaseReferences<_$AppDatabase, $SavedShowsTable, SavedShow>),
+      SavedShow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5087,4 +5496,6 @@ class $AppDatabaseManager {
       $$MediaShowsTableTableManager(_db, _db.mediaShows);
   $$IndexedFoldersTableTableManager get indexedFolders =>
       $$IndexedFoldersTableTableManager(_db, _db.indexedFolders);
+  $$SavedShowsTableTableManager get savedShows =>
+      $$SavedShowsTableTableManager(_db, _db.savedShows);
 }
