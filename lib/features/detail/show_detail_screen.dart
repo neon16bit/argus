@@ -105,62 +105,123 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     if (!context.mounted) return;
 
-    final seasonSummary = result.seasonItemCounts.entries
-        .map((e) {
-          final seasonLabel = e.key == null
-              ? 'Extras'
-              : e.key == 0
-              ? 'Specials'
-              : 'Season ${e.key}';
-          return '$seasonLabel: ${e.value} episodes';
-        })
-        .join('\n');
+    final sortedSeasons = result.seasons.keys.toList()
+      ..sort((a, b) {
+        final aVal = a ?? 0;
+        final bVal = b ?? 0;
+        if (aVal == 0 && bVal != 0) return 1;
+        if (bVal == 0 && aVal != 0) return -1;
+        return aVal.compareTo(bVal);
+      });
+
+    // regular seasons are selected
+    // specials (season == 0) are unselected
+    final selectedSeasons = <int?>{
+      for (final s in sortedSeasons)
+        if (s != null && s > 0) s,
+    };
+    if (selectedSeasons.isEmpty && sortedSeasons.isNotEmpty) {
+      selectedSeasons.add(sortedSeasons.first);
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fix Episode Listing'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Detected sequential episode numbers for '
-              '${result.totalFixed} items:',
-            ),
-            const SizedBox(height: 12),
-            Text(seasonSummary, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            Text(
-              'Apply these changes?',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final totalSelectedItems = selectedSeasons.fold<int>(
+              0,
+              (sum, s) => sum + (result.seasons[s]?.itemCount ?? 0),
+            );
+
+            return AlertDialog(
+              title: const Text('Fix Episode Listing'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Select the seasons to apply detected episode numbers:',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    ...sortedSeasons.map((season) {
+                      final info = result.seasons[season]!;
+                      final seasonLabel = season == null
+                          ? 'Extras'
+                          : season == 0
+                          ? 'Specials'
+                          : 'Season $season';
+
+                      final detailStr = info.itemCount == info.episodeCount
+                          ? '${info.episodeCount} episodes'
+                          : '${info.episodeCount} episodes (${info.itemCount} files)';
+
+                      final isSelected = selectedSeasons.contains(season);
+
+                      return CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(seasonLabel),
+                        subtitle: Text(detailStr),
+                        value: isSelected,
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              selectedSeasons.add(season);
+                            } else {
+                              selectedSeasons.remove(season);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: selectedSeasons.isEmpty
+                      ? null
+                      : () => Navigator.pop(context, true),
+                  child: Text(
+                    totalSelectedItems > 0
+                        ? 'Apply ($totalSelectedItems)'
+                        : 'Apply',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
     if (confirmed == true) {
-      await db.updateEpisodeNumbers(result.updates);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Fixed episode numbers for ${result.totalFixed} items',
+      final updatesToApply = <int, int>{};
+      for (final s in selectedSeasons) {
+        if (result.seasons.containsKey(s)) {
+          updatesToApply.addAll(result.seasons[s]!.updates);
+        }
+      }
+
+      if (updatesToApply.isNotEmpty) {
+        await db.updateEpisodeNumbers(updatesToApply);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Fixed episode numbers for ${updatesToApply.length} items',
+              ),
+              behavior: SnackBarBehavior.floating,
             ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+          );
+        }
       }
     }
   }

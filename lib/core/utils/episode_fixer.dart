@@ -1,24 +1,33 @@
 import 'package:argus/data/database/app_database.dart';
 
-class EpisodeFixResult {
-  final Map<int, int> updates;
-  final Map<int?, int> seasonItemCounts;
+class SeasonFixInfo {
+  final int? season;
+  final int episodeCount; // unique episodes detected
+  final int itemCount; // total files to update
+  final Map<int, int> updates; // itemId -> detected episode
 
-  const EpisodeFixResult({
+  const SeasonFixInfo({
+    required this.season,
+    required this.episodeCount,
+    required this.itemCount,
     required this.updates,
-    required this.seasonItemCounts,
   });
+}
 
-  int get totalFixed => updates.length;
-  bool get isEmpty => updates.isEmpty;
+class EpisodeFixResult {
+  final Map<int?, SeasonFixInfo> seasons;
+
+  const EpisodeFixResult({required this.seasons});
+
+  int get totalFixed => seasons.values.fold(0, (sum, s) => sum + s.itemCount);
+  bool get isEmpty => seasons.isEmpty;
 }
 
 class EpisodeFixer {
   static final _digitPattern = RegExp(r'\d+');
 
   static EpisodeFixResult detect(List<MediaItem> items) {
-    final allUpdates = <int, int>{};
-    final seasonCounts = <int?, int>{};
+    final seasonMap = <int?, SeasonFixInfo>{};
 
     // group items by season
     final bySeason = <int?, List<MediaItem>>{};
@@ -26,24 +35,43 @@ class EpisodeFixer {
       bySeason.putIfAbsent(item.season, () => []).add(item);
     }
 
-    for (final entry in bySeason.entries) {
-      final seasonItems = entry.value;
+    for (final seasonEntry in bySeason.entries) {
+      final seasonItems = seasonEntry.value;
       if (seasonItems.length < 2) continue;
 
-      final result = _detectForGroup(seasonItems);
-      if (result.isNotEmpty) {
-        allUpdates.addAll(result);
-        seasonCounts[entry.key] = result.length;
+      // group items by dir url to isolate
+      final byFolder = <String, List<MediaItem>>{};
+      for (final item in seasonItems) {
+        final url = item.directUrl;
+        final slashIdx = url.lastIndexOf('/');
+        final folderKey = slashIdx > 0
+            ? '${item.sourceId}_${url.substring(0, slashIdx)}'
+            : '${item.sourceId}';
+        byFolder.putIfAbsent(folderKey, () => []).add(item);
+      }
+
+      final seasonUpdates = <int, int>{};
+      for (final folderItems in byFolder.values) {
+        if (folderItems.length < 2) continue;
+        final updates = _detectForItems(folderItems);
+        seasonUpdates.addAll(updates);
+      }
+
+      if (seasonUpdates.isNotEmpty) {
+        final uniqueEpisodes = seasonUpdates.values.toSet().length;
+        seasonMap[seasonEntry.key] = SeasonFixInfo(
+          season: seasonEntry.key,
+          episodeCount: uniqueEpisodes,
+          itemCount: seasonUpdates.length,
+          updates: seasonUpdates,
+        );
       }
     }
 
-    return EpisodeFixResult(
-      updates: allUpdates,
-      seasonItemCounts: seasonCounts,
-    );
+    return EpisodeFixResult(seasons: seasonMap);
   }
 
-  static Map<int, int> _detectForGroup(List<MediaItem> items) {
+  static Map<int, int> _detectForItems(List<MediaItem> items) {
     // extract all numbers from each raw filename
     final itemNumbers = <int, List<int>>{};
 
@@ -70,53 +98,80 @@ class EpisodeFixer {
         .map((nums) => nums.length)
         .reduce((a, b) => a > b ? a : b);
 
-    // build column values and filter out constant columns
-    final variableColumns = <int>[];
-    for (int col = 0; col < maxCols; col++) {
-      final values = <int>{};
-      int count = 0;
-      for (final nums in itemNumbers.values) {
-        if (col < nums.length) {
-          values.add(nums[col]);
-          count++;
-        }
-      }
-      // skip columns where all values are the same
-      // skip columns that dont have values for most items
-      if (values.length > 1 && count >= itemNumbers.length * 0.5) {
-        variableColumns.add(col);
-      }
-    }
-
-    if (variableColumns.isEmpty) return {};
-
-    // from the variable columns find the one with the best sequential score
+    // find candidate columns from the left
     int bestCol = -1;
+    bool bestIsFromEnd = false;
     int bestScore = 0;
 
-    for (final col in variableColumns) {
-      final colValues = <int>[];
+    // test forward columns
+    for (int col = 0; col < maxCols; col++) {
+      final valuesAtCol = <int>{};
+      final seqValues = <int>[];
+      int presentCount = 0;
+
       for (final nums in itemNumbers.values) {
         if (col < nums.length) {
-          colValues.add(nums[col]);
+          valuesAtCol.add(nums[col]);
+          seqValues.add(nums[col]);
+          presentCount++;
         }
       }
 
-      final score = _sequentialScore(colValues);
+      // skip columns where all values are the same
+      if (valuesAtCol.length <= 1 || presentCount < itemNumbers.length * 0.6) {
+        continue;
+      }
+
+      final score = _sequentialScore(seqValues);
       if (score > bestScore) {
         bestScore = score;
         bestCol = col;
+        bestIsFromEnd = false;
+      }
+    }
+
+    // test reverse columns
+    for (int revCol = 1; revCol <= maxCols; revCol++) {
+      final valuesAtCol = <int>{};
+      final seqValues = <int>[];
+      int presentCount = 0;
+
+      for (final nums in itemNumbers.values) {
+        if (nums.length >= revCol) {
+          final val = nums[nums.length - revCol];
+          valuesAtCol.add(val);
+          seqValues.add(val);
+          presentCount++;
+        }
+      }
+
+      if (valuesAtCol.length <= 1 || presentCount < itemNumbers.length * 0.6) {
+        continue;
+      }
+
+      final score = _sequentialScore(seqValues);
+      if (score > bestScore) {
+        bestScore = score;
+        bestCol = revCol;
+        bestIsFromEnd = true;
       }
     }
 
     // require at least 50% of items to form a sequential run
-    if (bestCol < 0 || bestScore < (itemNumbers.length * 0.5)) return {};
+    if (bestScore < (itemNumbers.length * 0.5)) return {};
 
     // build the update map from the winning column
     final updates = <int, int>{};
     for (final entry in itemNumbers.entries) {
-      if (bestCol < entry.value.length) {
-        updates[entry.key] = entry.value[bestCol];
+      final nums = entry.value;
+      if (!bestIsFromEnd) {
+        if (bestCol < nums.length) {
+          updates[entry.key] = nums[bestCol];
+        }
+      } else {
+        if (nums.length >= bestCol) {
+          updates[entry.key] = nums[nums.length - bestCol];
+        }
       }
     }
 
@@ -128,7 +183,6 @@ class EpisodeFixer {
     if (values.length < 2) return 0;
 
     final sorted = [...values]..sort();
-    // deduplicate
     final unique = <int>[sorted.first];
     for (int i = 1; i < sorted.length; i++) {
       if (sorted[i] != sorted[i - 1]) unique.add(sorted[i]);
