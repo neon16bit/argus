@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/episode_fixer.dart';
@@ -8,6 +9,7 @@ import 'package:argus/features/detail/widgets/metadata_card.dart';
 import 'package:argus/features/detail/widgets/file_card.dart';
 import 'package:argus/features/detail/widgets/source_filter.dart';
 import 'package:argus/features/detail/show_view_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ShowDetailScreen extends ConsumerStatefulWidget {
   final SearchResult result;
@@ -226,6 +228,22 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
   }
 
+  void _copyFolderUrl(BuildContext context, String? url) {
+    if (url == null || url.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: url));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Folder URL copied to clipboard'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _openInBrowser(String? url) {
+    if (url == null || url.isEmpty) return;
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 600;
@@ -250,6 +268,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final foldersAsync = ref.watch(showFoldersProvider(activeGroupTitle));
     final folders = foldersAsync.value ?? [];
+    final folderUrl = widget.result.folderUrl ?? folders.firstOrNull?.folderUrl;
     final isAnyUnscraped =
         folders.isNotEmpty && folders.any((f) => !f.isScraped);
     final foldersWithErrors = folders
@@ -385,6 +404,32 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 onPressed: () => _fixEpisodeNumbers(context, activeGroupTitle),
               ),
             ),
+            if (folderUrl != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black38,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.copy_rounded),
+                  tooltip: 'Copy Folder URL',
+                  onPressed: () => _copyFolderUrl(context, folderUrl),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black38,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.open_in_browser_rounded),
+                  tooltip: 'Open in Browser',
+                  onPressed: () => _openInBrowser(folderUrl),
+                ),
+              ),
+            ],
           ] else
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -411,6 +456,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                         );
                       } else if (value == 'fix_episodes') {
                         _fixEpisodeNumbers(context, activeGroupTitle);
+                      } else if (value == 'copy_folder_url') {
+                        _copyFolderUrl(context, folderUrl);
+                      } else if (value == 'open_in_browser') {
+                        _openInBrowser(folderUrl);
                       }
                     },
                     itemBuilder: (context) => [
@@ -445,6 +494,28 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ],
                         ),
                       ),
+                      if (folderUrl != null) ...[
+                        const PopupMenuItem(
+                          value: 'copy_folder_url',
+                          child: Row(
+                            children: [
+                              Icon(Icons.copy_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('Copy Folder URL'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'open_in_browser',
+                          child: Row(
+                            children: [
+                              Icon(Icons.open_in_browser_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('Open in Browser'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
