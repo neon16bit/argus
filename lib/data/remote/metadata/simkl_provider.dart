@@ -108,7 +108,7 @@ class SimklProvider extends MetadataProvider {
         if (item is Map<String, dynamic>) {
           final itemYear = item['year'] as int?;
           if (itemYear == year) {
-            return _parseResult(item);
+            return _parseResult(item, endpointType: type);
           }
         }
       }
@@ -121,7 +121,7 @@ class SimklProvider extends MetadataProvider {
     }
 
     final first = results[0] as Map<String, dynamic>;
-    return _parseResult(first);
+    return _parseResult(first, endpointType: type);
   }
 
   // fetch full metadata by simkl ID directly
@@ -146,7 +146,7 @@ class SimklProvider extends MetadataProvider {
       final data = jsonDecode(response.body);
       if (data is! Map<String, dynamic>) return null;
 
-      final meta = _parseResult(data);
+      final meta = _parseResult(data, endpointType: mediaType);
       return ShowMetadata(
         title: meta.title,
         titleEn: meta.titleEn,
@@ -161,7 +161,7 @@ class SimklProvider extends MetadataProvider {
         ratingImdb: meta.ratingImdb,
         year: meta.year,
         simklId: simklId,
-        mediaType: mediaType,
+        mediaType: meta.mediaType,
         slug: (data['ids']?['slug'] ?? data['slug']) as String?,
         imdbId: meta.imdbId,
         tmdbId: meta.tmdbId,
@@ -260,16 +260,27 @@ class SimklProvider extends MetadataProvider {
         return null;
       }
 
+      int? malId = parseIntSafe(ids['mal']);
+      int? anilistId = parseIntSafe(ids['anilist']);
+      int? tvdbId = parseIntSafe(ids['tvdb']);
+      String? anidbId = ids['anidb']?.toString();
+
       // determine media type for anime, also extract anime_type
+      final isAnime =
+          mediaObject['anime_type'] != null ||
+          malId != null ||
+          anilistId != null ||
+          anidbId != null;
+
       String? resolvedMediaType;
       String? animeType;
-      if (type == 'episode' || type == 'show') {
-        resolvedMediaType = mediaObject['anime_type'] != null ? 'anime' : 'tv';
-      } else {
-        resolvedMediaType = type;
-      }
-      if (resolvedMediaType == 'anime') {
+      if (isAnime) {
+        resolvedMediaType = 'anime';
         animeType = (mediaObject['anime_type'] as String?) ?? 'tv';
+      } else if (type == 'movie' || mediaObject['type'] == 'movie') {
+        resolvedMediaType = 'movie';
+      } else {
+        resolvedMediaType = 'tv';
       }
 
       debugPrint('[Simkl] File match: "$title" ($resolvedMediaType)');
@@ -284,16 +295,12 @@ class SimklProvider extends MetadataProvider {
 
       String? imdbId = ids['imdb'] as String?;
       String? tmdbId = (ids['tmdbtv'] ?? ids['tmdb'])?.toString();
-      int? malId = parseIntSafe(ids['mal']);
-      int? anilistId = parseIntSafe(ids['anilist']);
-      int? tvdbId = parseIntSafe(ids['tvdb']);
-      String? anidbId = ids['anidb']?.toString();
 
       double? ratingSimkl;
       double? ratingMal;
       double? ratingImdb;
 
-      if (simklId != null && resolvedMediaType != null) {
+      if (simklId != null) {
         final fullMeta = await fetchMetadataById(simklId, resolvedMediaType);
         if (fullMeta != null) {
           posterPath = fullMeta.posterPath ?? posterPath;
@@ -388,7 +395,7 @@ class SimklProvider extends MetadataProvider {
     return '$kSimklImageBase/fanart/$fanartPath$size$ext&q=90';
   }
 
-  ShowMetadata _parseResult(Map<String, dynamic> data) {
+  ShowMetadata _parseResult(Map<String, dynamic> data, {String? endpointType}) {
     final title = _unescapeHtml((data['title'] ?? '') as String) ?? '';
     final titleEn = _unescapeHtml(
       (data['en_title'] ?? data['title_en']) as String?,
@@ -441,6 +448,24 @@ class SimklProvider extends MetadataProvider {
     }
     final rating = ratingImdb ?? ratingMal ?? ratingSimkl;
 
+    final isAnime =
+        endpointType == 'anime' ||
+        data['endpoint_type'] == 'anime' ||
+        data['anime_type'] != null ||
+        malId != null ||
+        anilistId != null ||
+        anidbId != null;
+
+    final mediaType = isAnime
+        ? 'anime'
+        : (endpointType == 'movies' ||
+                  endpointType == 'movie' ||
+                  data['endpoint_type'] == 'movies' ||
+                  data['endpoint_type'] == 'movie' ||
+                  data['type'] == 'movie'
+              ? 'movie'
+              : 'tv');
+
     return ShowMetadata(
       title: title,
       titleEn: titleEn,
@@ -455,7 +480,7 @@ class SimklProvider extends MetadataProvider {
       ratingImdb: ratingImdb,
       year: year,
       simklId: simklId,
-      mediaType: (data['endpoint_type'] ?? data['type']) as String?,
+      mediaType: mediaType,
       slug: slug,
       imdbId: imdbId,
       tmdbId: tmdbId,

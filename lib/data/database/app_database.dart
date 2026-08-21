@@ -313,7 +313,14 @@ class AppDatabase extends _$AppDatabase {
     SELECT
       COALESCE(s.simkl_id, m.group_title) as result_key,
       m.group_title,
-      s.resolved_title, s.title_en, s.poster_path, s.media_type, s.year,
+      s.resolved_title, s.title_en, s.poster_path,
+      CASE
+        WHEN s.mal_id IS NOT NULL OR s.anilist_id IS NOT NULL OR s.anidb_id IS NOT NULL THEN 'anime'
+        WHEN s.media_type IS NOT NULL THEN s.media_type
+        WHEN COUNT(CASE WHEN m.season IS NOT NULL OR m.episode IS NOT NULL THEN 1 END) > 0 THEN 'tv'
+        ELSE 'movie'
+      END as media_type,
+      s.year,
       COUNT(m.id) as item_count,
       NULL as folder_url,
       1 as is_scraped,
@@ -334,7 +341,12 @@ class AppDatabase extends _$AppDatabase {
     SELECT
       f.folder_url as result_key,
       f.clean_title as group_title,
-      s.resolved_title, s.title_en, s.poster_path, s.media_type,
+      s.resolved_title, s.title_en, s.poster_path,
+      CASE
+        WHEN s.mal_id IS NOT NULL OR s.anilist_id IS NOT NULL OR s.anidb_id IS NOT NULL THEN 'anime'
+        WHEN s.media_type IS NOT NULL THEN s.media_type
+        ELSE 'tv'
+      END as media_type,
       COALESCE(s.year, f.year) as year,
       0 as item_count,
       f.folder_url as folder_url,
@@ -489,7 +501,12 @@ class AppDatabase extends _$AppDatabase {
         s.resolved_title,
         s.title_en,
         s.poster_path,
-        s.media_type,
+        CASE
+          WHEN s.mal_id IS NOT NULL OR s.anilist_id IS NOT NULL OR s.anidb_id IS NOT NULL THEN 'anime'
+          WHEN s.media_type IS NOT NULL THEN s.media_type
+          WHEN (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = b.group_title AND (m.season IS NOT NULL OR m.episode IS NOT NULL)) > 0 THEN 'tv'
+          ELSE 'movie'
+        END as media_type,
         s.year,
         (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = b.group_title) as item_count,
         (SELECT f.folder_url FROM indexed_folders f WHERE f.clean_title = b.group_title LIMIT 1) as folder_url,
