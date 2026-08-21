@@ -5,11 +5,28 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LibraryScreen extends ConsumerWidget {
+enum LibraryCategory {
+  all('All'),
+  anime('Anime'),
+  movies('Movies'),
+  shows('TV Shows');
+
+  final String label;
+  const LibraryCategory(this.label);
+}
+
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  LibraryCategory _selectedCategory = LibraryCategory.all;
+
+  @override
+  Widget build(BuildContext context) {
     final savedShowsAsync = ref.watch(savedShowsProvider);
     final isGrid = ref.watch(libraryViewGridProvider);
 
@@ -55,26 +72,79 @@ class LibraryScreen extends ConsumerWidget {
             );
           }
 
-          if (isGrid) {
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 180,
-                childAspectRatio: 0.62,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: shows.length,
-              itemBuilder: (context, index) =>
-                  _LibraryGridCard(result: shows[index]),
-            );
-          }
+          final filteredShows = shows.where((show) {
+            if (_selectedCategory == LibraryCategory.all) return true;
+            final type = show.mediaType?.toLowerCase();
+            if (_selectedCategory == LibraryCategory.anime) {
+              return type == 'anime';
+            }
+            if (_selectedCategory == LibraryCategory.movies) {
+              return type == 'movie';
+            }
+            if (_selectedCategory == LibraryCategory.shows) {
+              return type == 'tv' || type == 'shows' || type == 'show';
+            }
+            return true;
+          }).toList();
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: shows.length,
-            itemBuilder: (context, index) =>
-                SearchResultCard(result: shows[index]),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: LibraryCategory.values.map((cat) {
+                    final isSelected = _selectedCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        showCheckmark: false,
+                        label: Text(cat.label),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedCategory = cat);
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              Expanded(
+                child: filteredShows.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No ${_selectedCategory.label} in your library',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      )
+                    : isGrid
+                    ? GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 180,
+                              childAspectRatio: 0.62,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
+                        itemCount: filteredShows.length,
+                        itemBuilder: (context, index) =>
+                            _LibraryGridCard(result: filteredShows[index]),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredShows.length,
+                        itemBuilder: (context, index) =>
+                            SearchResultCard(result: filteredShows[index]),
+                      ),
+              ),
+            ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
