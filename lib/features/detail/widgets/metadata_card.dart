@@ -101,33 +101,21 @@ class MetadataCard extends StatelessWidget {
                           context,
                           'IMDb',
                           metadata!.ratingImdb!,
-                          Colors.amber[700]!,
                         ),
                       if (metadata?.ratingMal != null)
-                        _buildRatingBadge(
-                          context,
-                          'MAL',
-                          metadata!.ratingMal!,
-                          Colors.blue[600]!,
-                        ),
+                        _buildRatingBadge(context, 'MAL', metadata!.ratingMal!),
                       if (metadata?.ratingSimkl != null)
                         _buildRatingBadge(
                           context,
                           'Simkl',
                           metadata!.ratingSimkl!,
-                          Colors.red[600]!,
                         ),
                     ],
                   ),
                   const SizedBox(height: 8),
                 ],
                 if (metadata?.overview != null)
-                  Text(
-                    metadata!.overview!,
-                    maxLines: 5,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  _ExpandableOverview(text: metadata!.overview!),
               ],
             ),
           ),
@@ -140,38 +128,57 @@ class MetadataCard extends StatelessWidget {
     BuildContext context,
     String provider,
     double rating,
-    Color color,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colorScheme.outlineVariant, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, size: 12, color: color),
-          const SizedBox(width: 2),
-          Text(
-            provider,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-          ),
+          Icon(Icons.star_rounded, size: 14, color: colorScheme.primary),
           const SizedBox(width: 4),
-          Text(
-            rating.toStringAsFixed(1),
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-          ),
+          Text(provider, style: theme.textTheme.labelSmall),
+          const SizedBox(width: 4),
+          Text(rating.toStringAsFixed(1), style: theme.textTheme.labelSmall),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpandableOverview extends StatefulWidget {
+  final String text;
+
+  const _ExpandableOverview({required this.text});
+
+  @override
+  State<_ExpandableOverview> createState() => _ExpandableOverviewState();
+}
+
+class _ExpandableOverviewState extends State<_ExpandableOverview> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        alignment: Alignment.topLeft,
+        child: Text(
+          widget.text,
+          maxLines: _isExpanded ? null : 5,
+          overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ),
     );
   }
