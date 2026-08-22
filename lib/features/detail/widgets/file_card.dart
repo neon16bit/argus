@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:argus/features/detail/widgets/video_player_screen.dart';
+import 'package:argus/features/player/video_player_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FileCard extends StatelessWidget {
@@ -42,7 +42,10 @@ class FileCard extends StatelessWidget {
         ),
         trailing: Text(
           isMulti ? '' : (item.fileExtension?.toUpperCase() ?? ''),
-          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         onTap: () => _showPlayOptionsBottomSheet(context, titleStr, group),
       ),
@@ -139,7 +142,10 @@ class FileCard extends StatelessWidget {
   void _playInApp(BuildContext context, String url) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => VideoPlayerScreen(url: url)),
+      MaterialPageRoute(
+        builder: (_) =>
+            VideoPlayerScreen(url: url, title: group.first.cleanTitle),
+      ),
     );
   }
 
