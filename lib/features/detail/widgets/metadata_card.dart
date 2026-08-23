@@ -133,7 +133,7 @@ class MetadataCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(6),
@@ -142,11 +142,20 @@ class MetadataCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, size: 14, color: colorScheme.primary),
-          const SizedBox(width: 4),
-          Text(provider, style: theme.textTheme.labelSmall),
-          const SizedBox(width: 4),
-          Text(rating.toStringAsFixed(1), style: theme.textTheme.labelSmall),
+          Icon(Icons.star_rounded, size: 13, color: colorScheme.primary),
+          const SizedBox(width: 3),
+          Text(
+            provider,
+            style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            rating.toStringAsFixed(1),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

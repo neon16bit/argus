@@ -3405,6 +3405,680 @@ class SavedShowsCompanion extends UpdateCompanion<SavedShow> {
   }
 }
 
+class $WatchHistoryTable extends WatchHistory
+    with TableInfo<$WatchHistoryTable, WatchHistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WatchHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupTitleMeta = const VerificationMeta(
+    'groupTitle',
+  );
+  @override
+  late final GeneratedColumn<String> groupTitle = GeneratedColumn<String>(
+    'group_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mediaItemIdMeta = const VerificationMeta(
+    'mediaItemId',
+  );
+  @override
+  late final GeneratedColumn<int> mediaItemId = GeneratedColumn<int>(
+    'media_item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES media_items (id)',
+    ),
+  );
+  static const VerificationMeta _seasonMeta = const VerificationMeta('season');
+  @override
+  late final GeneratedColumn<int> season = GeneratedColumn<int>(
+    'season',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeMeta = const VerificationMeta(
+    'episode',
+  );
+  @override
+  late final GeneratedColumn<int> episode = GeneratedColumn<int>(
+    'episode',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeTitleMeta = const VerificationMeta(
+    'episodeTitle',
+  );
+  @override
+  late final GeneratedColumn<String> episodeTitle = GeneratedColumn<String>(
+    'episode_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _streamUrlMeta = const VerificationMeta(
+    'streamUrl',
+  );
+  @override
+  late final GeneratedColumn<String> streamUrl = GeneratedColumn<String>(
+    'stream_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMsMeta = const VerificationMeta(
+    'positionMs',
+  );
+  @override
+  late final GeneratedColumn<int> positionMs = GeneratedColumn<int>(
+    'position_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isCompletedMeta = const VerificationMeta(
+    'isCompleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isCompleted = GeneratedColumn<bool>(
+    'is_completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_completed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lastWatchedAtMeta = const VerificationMeta(
+    'lastWatchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastWatchedAt =
+      GeneratedColumn<DateTime>(
+        'last_watched_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupTitle,
+    mediaItemId,
+    season,
+    episode,
+    episodeTitle,
+    streamUrl,
+    positionMs,
+    durationMs,
+    isCompleted,
+    lastWatchedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'watch_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WatchHistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_title')) {
+      context.handle(
+        _groupTitleMeta,
+        groupTitle.isAcceptableOrUnknown(data['group_title']!, _groupTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupTitleMeta);
+    }
+    if (data.containsKey('media_item_id')) {
+      context.handle(
+        _mediaItemIdMeta,
+        mediaItemId.isAcceptableOrUnknown(
+          data['media_item_id']!,
+          _mediaItemIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('season')) {
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
+    }
+    if (data.containsKey('episode')) {
+      context.handle(
+        _episodeMeta,
+        episode.isAcceptableOrUnknown(data['episode']!, _episodeMeta),
+      );
+    }
+    if (data.containsKey('episode_title')) {
+      context.handle(
+        _episodeTitleMeta,
+        episodeTitle.isAcceptableOrUnknown(
+          data['episode_title']!,
+          _episodeTitleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('stream_url')) {
+      context.handle(
+        _streamUrlMeta,
+        streamUrl.isAcceptableOrUnknown(data['stream_url']!, _streamUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_streamUrlMeta);
+    }
+    if (data.containsKey('position_ms')) {
+      context.handle(
+        _positionMsMeta,
+        positionMs.isAcceptableOrUnknown(data['position_ms']!, _positionMsMeta),
+      );
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('is_completed')) {
+      context.handle(
+        _isCompletedMeta,
+        isCompleted.isAcceptableOrUnknown(
+          data['is_completed']!,
+          _isCompletedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_watched_at')) {
+      context.handle(
+        _lastWatchedAtMeta,
+        lastWatchedAt.isAcceptableOrUnknown(
+          data['last_watched_at']!,
+          _lastWatchedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WatchHistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WatchHistoryData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_title'],
+      )!,
+      mediaItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}media_item_id'],
+      ),
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      ),
+      episode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode'],
+      ),
+      episodeTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_title'],
+      ),
+      streamUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stream_url'],
+      )!,
+      positionMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position_ms'],
+      )!,
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      isCompleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_completed'],
+      )!,
+      lastWatchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_watched_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WatchHistoryTable createAlias(String alias) {
+    return $WatchHistoryTable(attachedDatabase, alias);
+  }
+}
+
+class WatchHistoryData extends DataClass
+    implements Insertable<WatchHistoryData> {
+  final int id;
+  final String groupTitle;
+  final int? mediaItemId;
+  final int? season;
+  final int? episode;
+  final String? episodeTitle;
+  final String streamUrl;
+  final int positionMs;
+  final int durationMs;
+  final bool isCompleted;
+  final DateTime lastWatchedAt;
+  const WatchHistoryData({
+    required this.id,
+    required this.groupTitle,
+    this.mediaItemId,
+    this.season,
+    this.episode,
+    this.episodeTitle,
+    required this.streamUrl,
+    required this.positionMs,
+    required this.durationMs,
+    required this.isCompleted,
+    required this.lastWatchedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_title'] = Variable<String>(groupTitle);
+    if (!nullToAbsent || mediaItemId != null) {
+      map['media_item_id'] = Variable<int>(mediaItemId);
+    }
+    if (!nullToAbsent || season != null) {
+      map['season'] = Variable<int>(season);
+    }
+    if (!nullToAbsent || episode != null) {
+      map['episode'] = Variable<int>(episode);
+    }
+    if (!nullToAbsent || episodeTitle != null) {
+      map['episode_title'] = Variable<String>(episodeTitle);
+    }
+    map['stream_url'] = Variable<String>(streamUrl);
+    map['position_ms'] = Variable<int>(positionMs);
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['is_completed'] = Variable<bool>(isCompleted);
+    map['last_watched_at'] = Variable<DateTime>(lastWatchedAt);
+    return map;
+  }
+
+  WatchHistoryCompanion toCompanion(bool nullToAbsent) {
+    return WatchHistoryCompanion(
+      id: Value(id),
+      groupTitle: Value(groupTitle),
+      mediaItemId: mediaItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaItemId),
+      season: season == null && nullToAbsent
+          ? const Value.absent()
+          : Value(season),
+      episode: episode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episode),
+      episodeTitle: episodeTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeTitle),
+      streamUrl: Value(streamUrl),
+      positionMs: Value(positionMs),
+      durationMs: Value(durationMs),
+      isCompleted: Value(isCompleted),
+      lastWatchedAt: Value(lastWatchedAt),
+    );
+  }
+
+  factory WatchHistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WatchHistoryData(
+      id: serializer.fromJson<int>(json['id']),
+      groupTitle: serializer.fromJson<String>(json['groupTitle']),
+      mediaItemId: serializer.fromJson<int?>(json['mediaItemId']),
+      season: serializer.fromJson<int?>(json['season']),
+      episode: serializer.fromJson<int?>(json['episode']),
+      episodeTitle: serializer.fromJson<String?>(json['episodeTitle']),
+      streamUrl: serializer.fromJson<String>(json['streamUrl']),
+      positionMs: serializer.fromJson<int>(json['positionMs']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      isCompleted: serializer.fromJson<bool>(json['isCompleted']),
+      lastWatchedAt: serializer.fromJson<DateTime>(json['lastWatchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupTitle': serializer.toJson<String>(groupTitle),
+      'mediaItemId': serializer.toJson<int?>(mediaItemId),
+      'season': serializer.toJson<int?>(season),
+      'episode': serializer.toJson<int?>(episode),
+      'episodeTitle': serializer.toJson<String?>(episodeTitle),
+      'streamUrl': serializer.toJson<String>(streamUrl),
+      'positionMs': serializer.toJson<int>(positionMs),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'isCompleted': serializer.toJson<bool>(isCompleted),
+      'lastWatchedAt': serializer.toJson<DateTime>(lastWatchedAt),
+    };
+  }
+
+  WatchHistoryData copyWith({
+    int? id,
+    String? groupTitle,
+    Value<int?> mediaItemId = const Value.absent(),
+    Value<int?> season = const Value.absent(),
+    Value<int?> episode = const Value.absent(),
+    Value<String?> episodeTitle = const Value.absent(),
+    String? streamUrl,
+    int? positionMs,
+    int? durationMs,
+    bool? isCompleted,
+    DateTime? lastWatchedAt,
+  }) => WatchHistoryData(
+    id: id ?? this.id,
+    groupTitle: groupTitle ?? this.groupTitle,
+    mediaItemId: mediaItemId.present ? mediaItemId.value : this.mediaItemId,
+    season: season.present ? season.value : this.season,
+    episode: episode.present ? episode.value : this.episode,
+    episodeTitle: episodeTitle.present ? episodeTitle.value : this.episodeTitle,
+    streamUrl: streamUrl ?? this.streamUrl,
+    positionMs: positionMs ?? this.positionMs,
+    durationMs: durationMs ?? this.durationMs,
+    isCompleted: isCompleted ?? this.isCompleted,
+    lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
+  );
+  WatchHistoryData copyWithCompanion(WatchHistoryCompanion data) {
+    return WatchHistoryData(
+      id: data.id.present ? data.id.value : this.id,
+      groupTitle: data.groupTitle.present
+          ? data.groupTitle.value
+          : this.groupTitle,
+      mediaItemId: data.mediaItemId.present
+          ? data.mediaItemId.value
+          : this.mediaItemId,
+      season: data.season.present ? data.season.value : this.season,
+      episode: data.episode.present ? data.episode.value : this.episode,
+      episodeTitle: data.episodeTitle.present
+          ? data.episodeTitle.value
+          : this.episodeTitle,
+      streamUrl: data.streamUrl.present ? data.streamUrl.value : this.streamUrl,
+      positionMs: data.positionMs.present
+          ? data.positionMs.value
+          : this.positionMs,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      isCompleted: data.isCompleted.present
+          ? data.isCompleted.value
+          : this.isCompleted,
+      lastWatchedAt: data.lastWatchedAt.present
+          ? data.lastWatchedAt.value
+          : this.lastWatchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchHistoryData(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('mediaItemId: $mediaItemId, ')
+          ..write('season: $season, ')
+          ..write('episode: $episode, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('streamUrl: $streamUrl, ')
+          ..write('positionMs: $positionMs, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('lastWatchedAt: $lastWatchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    groupTitle,
+    mediaItemId,
+    season,
+    episode,
+    episodeTitle,
+    streamUrl,
+    positionMs,
+    durationMs,
+    isCompleted,
+    lastWatchedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WatchHistoryData &&
+          other.id == this.id &&
+          other.groupTitle == this.groupTitle &&
+          other.mediaItemId == this.mediaItemId &&
+          other.season == this.season &&
+          other.episode == this.episode &&
+          other.episodeTitle == this.episodeTitle &&
+          other.streamUrl == this.streamUrl &&
+          other.positionMs == this.positionMs &&
+          other.durationMs == this.durationMs &&
+          other.isCompleted == this.isCompleted &&
+          other.lastWatchedAt == this.lastWatchedAt);
+}
+
+class WatchHistoryCompanion extends UpdateCompanion<WatchHistoryData> {
+  final Value<int> id;
+  final Value<String> groupTitle;
+  final Value<int?> mediaItemId;
+  final Value<int?> season;
+  final Value<int?> episode;
+  final Value<String?> episodeTitle;
+  final Value<String> streamUrl;
+  final Value<int> positionMs;
+  final Value<int> durationMs;
+  final Value<bool> isCompleted;
+  final Value<DateTime> lastWatchedAt;
+  const WatchHistoryCompanion({
+    this.id = const Value.absent(),
+    this.groupTitle = const Value.absent(),
+    this.mediaItemId = const Value.absent(),
+    this.season = const Value.absent(),
+    this.episode = const Value.absent(),
+    this.episodeTitle = const Value.absent(),
+    this.streamUrl = const Value.absent(),
+    this.positionMs = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.isCompleted = const Value.absent(),
+    this.lastWatchedAt = const Value.absent(),
+  });
+  WatchHistoryCompanion.insert({
+    this.id = const Value.absent(),
+    required String groupTitle,
+    this.mediaItemId = const Value.absent(),
+    this.season = const Value.absent(),
+    this.episode = const Value.absent(),
+    this.episodeTitle = const Value.absent(),
+    required String streamUrl,
+    this.positionMs = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.isCompleted = const Value.absent(),
+    this.lastWatchedAt = const Value.absent(),
+  }) : groupTitle = Value(groupTitle),
+       streamUrl = Value(streamUrl);
+  static Insertable<WatchHistoryData> custom({
+    Expression<int>? id,
+    Expression<String>? groupTitle,
+    Expression<int>? mediaItemId,
+    Expression<int>? season,
+    Expression<int>? episode,
+    Expression<String>? episodeTitle,
+    Expression<String>? streamUrl,
+    Expression<int>? positionMs,
+    Expression<int>? durationMs,
+    Expression<bool>? isCompleted,
+    Expression<DateTime>? lastWatchedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupTitle != null) 'group_title': groupTitle,
+      if (mediaItemId != null) 'media_item_id': mediaItemId,
+      if (season != null) 'season': season,
+      if (episode != null) 'episode': episode,
+      if (episodeTitle != null) 'episode_title': episodeTitle,
+      if (streamUrl != null) 'stream_url': streamUrl,
+      if (positionMs != null) 'position_ms': positionMs,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (isCompleted != null) 'is_completed': isCompleted,
+      if (lastWatchedAt != null) 'last_watched_at': lastWatchedAt,
+    });
+  }
+
+  WatchHistoryCompanion copyWith({
+    Value<int>? id,
+    Value<String>? groupTitle,
+    Value<int?>? mediaItemId,
+    Value<int?>? season,
+    Value<int?>? episode,
+    Value<String?>? episodeTitle,
+    Value<String>? streamUrl,
+    Value<int>? positionMs,
+    Value<int>? durationMs,
+    Value<bool>? isCompleted,
+    Value<DateTime>? lastWatchedAt,
+  }) {
+    return WatchHistoryCompanion(
+      id: id ?? this.id,
+      groupTitle: groupTitle ?? this.groupTitle,
+      mediaItemId: mediaItemId ?? this.mediaItemId,
+      season: season ?? this.season,
+      episode: episode ?? this.episode,
+      episodeTitle: episodeTitle ?? this.episodeTitle,
+      streamUrl: streamUrl ?? this.streamUrl,
+      positionMs: positionMs ?? this.positionMs,
+      durationMs: durationMs ?? this.durationMs,
+      isCompleted: isCompleted ?? this.isCompleted,
+      lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupTitle.present) {
+      map['group_title'] = Variable<String>(groupTitle.value);
+    }
+    if (mediaItemId.present) {
+      map['media_item_id'] = Variable<int>(mediaItemId.value);
+    }
+    if (season.present) {
+      map['season'] = Variable<int>(season.value);
+    }
+    if (episode.present) {
+      map['episode'] = Variable<int>(episode.value);
+    }
+    if (episodeTitle.present) {
+      map['episode_title'] = Variable<String>(episodeTitle.value);
+    }
+    if (streamUrl.present) {
+      map['stream_url'] = Variable<String>(streamUrl.value);
+    }
+    if (positionMs.present) {
+      map['position_ms'] = Variable<int>(positionMs.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (isCompleted.present) {
+      map['is_completed'] = Variable<bool>(isCompleted.value);
+    }
+    if (lastWatchedAt.present) {
+      map['last_watched_at'] = Variable<DateTime>(lastWatchedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchHistoryCompanion(')
+          ..write('id: $id, ')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('mediaItemId: $mediaItemId, ')
+          ..write('season: $season, ')
+          ..write('episode: $episode, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('streamUrl: $streamUrl, ')
+          ..write('positionMs: $positionMs, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('lastWatchedAt: $lastWatchedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3413,6 +4087,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MediaShowsTable mediaShows = $MediaShowsTable(this);
   late final $IndexedFoldersTable indexedFolders = $IndexedFoldersTable(this);
   late final $SavedShowsTable savedShows = $SavedShowsTable(this);
+  late final $WatchHistoryTable watchHistory = $WatchHistoryTable(this);
   late final Index idxItemsSourceGroup = Index(
     'idx_items_source_group',
     'CREATE INDEX idx_items_source_group ON media_items (source_id, group_title)',
@@ -3420,6 +4095,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index idxFoldersSourceTitle = Index(
     'idx_folders_source_title',
     'CREATE INDEX idx_folders_source_title ON indexed_folders (source_id, clean_title)',
+  );
+  late final Index idxWatchHistoryLookup = Index(
+    'idx_watch_history_lookup',
+    'CREATE INDEX idx_watch_history_lookup ON watch_history (group_title, season, episode)',
+  );
+  late final Index idxWatchHistoryLastWatched = Index(
+    'idx_watch_history_last_watched',
+    'CREATE INDEX idx_watch_history_last_watched ON watch_history (last_watched_at)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3431,8 +4114,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mediaShows,
     indexedFolders,
     savedShows,
+    watchHistory,
     idxItemsSourceGroup,
     idxFoldersSourceTitle,
+    idxWatchHistoryLookup,
+    idxWatchHistoryLastWatched,
   ];
 }
 
@@ -3959,6 +4645,24 @@ final class $$MediaItemsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$WatchHistoryTable, List<WatchHistoryData>>
+  _watchHistoryRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.watchHistory,
+    aliasName: 'media_items__id__watch_history__media_item_id',
+  );
+
+  $$WatchHistoryTableProcessedTableManager get watchHistoryRefs {
+    final manager = $$WatchHistoryTableTableManager(
+      $_db,
+      $_db.watchHistory,
+    ).filter((f) => f.mediaItemId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_watchHistoryRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$MediaItemsTableFilterComposer
@@ -4047,6 +4751,31 @@ class $$MediaItemsTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> watchHistoryRefs(
+    Expression<bool> Function($$WatchHistoryTableFilterComposer f) f,
+  ) {
+    final $$WatchHistoryTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.watchHistory,
+      getReferencedColumn: (t) => t.mediaItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WatchHistoryTableFilterComposer(
+            $db: $db,
+            $table: $db.watchHistory,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -4208,6 +4937,31 @@ class $$MediaItemsTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> watchHistoryRefs<T extends Object>(
+    Expression<T> Function($$WatchHistoryTableAnnotationComposer a) f,
+  ) {
+    final $$WatchHistoryTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.watchHistory,
+      getReferencedColumn: (t) => t.mediaItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WatchHistoryTableAnnotationComposer(
+            $db: $db,
+            $table: $db.watchHistory,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$MediaItemsTableTableManager
@@ -4223,7 +4977,7 @@ class $$MediaItemsTableTableManager
           $$MediaItemsTableUpdateCompanionBuilder,
           (MediaItem, $$MediaItemsTableReferences),
           MediaItem,
-          PrefetchHooks Function({bool sourceId})
+          PrefetchHooks Function({bool sourceId, bool watchHistoryRefs})
         > {
   $$MediaItemsTableTableManager(_$AppDatabase db, $MediaItemsTable table)
     : super(
@@ -4300,47 +5054,73 @@ class $$MediaItemsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({sourceId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (sourceId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.sourceId,
-                                referencedTable: $$MediaItemsTableReferences
-                                    ._sourceIdTable(db),
-                                referencedColumn: $$MediaItemsTableReferences
-                                    ._sourceIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({sourceId = false, watchHistoryRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (watchHistoryRefs) db.watchHistory,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (sourceId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.sourceId,
+                                    referencedTable: $$MediaItemsTableReferences
+                                        ._sourceIdTable(db),
+                                    referencedColumn:
+                                        $$MediaItemsTableReferences
+                                            ._sourceIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (watchHistoryRefs)
+                        await $_getPrefetchedData<
+                          MediaItem,
+                          $MediaItemsTable,
+                          WatchHistoryData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MediaItemsTableReferences
+                              ._watchHistoryRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MediaItemsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).watchHistoryRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.mediaItemId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4357,7 +5137,7 @@ typedef $$MediaItemsTableProcessedTableManager =
       $$MediaItemsTableUpdateCompanionBuilder,
       (MediaItem, $$MediaItemsTableReferences),
       MediaItem,
-      PrefetchHooks Function({bool sourceId})
+      PrefetchHooks Function({bool sourceId, bool watchHistoryRefs})
     >;
 typedef $$MediaShowsTableCreateCompanionBuilder =
     MediaShowsCompanion Function({
@@ -5484,6 +6264,444 @@ typedef $$SavedShowsTableProcessedTableManager =
       SavedShow,
       PrefetchHooks Function()
     >;
+typedef $$WatchHistoryTableCreateCompanionBuilder =
+    WatchHistoryCompanion Function({
+      Value<int> id,
+      required String groupTitle,
+      Value<int?> mediaItemId,
+      Value<int?> season,
+      Value<int?> episode,
+      Value<String?> episodeTitle,
+      required String streamUrl,
+      Value<int> positionMs,
+      Value<int> durationMs,
+      Value<bool> isCompleted,
+      Value<DateTime> lastWatchedAt,
+    });
+typedef $$WatchHistoryTableUpdateCompanionBuilder =
+    WatchHistoryCompanion Function({
+      Value<int> id,
+      Value<String> groupTitle,
+      Value<int?> mediaItemId,
+      Value<int?> season,
+      Value<int?> episode,
+      Value<String?> episodeTitle,
+      Value<String> streamUrl,
+      Value<int> positionMs,
+      Value<int> durationMs,
+      Value<bool> isCompleted,
+      Value<DateTime> lastWatchedAt,
+    });
+
+final class $$WatchHistoryTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $WatchHistoryTable, WatchHistoryData> {
+  $$WatchHistoryTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $MediaItemsTable _mediaItemIdTable(_$AppDatabase db) => db.mediaItems
+      .createAlias('watch_history__media_item_id__media_items__id');
+
+  $$MediaItemsTableProcessedTableManager? get mediaItemId {
+    final $_column = $_itemColumn<int>('media_item_id');
+    if ($_column == null) return null;
+    final manager = $$MediaItemsTableTableManager(
+      $_db,
+      $_db.mediaItems,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_mediaItemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$WatchHistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $WatchHistoryTable> {
+  $$WatchHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get season => $composableBuilder(
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episode => $composableBuilder(
+    column: $table.episode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get streamUrl => $composableBuilder(
+    column: $table.streamUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastWatchedAt => $composableBuilder(
+    column: $table.lastWatchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$MediaItemsTableFilterComposer get mediaItemId {
+    final $$MediaItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mediaItemId,
+      referencedTable: $db.mediaItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MediaItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.mediaItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WatchHistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $WatchHistoryTable> {
+  $$WatchHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get season => $composableBuilder(
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episode => $composableBuilder(
+    column: $table.episode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get streamUrl => $composableBuilder(
+    column: $table.streamUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastWatchedAt => $composableBuilder(
+    column: $table.lastWatchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$MediaItemsTableOrderingComposer get mediaItemId {
+    final $$MediaItemsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mediaItemId,
+      referencedTable: $db.mediaItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MediaItemsTableOrderingComposer(
+            $db: $db,
+            $table: $db.mediaItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WatchHistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WatchHistoryTable> {
+  $$WatchHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get season =>
+      $composableBuilder(column: $table.season, builder: (column) => column);
+
+  GeneratedColumn<int> get episode =>
+      $composableBuilder(column: $table.episode, builder: (column) => column);
+
+  GeneratedColumn<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get streamUrl =>
+      $composableBuilder(column: $table.streamUrl, builder: (column) => column);
+
+  GeneratedColumn<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastWatchedAt => $composableBuilder(
+    column: $table.lastWatchedAt,
+    builder: (column) => column,
+  );
+
+  $$MediaItemsTableAnnotationComposer get mediaItemId {
+    final $$MediaItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mediaItemId,
+      referencedTable: $db.mediaItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MediaItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.mediaItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$WatchHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WatchHistoryTable,
+          WatchHistoryData,
+          $$WatchHistoryTableFilterComposer,
+          $$WatchHistoryTableOrderingComposer,
+          $$WatchHistoryTableAnnotationComposer,
+          $$WatchHistoryTableCreateCompanionBuilder,
+          $$WatchHistoryTableUpdateCompanionBuilder,
+          (WatchHistoryData, $$WatchHistoryTableReferences),
+          WatchHistoryData,
+          PrefetchHooks Function({bool mediaItemId})
+        > {
+  $$WatchHistoryTableTableManager(_$AppDatabase db, $WatchHistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WatchHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WatchHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WatchHistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> groupTitle = const Value.absent(),
+                Value<int?> mediaItemId = const Value.absent(),
+                Value<int?> season = const Value.absent(),
+                Value<int?> episode = const Value.absent(),
+                Value<String?> episodeTitle = const Value.absent(),
+                Value<String> streamUrl = const Value.absent(),
+                Value<int> positionMs = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<bool> isCompleted = const Value.absent(),
+                Value<DateTime> lastWatchedAt = const Value.absent(),
+              }) => WatchHistoryCompanion(
+                id: id,
+                groupTitle: groupTitle,
+                mediaItemId: mediaItemId,
+                season: season,
+                episode: episode,
+                episodeTitle: episodeTitle,
+                streamUrl: streamUrl,
+                positionMs: positionMs,
+                durationMs: durationMs,
+                isCompleted: isCompleted,
+                lastWatchedAt: lastWatchedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String groupTitle,
+                Value<int?> mediaItemId = const Value.absent(),
+                Value<int?> season = const Value.absent(),
+                Value<int?> episode = const Value.absent(),
+                Value<String?> episodeTitle = const Value.absent(),
+                required String streamUrl,
+                Value<int> positionMs = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<bool> isCompleted = const Value.absent(),
+                Value<DateTime> lastWatchedAt = const Value.absent(),
+              }) => WatchHistoryCompanion.insert(
+                id: id,
+                groupTitle: groupTitle,
+                mediaItemId: mediaItemId,
+                season: season,
+                episode: episode,
+                episodeTitle: episodeTitle,
+                streamUrl: streamUrl,
+                positionMs: positionMs,
+                durationMs: durationMs,
+                isCompleted: isCompleted,
+                lastWatchedAt: lastWatchedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WatchHistoryTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({mediaItemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (mediaItemId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.mediaItemId,
+                                referencedTable: $$WatchHistoryTableReferences
+                                    ._mediaItemIdTable(db),
+                                referencedColumn: $$WatchHistoryTableReferences
+                                    ._mediaItemIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$WatchHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WatchHistoryTable,
+      WatchHistoryData,
+      $$WatchHistoryTableFilterComposer,
+      $$WatchHistoryTableOrderingComposer,
+      $$WatchHistoryTableAnnotationComposer,
+      $$WatchHistoryTableCreateCompanionBuilder,
+      $$WatchHistoryTableUpdateCompanionBuilder,
+      (WatchHistoryData, $$WatchHistoryTableReferences),
+      WatchHistoryData,
+      PrefetchHooks Function({bool mediaItemId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5498,4 +6716,6 @@ class $AppDatabaseManager {
       $$IndexedFoldersTableTableManager(_db, _db.indexedFolders);
   $$SavedShowsTableTableManager get savedShows =>
       $$SavedShowsTableTableManager(_db, _db.savedShows);
+  $$WatchHistoryTableTableManager get watchHistory =>
+      $$WatchHistoryTableTableManager(_db, _db.watchHistory);
 }

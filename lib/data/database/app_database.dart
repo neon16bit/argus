@@ -11,11 +11,19 @@ import 'tables/media_items.dart';
 import 'tables/media_shows.dart';
 import 'tables/indexed_folders.dart';
 import 'tables/saved_shows.dart';
+import 'tables/watch_history.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Sources, MediaItems, MediaShows, IndexedFolders, SavedShows],
+  tables: [
+    Sources,
+    MediaItems,
+    MediaShows,
+    IndexedFolders,
+    SavedShows,
+    WatchHistory,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
@@ -24,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -89,6 +97,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 10) {
         await m.createTable(savedShows);
+      }
+      if (from < 11) {
+        await m.createTable(watchHistory);
       }
     },
   );
@@ -517,6 +528,211 @@ class AppDatabase extends _$AppDatabase {
       ORDER BY b.saved_at DESC
       ''',
       readsFrom: {savedShows, mediaShows, mediaItems, indexedFolders},
+    ).watch().map((rows) => rows.map((row) => row.data).toList());
+  }
+
+  // watch history / playback progress
+
+  Future<void> savePlaybackProgress({
+    required String groupTitle,
+    int? mediaItemId,
+    int? season,
+    int? episode,
+    String? episodeTitle,
+    required String streamUrl,
+    required int positionMs,
+    required int durationMs,
+    bool? isCompleted,
+  }) async {
+    final completed =
+        isCompleted ??
+        (durationMs > 0 && positionMs >= (durationMs * 0.9).toInt());
+
+    final query = select(watchHistory)
+      ..where((w) {
+        if (season != null && episode != null) {
+          return w.groupTitle.equals(groupTitle) &
+              w.season.equals(season) &
+              w.episode.equals(episode);
+        } else {
+          return w.groupTitle.equals(groupTitle) &
+              w.streamUrl.equals(streamUrl);
+        }
+      });
+
+    final existing = await query.getSingleOrNull();
+    if (existing != null) {
+      await (update(
+        watchHistory,
+      )..where((w) => w.id.equals(existing.id))).write(
+        WatchHistoryCompanion(
+          mediaItemId: Value(mediaItemId ?? existing.mediaItemId),
+          episodeTitle: Value(episodeTitle ?? existing.episodeTitle),
+          streamUrl: Value(streamUrl),
+          positionMs: Value(positionMs),
+          durationMs: Value(durationMs),
+          isCompleted: Value(completed || existing.isCompleted),
+          lastWatchedAt: Value(DateTime.now()),
+        ),
+      );
+    } else {
+      await into(watchHistory).insert(
+        WatchHistoryCompanion.insert(
+          groupTitle: groupTitle,
+          mediaItemId: Value(mediaItemId),
+          season: Value(season),
+          episode: Value(episode),
+          episodeTitle: Value(episodeTitle),
+          streamUrl: streamUrl,
+          positionMs: Value(positionMs),
+          durationMs: Value(durationMs),
+          isCompleted: Value(completed),
+          lastWatchedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
+
+  Future<void> markEpisodeWatched({
+    required String groupTitle,
+    int? season,
+    int? episode,
+    String? streamUrl,
+    required bool isWatched,
+  }) async {
+    final query = select(watchHistory)
+      ..where((w) {
+        if (season != null && episode != null) {
+          return w.groupTitle.equals(groupTitle) &
+              w.season.equals(season) &
+              w.episode.equals(episode);
+        } else if (streamUrl != null) {
+          return w.groupTitle.equals(groupTitle) &
+              w.streamUrl.equals(streamUrl);
+        } else {
+          return w.groupTitle.equals(groupTitle);
+        }
+      });
+
+    final existing = await query.getSingleOrNull();
+    if (existing != null) {
+      await (update(
+        watchHistory,
+      )..where((w) => w.id.equals(existing.id))).write(
+        WatchHistoryCompanion(
+          isCompleted: Value(isWatched),
+          positionMs: Value(isWatched ? existing.durationMs : 0),
+          lastWatchedAt: Value(DateTime.now()),
+        ),
+      );
+    } else {
+      await into(watchHistory).insert(
+        WatchHistoryCompanion.insert(
+          groupTitle: groupTitle,
+          season: Value(season),
+          episode: Value(episode),
+          streamUrl: streamUrl ?? '',
+          positionMs: const Value(0),
+          durationMs: const Value(0),
+          isCompleted: Value(isWatched),
+          lastWatchedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
+
+  Future<void> markEpisodesUpToWatched({
+    required String groupTitle,
+    required int? season,
+    required int episodeNumber,
+    required bool isWatched,
+  }) async {
+    final items =
+        await (select(mediaItems)..where(
+              (m) =>
+                  m.groupTitle.equals(groupTitle) &
+                  (season != null
+                      ? m.season.equals(season)
+                      : m.season.isNull()) &
+                  m.episode.isNotNull() &
+                  m.episode.isSmallerOrEqualValue(episodeNumber),
+            ))
+            .get();
+
+    final distinctEpisodes = <int?>{};
+    for (final item in items) {
+      if (distinctEpisodes.add(item.episode)) {
+        await markEpisodeWatched(
+          groupTitle: groupTitle,
+          season: season,
+          episode: item.episode,
+          streamUrl: item.directUrl,
+          isWatched: isWatched,
+        );
+      }
+    }
+  }
+
+  Future<WatchHistoryData?> getPlaybackProgress(
+    String groupTitle, {
+    int? season,
+    int? episode,
+    String? streamUrl,
+  }) async {
+    final query = select(watchHistory)
+      ..where((w) {
+        if (season != null && episode != null) {
+          return w.groupTitle.equals(groupTitle) &
+              w.season.equals(season) &
+              w.episode.equals(episode);
+        } else if (streamUrl != null) {
+          return w.groupTitle.equals(groupTitle) &
+              w.streamUrl.equals(streamUrl);
+        } else {
+          return w.groupTitle.equals(groupTitle);
+        }
+      });
+    return query.getSingleOrNull();
+  }
+
+  Stream<List<WatchHistoryData>> watchPlaybackProgressForShow(
+    String groupTitle,
+  ) {
+    return (select(
+      watchHistory,
+    )..where((w) => w.groupTitle.equals(groupTitle))).watch();
+  }
+
+  Stream<List<Map<String, dynamic>>> watchContinueWatching() {
+    return customSelect(
+      '''
+      SELECT
+        w.id as watch_id,
+        w.group_title,
+        w.season,
+        w.episode,
+        w.episode_title,
+        w.stream_url,
+        w.position_ms,
+        w.duration_ms,
+        w.is_completed,
+        w.last_watched_at,
+        s.resolved_title,
+        s.title_en,
+        s.poster_path,
+        s.fanart_path,
+        s.media_type,
+        s.year,
+        (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = w.group_title) as item_count
+      FROM watch_history w
+      LEFT JOIN media_shows s ON w.group_title = s.group_title
+      WHERE (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = w.group_title) > 0
+      GROUP BY w.group_title
+      HAVING w.last_watched_at = MAX(w.last_watched_at)
+      ORDER BY w.last_watched_at DESC
+      LIMIT 20
+      ''',
+      readsFrom: {watchHistory, mediaShows, mediaItems},
     ).watch().map((rows) => rows.map((row) => row.data).toList());
   }
 

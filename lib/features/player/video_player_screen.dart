@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:argus/core/providers/database_providers.dart';
+import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/player/widgets/player_bottom_bar.dart';
 import 'package:argus/features/player/widgets/player_center_controls.dart';
 import 'package:argus/features/player/widgets/player_top_bar.dart';
@@ -8,23 +10,41 @@ import 'package:argus/features/player/widgets/track_selector_sheet.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class VideoPlayerScreen extends StatefulWidget {
+class VideoPlayerScreen extends ConsumerStatefulWidget {
   final String url;
   final String? title;
+  final String? groupTitle;
+  final int? season;
+  final int? episode;
+  final int? mediaItemId;
 
-  const VideoPlayerScreen({super.key, required this.url, this.title});
+  const VideoPlayerScreen({
+    super.key,
+    required this.url,
+    this.title,
+    this.groupTitle,
+    this.season,
+    this.episode,
+    this.mediaItemId,
+  });
 
   @override
-  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+  ConsumerState<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   late final Player _player;
   late final VideoController _controller;
+  late final AppDatabase _db;
+
+  // progress persistence
+  Timer? _progressSaveTimer;
+  bool _hasResumed = false;
 
   // player state
   Duration _position = Duration.zero;
@@ -55,6 +75,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    _db = ref.read(databaseProvider);
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -83,45 +104,46 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       if (mounted && _player.platform is NativePlayer) {
         (_player.platform as NativePlayer).setProperty('sub-visibility', 'yes');
       }
+      _checkAndResume();
     });
 
     _subscriptions.addAll([
       _player.stream.position.listen((pos) {
-        if (mounted && !_isSeeking) {
-          setState(() => _position = pos);
-        }
+        if (!mounted || _isSeeking) return;
+        setState(() => _position = pos);
       }),
       _player.stream.duration.listen((dur) {
-        if (mounted) setState(() => _duration = dur);
+        if (!mounted) return;
+        setState(() => _duration = dur);
       }),
       _player.stream.playing.listen((playing) {
-        if (mounted) {
-          setState(() => _isPlaying = playing);
-          if (playing) {
-            _resetHideTimer();
-          } else {
-            _showControls();
-          }
+        if (!mounted) return;
+        setState(() => _isPlaying = playing);
+        if (playing) {
+          _resetHideTimer();
+        } else {
+          _showControls();
+          _saveProgress();
         }
       }),
       _player.stream.buffering.listen((buffering) {
-        if (mounted) setState(() => _isBuffering = buffering);
+        if (!mounted) return;
+        setState(() => _isBuffering = buffering);
       }),
       _player.stream.rate.listen((rate) {
-        if (mounted && !_isHolding2x) {
-          setState(() => _playbackRate = rate);
-        }
+        if (!mounted || _isHolding2x) return;
+        setState(() => _playbackRate = rate);
       }),
       _player.stream.volume.listen((vol) {
-        if (mounted) {
-          setState(() {
-            _volume = vol;
-            _isMuted = vol == 0;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _volume = vol;
+          _isMuted = vol == 0;
+        });
       }),
       _player.stream.track.listen((track) {
-        if (mounted && _player.platform is NativePlayer) {
+        if (!mounted) return;
+        if (_player.platform is NativePlayer) {
           (_player.platform as NativePlayer).setProperty(
             'sub-visibility',
             track.subtitle.id == 'no' ? 'no' : 'yes',
@@ -132,16 +154,86 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     _player.open(Media(widget.url));
     _resetHideTimer();
+
+    _progressSaveTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && _isPlaying && _position.inSeconds > 0) {
+        _saveProgress();
+      }
+    });
+  }
+
+  void _saveProgress() {
+    final group = widget.groupTitle ?? widget.title;
+    if (group == null || group.isEmpty) return;
+    if (_duration.inMilliseconds <= 0) return;
+
+    _db.savePlaybackProgress(
+      groupTitle: group,
+      mediaItemId: widget.mediaItemId,
+      season: widget.season,
+      episode: widget.episode,
+      episodeTitle: widget.title,
+      streamUrl: widget.url,
+      positionMs: _position.inMilliseconds,
+      durationMs: _duration.inMilliseconds,
+    );
+  }
+
+  Future<void> _checkAndResume() async {
+    final group = widget.groupTitle ?? widget.title;
+    if (group == null || group.isEmpty || _hasResumed) return;
+
+    final progress = await _db.getPlaybackProgress(
+      group,
+      season: widget.season,
+      episode: widget.episode,
+      streamUrl: widget.url,
+    );
+
+    if (progress != null &&
+        !progress.isCompleted &&
+        progress.positionMs > 5000 &&
+        mounted) {
+      _hasResumed = true;
+      // rewind 5 seconds to provide context when resuming
+      final resumeMs = (progress.positionMs - 5000).clamp(
+        0,
+        progress.positionMs,
+      );
+      await _player.seek(Duration(milliseconds: resumeMs));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Resumed from ${_formatProgressDuration(Duration(milliseconds: resumeMs))}',
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  String _formatProgressDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (duration.inHours > 0) {
+      return '${duration.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   @override
   void dispose() {
-    _hideTimer?.cancel();
-    _doubleTapResetTimer?.cancel();
-    _focusNode.dispose();
     for (final s in _subscriptions) {
       s.cancel();
     }
+    _subscriptions.clear();
+    _progressSaveTimer?.cancel();
+    _hideTimer?.cancel();
+    _doubleTapResetTimer?.cancel();
+    _focusNode.dispose();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
@@ -151,10 +243,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
-    _player.dispose();
     if (_isFullscreen) {
       defaultExitNativeFullscreen();
     }
+    _saveProgress();
+    _player.pause();
     super.dispose();
   }
 

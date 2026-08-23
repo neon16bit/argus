@@ -392,135 +392,97 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black38,
-                  foregroundColor: Colors.white,
+          ],
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black38,
+                  shape: BoxShape.circle,
                 ),
-                icon: const Icon(Icons.auto_fix_high_rounded),
-                tooltip: 'Fix Episode Listing',
-                onPressed: () => _fixEpisodeNumbers(context, activeGroupTitle),
-              ),
-            ),
-            if (folderUrl != null) ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black38,
-                    foregroundColor: Colors.white,
+                child: PopupMenuButton<String>(
+                  tooltip: 'More actions',
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: Colors.white,
                   ),
-                  icon: const Icon(Icons.copy_rounded),
-                  tooltip: 'Copy Folder URL',
-                  onPressed: () => _copyFolderUrl(context, folderUrl),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black38,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.open_in_browser_rounded),
-                  tooltip: 'Open in Browser',
-                  onPressed: () => _openInBrowser(folderUrl),
-                ),
-              ),
-            ],
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black38,
-                    shape: BoxShape.circle,
-                  ),
-                  child: PopupMenuButton<String>(
-                    tooltip: 'More actions',
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      color: Colors.white,
+                  onSelected: (value) {
+                    if (value == 'refresh_folder') {
+                      _refreshFolders(context, activeGroupTitle, folders);
+                    } else if (value == 'refresh_metadata') {
+                      _refreshMetadata(
+                        context,
+                        widget.result.groupTitle,
+                        widget.result.displayTitle,
+                      );
+                    } else if (value == 'fix_episodes') {
+                      _fixEpisodeNumbers(context, activeGroupTitle);
+                    } else if (value == 'copy_folder_url') {
+                      _copyFolderUrl(context, folderUrl);
+                    } else if (value == 'open_in_browser') {
+                      _openInBrowser(folderUrl);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (folders.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'refresh_folder',
+                        child: Row(
+                          children: [
+                            Icon(Icons.cloud_sync_rounded, size: 20),
+                            SizedBox(width: 8),
+                            Text('Refresh Folder'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'refresh_metadata',
+                      child: Row(
+                        children: [
+                          Icon(Icons.refresh_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text('Refresh Metadata'),
+                        ],
+                      ),
                     ),
-                    onSelected: (value) {
-                      if (value == 'refresh_folder') {
-                        _refreshFolders(context, activeGroupTitle, folders);
-                      } else if (value == 'refresh_metadata') {
-                        _refreshMetadata(
-                          context,
-                          widget.result.groupTitle,
-                          widget.result.displayTitle,
-                        );
-                      } else if (value == 'fix_episodes') {
-                        _fixEpisodeNumbers(context, activeGroupTitle);
-                      } else if (value == 'copy_folder_url') {
-                        _copyFolderUrl(context, folderUrl);
-                      } else if (value == 'open_in_browser') {
-                        _openInBrowser(folderUrl);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (folders.isNotEmpty)
-                        const PopupMenuItem(
-                          value: 'refresh_folder',
-                          child: Row(
-                            children: [
-                              Icon(Icons.cloud_sync_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text('Refresh Folder'),
-                            ],
-                          ),
-                        ),
+                    const PopupMenuItem(
+                      value: 'fix_episodes',
+                      child: Row(
+                        children: [
+                          Icon(Icons.auto_fix_high_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text('Fix Episode Listing'),
+                        ],
+                      ),
+                    ),
+                    if (folderUrl != null) ...[
                       const PopupMenuItem(
-                        value: 'refresh_metadata',
+                        value: 'copy_folder_url',
                         child: Row(
                           children: [
-                            Icon(Icons.refresh_rounded, size: 20),
+                            Icon(Icons.copy_rounded, size: 20),
                             SizedBox(width: 8),
-                            Text('Refresh Metadata'),
+                            Text('Copy Folder URL'),
                           ],
                         ),
                       ),
                       const PopupMenuItem(
-                        value: 'fix_episodes',
+                        value: 'open_in_browser',
                         child: Row(
                           children: [
-                            Icon(Icons.auto_fix_high_rounded, size: 20),
+                            Icon(Icons.open_in_browser_rounded, size: 20),
                             SizedBox(width: 8),
-                            Text('Fix Episode Listing'),
+                            Text('Open in Browser'),
                           ],
                         ),
                       ),
-                      if (folderUrl != null) ...[
-                        const PopupMenuItem(
-                          value: 'copy_folder_url',
-                          child: Row(
-                            children: [
-                              Icon(Icons.copy_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text('Copy Folder URL'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'open_in_browser',
-                          child: Row(
-                            children: [
-                              Icon(Icons.open_in_browser_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text('Open in Browser'),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
         ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
