@@ -228,8 +228,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
   }
 
-  void _copyFolderUrl(BuildContext context, String? url) {
-    if (url == null || url.isEmpty) return;
+  void _copyFolderUrl(BuildContext context, String url) {
+    if (url.isEmpty) return;
     Clipboard.setData(ClipboardData(text: url));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -239,9 +239,24 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     );
   }
 
-  void _openInBrowser(String? url) {
-    if (url == null || url.isEmpty) return;
+  void _openInBrowser(String url) {
+    if (url.isEmpty) return;
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  String _extractFolderSubpath(String url) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return url;
+      final segments = uri.pathSegments
+          .where((s) => s.isNotEmpty)
+          .map(Uri.decodeComponent)
+          .toList();
+      if (segments.isEmpty) return uri.path;
+      return segments.last;
+    } catch (_) {
+      return url;
+    }
   }
 
   @override
@@ -268,7 +283,11 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final foldersAsync = ref.watch(showFoldersProvider(activeGroupTitle));
     final folders = foldersAsync.value ?? [];
-    final folderUrl = widget.result.folderUrl ?? folders.firstOrNull?.folderUrl;
+    final availableFolderUrls = folders.isNotEmpty
+        ? folders.map((f) => f.folderUrl).toSet().toList()
+        : (widget.result.folderUrl != null
+              ? [widget.result.folderUrl!]
+              : <String>[]);
     final isAnyUnscraped =
         folders.isNotEmpty && folders.any((f) => !f.isScraped);
     final foldersWithErrors = folders
@@ -418,10 +437,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       );
                     } else if (value == 'fix_episodes') {
                       _fixEpisodeNumbers(context, activeGroupTitle);
-                    } else if (value == 'copy_folder_url') {
-                      _copyFolderUrl(context, folderUrl);
-                    } else if (value == 'open_in_browser') {
-                      _openInBrowser(folderUrl);
+                    } else if (value.startsWith('copy_folder_url:')) {
+                      _copyFolderUrl(
+                        context,
+                        value.substring('copy_folder_url:'.length),
+                      );
+                    } else if (value.startsWith('open_in_browser:')) {
+                      _openInBrowser(
+                        value.substring('open_in_browser:'.length),
+                      );
                     }
                   },
                   itemBuilder: (context) => [
@@ -456,10 +480,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                         ],
                       ),
                     ),
-                    if (folderUrl != null) ...[
-                      const PopupMenuItem(
-                        value: 'copy_folder_url',
-                        child: Row(
+                    if (availableFolderUrls.length == 1) ...[
+                      PopupMenuItem(
+                        value: 'copy_folder_url:${availableFolderUrls.first}',
+                        child: const Row(
                           children: [
                             Icon(Icons.copy_rounded, size: 20),
                             SizedBox(width: 8),
@@ -467,9 +491,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
-                        value: 'open_in_browser',
-                        child: Row(
+                      PopupMenuItem(
+                        value: 'open_in_browser:${availableFolderUrls.first}',
+                        child: const Row(
                           children: [
                             Icon(Icons.open_in_browser_rounded, size: 20),
                             SizedBox(width: 8),
@@ -477,6 +501,95 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ],
                         ),
                       ),
+                    ] else if (availableFolderUrls.length > 1) ...[
+                      const PopupMenuDivider(),
+                      ...availableFolderUrls.map((url) {
+                        final host = Uri.tryParse(url)?.host ?? url;
+                        final subpath = _extractFolderSubpath(url);
+                        return PopupMenuItem(
+                          value: 'copy_folder_url:$url',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.copy_rounded, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Copy URL ($host)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subpath,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant
+                                            .withValues(alpha: 0.75),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      ...availableFolderUrls.map((url) {
+                        final host = Uri.tryParse(url)?.host ?? url;
+                        final subpath = _extractFolderSubpath(url);
+                        return PopupMenuItem(
+                          value: 'open_in_browser:$url',
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.open_in_browser_rounded,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Open in Browser ($host)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subpath,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant
+                                            .withValues(alpha: 0.75),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
                   ],
                 ),
