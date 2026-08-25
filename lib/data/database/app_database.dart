@@ -697,18 +697,27 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final query = select(watchHistory)
       ..where((w) {
-        if (season != null && episode != null) {
-          return w.groupTitle.equals(groupTitle) &
-              w.season.equals(season) &
-              w.episode.equals(episode);
+        if (episode != null) {
+          if (season != null) {
+            return w.groupTitle.equals(groupTitle) &
+                w.season.equals(season) &
+                w.episode.equals(episode);
+          } else {
+            return w.groupTitle.equals(groupTitle) &
+                w.episode.equals(episode);
+          }
         } else if (streamUrl != null) {
           return w.groupTitle.equals(groupTitle) &
-              w.streamUrl.equals(streamUrl);
+              (w.streamUrl.equals(streamUrl) | w.season.isNull() & w.episode.isNull());
         } else {
           return w.groupTitle.equals(groupTitle);
         }
-      });
-    return query.getSingleOrNull();
+      })
+      ..orderBy([(w) => OrderingTerm.desc(w.lastWatchedAt)])
+      ..limit(1);
+
+    final results = await query.get();
+    return results.firstOrNull;
   }
 
   Stream<List<WatchHistoryData>> watchPlaybackProgressForShow(

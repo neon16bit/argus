@@ -12,8 +12,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 class FileCard extends ConsumerWidget {
   final List<dynamic> group;
+  final String? preferredFolderUrl;
 
-  const FileCard({super.key, required this.group});
+  const FileCard({super.key, required this.group, this.preferredFolderUrl});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,18 +22,31 @@ class FileCard extends ConsumerWidget {
 
     final item = group.first;
     final isMulti = group.length > 1;
+    final hasPreference = preferredFolderUrl != null;
 
     final titleStr = item.episode != null
         ? 'Episode ${item.episode}'
         : item.rawName;
-    final subtitleStr = isMulti
+    final subtitleStr = isMulti && !hasPreference
         ? 'Multiple versions available (${group.length})'
         : item.rawName;
 
-    final isSingleDub =
-        !isMulti &&
-        (AudioTagHelper.isDub(item.directUrl) ||
-            AudioTagHelper.isDub(item.rawName));
+    final dubOverrides = ref.watch(dubOverrideProvider);
+    bool checkItemDub(dynamic it) {
+      bool? itemOverride;
+      for (final entry in dubOverrides.entries) {
+        if (entry.value != null &&
+            it.directUrl.toLowerCase().contains(entry.key.toLowerCase())) {
+          itemOverride = entry.value;
+          break;
+        }
+      }
+      return AudioTagHelper.isDub(it.directUrl, override: itemOverride) ||
+          (itemOverride == null && AudioTagHelper.isDub(it.rawName));
+    }
+
+    final isItemDub = checkItemDub(item);
+    final showDubBadge = !isMulti || hasPreference ? isItemDub : false;
 
     final historyList =
         ref.watch(showWatchHistoryProvider(item.groupTitle)).value ?? [];
@@ -59,87 +73,93 @@ class FileCard extends ConsumerWidget {
         ? (history.positionMs / history.durationMs).clamp(0.0, 1.0)
         : 0.0;
 
+    void openSheet() {
+      _showPlayOptionsBottomSheet(
+        context,
+        ref,
+        titleStr,
+        group,
+        isWatched,
+        historyList,
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            dense: true,
-            leading: Icon(
-              isWatched
-                  ? Icons.check_circle_rounded
-                  : (isMulti
-                        ? Icons.video_library_rounded
-                        : Icons.play_circle_rounded),
-              color: isWatched
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            title: Text(
-              titleStr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: isWatched ? FontWeight.normal : FontWeight.w600,
-                color: isWatched
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7)
-                    : null,
-              ),
-            ),
-            subtitle: Row(
-              children: [
-                if (isSingleDub) ...[
-                  const DubBadge(),
-                  const SizedBox(width: 6),
-                ],
-                Flexible(
-                  child: Text(
-                    subtitleStr,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: Icon(
+          GestureDetector(
+            onSecondaryTap: openSheet,
+            child: ListTile(
+              dense: true,
+              leading: Icon(
                 isWatched
                     ? Icons.check_circle_rounded
-                    : Icons.check_circle_outline_rounded,
+                    : (isMulti && !hasPreference
+                          ? Icons.video_library_rounded
+                          : Icons.play_circle_rounded),
                 color: isWatched
                     ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                size: 20,
+                    : Theme.of(context).colorScheme.primary,
               ),
-              tooltip: isWatched ? 'Mark as unwatched' : 'Mark as watched',
-              onPressed: () => _handleCheckmarkTap(
-                context,
-                ref,
-                item,
-                isWatched,
-                historyList,
+              title: Text(
+                titleStr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: isWatched ? FontWeight.normal : FontWeight.w600,
+                  color: isWatched
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7)
+                      : null,
+                ),
               ),
-            ),
-            onTap: () => _showPlayOptionsBottomSheet(
-              context,
-              ref,
-              titleStr,
-              group,
-              isWatched,
-              historyList,
-            ),
-            onLongPress: () => _showPlayOptionsBottomSheet(
-              context,
-              ref,
-              titleStr,
-              group,
-              isWatched,
-              historyList,
+              subtitle: Row(
+                children: [
+                  if (showDubBadge) ...[
+                    const DubBadge(),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      subtitleStr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+              trailing: IconButton(
+                icon: Icon(
+                  isWatched
+                      ? Icons.check_circle_rounded
+                      : Icons.check_circle_outline_rounded,
+                  color: isWatched
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                tooltip: isWatched ? 'Mark as unwatched' : 'Mark as watched',
+                onPressed: () => _handleCheckmarkTap(
+                  context,
+                  ref,
+                  item,
+                  isWatched,
+                  historyList,
+                ),
+              ),
+              onTap: () {
+                if (!isMulti || hasPreference) {
+                  _playInApp(context, item);
+                } else {
+                  openSheet();
+                }
+              },
+              onLongPress: openSheet,
             ),
           ),
           if (hasProgress)
@@ -308,9 +328,24 @@ class FileCard extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: items.map<Widget>((item) {
+                    final dubOverrides = ref.watch(dubOverrideProvider);
+                    bool? itemOverride;
+                    for (final entry in dubOverrides.entries) {
+                      if (entry.value != null &&
+                          (item.directUrl as String).toLowerCase().contains(
+                            entry.key.toLowerCase(),
+                          )) {
+                        itemOverride = entry.value;
+                        break;
+                      }
+                    }
                     final isItemDub =
-                        AudioTagHelper.isDub(item.directUrl) ||
-                        AudioTagHelper.isDub(item.rawName);
+                        AudioTagHelper.isDub(
+                          item.directUrl,
+                          override: itemOverride,
+                        ) ||
+                        (itemOverride == null &&
+                            AudioTagHelper.isDub(item.rawName));
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.play_arrow_rounded),

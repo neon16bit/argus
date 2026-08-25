@@ -17,12 +17,25 @@ class ShowViewModel {
     required List<dynamic> items,
     required List<Source> allSources,
     required int? selectedSourceId,
+    String? preferredFolderUrl,
   }) {
     // determine which sources are contributing to this shows items
     final showSourceIds = items.map((i) => i.sourceId).toSet();
     final contributingSources = allSources
         .where((s) => showSourceIds.contains(s.id))
         .toList();
+
+    bool matchesPreferred(dynamic item) {
+      if (preferredFolderUrl == null || preferredFolderUrl.isEmpty) return false;
+      final itemUrl = item.directUrl.toLowerCase();
+      final prefUrl = preferredFolderUrl.toLowerCase();
+      final prefDecoded = Uri.decodeFull(preferredFolderUrl).toLowerCase();
+      final itemDecoded = Uri.decodeFull(item.directUrl).toLowerCase();
+      return itemUrl.startsWith(prefUrl) ||
+          itemDecoded.startsWith(prefDecoded) ||
+          itemUrl.contains(prefUrl) ||
+          itemDecoded.contains(prefDecoded);
+    }
 
     // group items by season
     final tempSeasonMap = <int?, List<dynamic>>{};
@@ -57,6 +70,18 @@ class ShowViewModel {
           nullEpisodes.add(item);
         } else {
           groupedEpisodes.putIfAbsent(item.episode, () => []).add(item);
+        }
+      }
+
+      for (final epList in groupedEpisodes.values) {
+        if (preferredFolderUrl != null && epList.length > 1) {
+          epList.sort((a, b) {
+            final aMatch = matchesPreferred(a);
+            final bMatch = matchesPreferred(b);
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+          });
         }
       }
 

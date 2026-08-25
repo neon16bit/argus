@@ -310,10 +310,14 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     );
 
     // reactive filtering, grouping and sorting calculations
+    final prefVersionMap = ref.watch(versionPreferenceProvider);
+    final preferredFolderUrl = prefVersionMap[activeGroupTitle];
+
     final viewModel = ShowViewModel.compute(
       items: items,
       allSources: allSources,
       selectedSourceId: _selectedSourceId,
+      preferredFolderUrl: preferredFolderUrl,
     );
 
     final isSaved =
@@ -729,10 +733,17 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           viewModel: viewModel,
           selectedSourceId: _selectedSourceId,
           totalItems: items.length,
+          folders: folders,
+          preferredFolderUrl: preferredFolderUrl,
           onSourceSelected: (sourceId) {
             setState(() {
               _selectedSourceId = sourceId;
             });
+          },
+          onVersionSelected: (folderUrl) {
+            ref
+                .read(versionPreferenceProvider.notifier)
+                .setPreferred(activeGroupTitle, folderUrl);
           },
         ),
       ),
@@ -760,7 +771,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
               SliverList(
                 delegate: SliverChildListDelegate([
                   ...viewModel.seasonMap[null]!.map(
-                    (group) => FileCard(group: group),
+                    (group) => FileCard(
+                      group: group,
+                      preferredFolderUrl: preferredFolderUrl,
+                    ),
                   ),
                 ]),
               ),
@@ -815,7 +829,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     itemCount: viewModel.seasonMap[season]!.length,
                     itemBuilder: (context, index) {
                       final group = viewModel.seasonMap[season]![index];
-                      return FileCard(group: group);
+                      return FileCard(
+                        group: group,
+                        preferredFolderUrl: preferredFolderUrl,
+                      );
                     },
                   ),
                 ),

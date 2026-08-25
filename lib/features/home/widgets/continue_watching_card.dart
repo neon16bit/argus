@@ -169,33 +169,133 @@ class ContinueWatchingCard extends ConsumerWidget {
 
   Future<void> _handlePlay(BuildContext context, WidgetRef ref) async {
     final db = ref.read(databaseProvider);
+
+    int? targetSeason = item.season;
+    int? targetEpisode = item.episode;
+    String? targetTitle = item.episodeTitle;
+
+    // if current episode was completed (>= 90%) advance to the next episode
+    if (item.isCompleted && targetEpisode != null) {
+      final allItems = await db.getMediaItemsByGroupTitle(item.groupTitle);
+
+      // try next episode in same season
+      final nextInSeason = allItems
+          .where(
+            (m) =>
+                (m.season == targetSeason ||
+                    (targetSeason == null && m.season == null)) &&
+                m.episode == targetEpisode! + 1,
+          )
+          .toList();
+
+      if (nextInSeason.isNotEmpty) {
+        targetEpisode = targetEpisode + 1;
+        targetTitle = nextInSeason.first.cleanTitle;
+      } else {
+        // try first episode of next season
+        final nextSeasonFirstEp = allItems
+            .where(
+              (m) =>
+                  m.season == (targetSeason ?? 1) + 1 &&
+                  (m.episode == 1 || m.episode == 0),
+            )
+            .toList();
+        if (nextSeasonFirstEp.isNotEmpty) {
+          targetSeason = (targetSeason ?? 1) + 1;
+          targetEpisode = nextSeasonFirstEp.first.episode;
+          targetTitle = nextSeasonFirstEp.first.cleanTitle;
+        }
+      }
+    }
+
     final items = await db.getMediaItemsForEpisode(
       groupTitle: item.groupTitle,
-      season: item.season,
-      episode: item.episode,
+      season: targetSeason,
+      episode: targetEpisode,
     );
 
     if (!context.mounted) return;
 
     if (items.length > 1) {
-      _showSourceSelectionBottomSheet(context, ref, items);
+      final prefVersionMap = ref.read(versionPreferenceProvider);
+      final preferredFolderUrl = prefVersionMap[item.groupTitle];
+
+      if (preferredFolderUrl != null && preferredFolderUrl.isNotEmpty) {
+        bool matchesPreferred(MediaItem it) {
+          final itemUrl = it.directUrl.toLowerCase();
+          final prefUrl = preferredFolderUrl.toLowerCase();
+          final prefDecoded = Uri.decodeFull(preferredFolderUrl).toLowerCase();
+          final itemDecoded = Uri.decodeFull(it.directUrl).toLowerCase();
+          return itemUrl.startsWith(prefUrl) ||
+              itemDecoded.startsWith(prefDecoded) ||
+              itemUrl.contains(prefUrl) ||
+              itemDecoded.contains(prefDecoded);
+        }
+
+        final matchingItem = items.cast<MediaItem?>().firstWhere(
+          (it) => it != null && matchesPreferred(it),
+          orElse: () => null,
+        );
+
+        if (matchingItem != null) {
+          _playDirect(
+            context,
+            matchingItem.directUrl,
+            matchingItem.id,
+            season: targetSeason,
+            episode: targetEpisode,
+            title: targetTitle ?? item.displayTitle,
+          );
+          return;
+        }
+      }
+
+      _showSourceSelectionBottomSheet(
+        context,
+        ref,
+        items,
+        season: targetSeason,
+        episode: targetEpisode,
+        title: targetTitle ?? item.displayTitle,
+      );
     } else if (items.length == 1) {
-      _playDirect(context, items.first.directUrl, items.first.id);
+      _playDirect(
+        context,
+        items.first.directUrl,
+        items.first.id,
+        season: targetSeason,
+        episode: targetEpisode,
+        title: targetTitle ?? item.displayTitle,
+      );
     } else {
-      _playDirect(context, item.streamUrl, null);
+      _playDirect(
+        context,
+        item.streamUrl,
+        null,
+        season: targetSeason,
+        episode: targetEpisode,
+        title: targetTitle ?? item.displayTitle,
+      );
     }
   }
 
-  void _playDirect(BuildContext context, String url, int? mediaItemId) {
+  void _playDirect(
+    BuildContext context,
+    String url,
+    int? mediaItemId, {
+    int? season,
+    int? episode,
+    String? title,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => VideoPlayerScreen(
           url: url,
-          title: item.episodeTitle ?? item.displayTitle,
+          title: title ?? item.episodeTitle ?? item.displayTitle,
           groupTitle: item.groupTitle,
-          season: item.season,
-          episode: item.episode,
+          season: season ?? item.season,
+          episode: episode ?? item.episode,
           mediaItemId: mediaItemId,
         ),
       ),
@@ -205,8 +305,13 @@ class ContinueWatchingCard extends ConsumerWidget {
   void _showSourceSelectionBottomSheet(
     BuildContext context,
     WidgetRef ref,
-    List<MediaItem> items,
-  ) {
+    List<MediaItem> items, {
+    int? season,
+    int? episode,
+    String? title,
+  }) {
+    final dubOverrides = ref.read(dubOverrideProvider);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -217,7 +322,7 @@ class ContinueWatchingCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Source: ${item.episodeLabel.isNotEmpty ? item.episodeLabel : item.displayTitle}',
+              'Select Source: ${title ?? (item.episodeLabel.isNotEmpty ? item.episodeLabel : item.displayTitle)}',
               style: Theme.of(ctx).textTheme.titleLarge,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -227,48 +332,62 @@ class ContinueWatchingCard extends ConsumerWidget {
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: items
-                      .map(
-                        (mediaItem) {
-                          final isItemDub =
-                              AudioTagHelper.isDub(mediaItem.directUrl) ||
-                              AudioTagHelper.isDub(mediaItem.rawName);
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.play_arrow_rounded),
-                            title: Text(
-                              mediaItem.rawName,
-                              maxLines: 2,
+                  children: items.map((mediaItem) {
+                    bool? itemOverride;
+                    for (final entry in dubOverrides.entries) {
+                      if (entry.value != null &&
+                          mediaItem.directUrl.toLowerCase().contains(
+                            entry.key.toLowerCase(),
+                          )) {
+                        itemOverride = entry.value;
+                        break;
+                      }
+                    }
+
+                    final isItemDub =
+                        AudioTagHelper.isDub(
+                          mediaItem.directUrl,
+                          override: itemOverride,
+                        ) ||
+                        (itemOverride == null &&
+                            AudioTagHelper.isDub(mediaItem.rawName));
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.play_arrow_rounded),
+                      title: Text(
+                        mediaItem.rawName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              Uri.tryParse(mediaItem.directUrl)?.host ?? '',
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            subtitle: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    Uri.tryParse(mediaItem.directUrl)?.host ??
-                                        '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (isItemDub) ...[
-                                  const SizedBox(width: 8),
-                                  const DubBadge(),
-                                ],
-                              ],
-                            ),
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              _playDirect(
-                                context,
-                                mediaItem.directUrl,
-                                mediaItem.id,
-                              );
-                            },
-                          );
-                        },
-                      )
-                      .toList(),
+                          ),
+                          if (isItemDub) ...[
+                            const SizedBox(width: 8),
+                            const DubBadge(),
+                          ],
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _playDirect(
+                          context,
+                          mediaItem.directUrl,
+                          mediaItem.id,
+                          season: season,
+                          episode: episode,
+                          title: title,
+                        );
+                      },
+                    );
+                  }).toList(),
                 ),
               ),
             ),

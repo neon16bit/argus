@@ -7,3 +7,4 @@ export 'folder_providers.dart';
 export 'theme_provider.dart';
 export 'library_providers.dart';
 export 'watch_history_providers.dart';
+export 'version_preference_provider.dart';

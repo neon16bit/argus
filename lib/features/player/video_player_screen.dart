@@ -104,7 +104,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       if (mounted && _player.platform is NativePlayer) {
         (_player.platform as NativePlayer).setProperty('sub-visibility', 'yes');
       }
-      _checkAndResume();
     });
 
     _subscriptions.addAll([
@@ -152,7 +151,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       }),
     ]);
 
-    _player.open(Media(widget.url));
+    _initPlayerAndResume();
     _resetHideTimer();
 
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -179,39 +178,44 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     );
   }
 
-  Future<void> _checkAndResume() async {
+  Future<void> _initPlayerAndResume() async {
     final group = widget.groupTitle ?? widget.title;
-    if (group == null || group.isEmpty || _hasResumed) return;
+    Duration? startPosition;
 
-    final progress = await _db.getPlaybackProgress(
-      group,
-      season: widget.season,
-      episode: widget.episode,
-      streamUrl: widget.url,
-    );
-
-    if (progress != null &&
-        !progress.isCompleted &&
-        progress.positionMs > 5000 &&
-        mounted) {
-      _hasResumed = true;
-      // rewind 5 seconds to provide context when resuming
-      final resumeMs = (progress.positionMs - 5000).clamp(
-        0,
-        progress.positionMs,
+    if (group != null && group.isNotEmpty && !_hasResumed) {
+      final progress = await _db.getPlaybackProgress(
+        group,
+        season: widget.season,
+        episode: widget.episode,
+        streamUrl: widget.url,
       );
-      await _player.seek(Duration(milliseconds: resumeMs));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Resumed from ${_formatProgressDuration(Duration(milliseconds: resumeMs))}',
-            ),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
+
+      if (progress != null &&
+          !progress.isCompleted &&
+          progress.positionMs > 5000) {
+        _hasResumed = true;
+        // rewind 5 seconds to provide context when resuming
+        final resumeMs = (progress.positionMs - 5000).clamp(
+          0,
+          progress.positionMs,
         );
+        startPosition = Duration(milliseconds: resumeMs);
       }
+    }
+
+    if (!mounted) return;
+    await _player.open(Media(widget.url, start: startPosition));
+
+    if (startPosition != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Resumed from ${_formatProgressDuration(startPosition)}',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -247,7 +251,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       defaultExitNativeFullscreen();
     }
     _saveProgress();
-    _player.pause();
+    _player.stop();
     super.dispose();
   }
 
