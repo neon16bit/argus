@@ -1,16 +1,18 @@
 import 'package:argus/core/providers/providers.dart';
+import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/player/video_player_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ContinueWatchingCard extends StatelessWidget {
+class ContinueWatchingCard extends ConsumerWidget {
   final ContinueWatchingItem item;
 
   const ContinueWatchingCard({super.key, required this.item});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final posterUrl = item.posterUrl;
     final theme = Theme.of(context);
 
@@ -104,20 +106,7 @@ class ContinueWatchingCard extends StatelessWidget {
                             size: 32,
                           ),
                           tooltip: 'Resume Playback',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => VideoPlayerScreen(
-                                  url: item.streamUrl,
-                                  title: item.episodeTitle ?? item.displayTitle,
-                                  groupTitle: item.groupTitle,
-                                  season: item.season,
-                                  episode: item.episode,
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () => _handlePlay(context, ref),
                         ),
                       ),
                     ),
@@ -172,6 +161,101 @@ class ContinueWatchingCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handlePlay(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final items = await db.getMediaItemsForEpisode(
+      groupTitle: item.groupTitle,
+      season: item.season,
+      episode: item.episode,
+    );
+
+    if (!context.mounted) return;
+
+    if (items.length > 1) {
+      _showSourceSelectionBottomSheet(context, ref, items);
+    } else if (items.length == 1) {
+      _playDirect(context, items.first.directUrl, items.first.id);
+    } else {
+      _playDirect(context, item.streamUrl, null);
+    }
+  }
+
+  void _playDirect(BuildContext context, String url, int? mediaItemId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoPlayerScreen(
+          url: url,
+          title: item.episodeTitle ?? item.displayTitle,
+          groupTitle: item.groupTitle,
+          season: item.season,
+          episode: item.episode,
+          mediaItemId: mediaItemId,
+        ),
+      ),
+    );
+  }
+
+  void _showSourceSelectionBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<MediaItem> items,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Source: ${item.episodeLabel.isNotEmpty ? item.episodeLabel : item.displayTitle}',
+              style: Theme.of(ctx).textTheme.titleLarge,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: items
+                      .map(
+                        (mediaItem) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.play_arrow_rounded),
+                          title: Text(
+                            mediaItem.rawName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            Uri.tryParse(mediaItem.directUrl)?.host ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _playDirect(
+                              context,
+                              mediaItem.directUrl,
+                              mediaItem.id,
+                            );
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

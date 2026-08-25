@@ -305,6 +305,22 @@ class AppDatabase extends _$AppDatabase {
     return rows.map((row) => mediaItems.map(row.data)).toList();
   }
 
+  Future<List<MediaItem>> getMediaItemsForEpisode({
+    required String groupTitle,
+    int? season,
+    int? episode,
+  }) async {
+    final allItems = await getMediaItemsByGroupTitle(groupTitle);
+    return allItems.where((m) {
+      if (season != null && episode != null) {
+        return m.season == season && m.episode == episode;
+      } else if (episode != null) {
+        return m.episode == episode;
+      }
+      return true;
+    }).toList();
+  }
+
   Stream<List<MediaItem>> watchMediaItemsByGroupTitle(String groupTitle) {
     return customSelect(
       '''
