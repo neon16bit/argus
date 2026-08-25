@@ -31,7 +31,9 @@ class SourceFilterBar extends StatelessWidget {
             selectedSourceId == null
                 ? '$totalItems items'
                 : '$filteredCount of $totalItems items',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (contributingSources.length > 1) ...[
             const SizedBox(height: 8),
@@ -40,6 +42,7 @@ class SourceFilterBar extends StatelessWidget {
               child: Row(
                 children: [
                   ChoiceChip(
+                    showCheckmark: false,
                     selected: selectedSourceId == null,
                     label: const Text('All Sources'),
                     onSelected: (selected) {
@@ -53,6 +56,7 @@ class SourceFilterBar extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
+                        showCheckmark: false,
                         selected: selectedSourceId == source.id,
                         label: Text(source.name),
                         onSelected: (selected) {
