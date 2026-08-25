@@ -1,4 +1,5 @@
 import 'package:argus/core/providers/providers.dart';
+import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/player/video_player_screen.dart';
@@ -228,28 +229,44 @@ class ContinueWatchingCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: items
                       .map(
-                        (mediaItem) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.play_arrow_rounded),
-                          title: Text(
-                            mediaItem.rawName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            Uri.tryParse(mediaItem.directUrl)?.host ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            _playDirect(
-                              context,
-                              mediaItem.directUrl,
-                              mediaItem.id,
-                            );
-                          },
-                        ),
+                        (mediaItem) {
+                          final isItemDub =
+                              AudioTagHelper.isDub(mediaItem.directUrl) ||
+                              AudioTagHelper.isDub(mediaItem.rawName);
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.play_arrow_rounded),
+                            title: Text(
+                              mediaItem.rawName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    Uri.tryParse(mediaItem.directUrl)?.host ??
+                                        '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isItemDub) ...[
+                                  const SizedBox(width: 8),
+                                  const DubBadge(),
+                                ],
+                              ],
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _playDirect(
+                                context,
+                                mediaItem.directUrl,
+                                mediaItem.id,
+                              );
+                            },
+                          );
+                        },
                       )
                       .toList(),
                 ),

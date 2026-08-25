@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:argus/core/providers/providers.dart';
+import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/player/video_player_screen.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,11 @@ class FileCard extends ConsumerWidget {
     final subtitleStr = isMulti
         ? 'Multiple versions available (${group.length})'
         : item.rawName;
+
+    final isSingleDub =
+        !isMulti &&
+        (AudioTagHelper.isDub(item.directUrl) ||
+            AudioTagHelper.isDub(item.rawName));
 
     final historyList =
         ref.watch(showWatchHistoryProvider(item.groupTitle)).value ?? [];
@@ -84,11 +90,21 @@ class FileCard extends ConsumerWidget {
                     : null,
               ),
             ),
-            subtitle: Text(
-              subtitleStr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11),
+            subtitle: Row(
+              children: [
+                if (isSingleDub) ...[
+                  const DubBadge(),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    subtitleStr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
             ),
             trailing: IconButton(
               icon: Icon(
@@ -291,56 +307,67 @@ class FileCard extends ConsumerWidget {
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: items
-                      .map<Widget>(
-                        (item) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.play_arrow_rounded),
-                          title: Text(
-                            item.rawName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                  children: items.map<Widget>((item) {
+                    final isItemDub =
+                        AudioTagHelper.isDub(item.directUrl) ||
+                        AudioTagHelper.isDub(item.rawName);
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.play_arrow_rounded),
+                      title: Text(
+                        item.rawName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              Uri.parse(item.directUrl).host,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          subtitle: Text(
-                            Uri.parse(item.directUrl).host,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          if (isItemDub) ...[
+                            const SizedBox(width: 8),
+                            const DubBadge(),
+                          ],
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.copy_rounded),
+                            tooltip: 'Copy URL',
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Clipboard.setData(
+                                ClipboardData(text: item.directUrl),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('URL copied to clipboard'),
+                                ),
+                              );
+                            },
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.copy_rounded),
-                                tooltip: 'Copy URL',
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  Clipboard.setData(
-                                    ClipboardData(text: item.directUrl),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('URL copied to clipboard'),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.open_in_new_rounded),
-                                tooltip: 'Open in External Player',
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _openInExternalPlayer(context, ref, item);
-                                },
-                              ),
-                            ],
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new_rounded),
+                            tooltip: 'Open in External Player',
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _openInExternalPlayer(context, ref, item);
+                            },
                           ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            _playInApp(context, item);
-                          },
-                        ),
-                      )
-                      .toList(),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _playInApp(context, item);
+                      },
+                    );
+                  }).toList(),
                 ),
               ),
             ),

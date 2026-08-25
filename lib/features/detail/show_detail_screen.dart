@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
+import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/core/utils/episode_fixer.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:argus/data/database/app_database.dart';
@@ -506,6 +507,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       ...availableFolderUrls.map((url) {
                         final host = Uri.tryParse(url)?.host ?? url;
                         final subpath = _extractFolderSubpath(url);
+                        final isFolderDub = AudioTagHelper.isDub(url);
                         return PopupMenuItem(
                           value: 'copy_folder_url:$url',
                           child: Row(
@@ -526,17 +528,27 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      subpath,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant
-                                            .withValues(alpha: 0.75),
-                                      ),
+                                    Row(
+                                      children: [
+                                        if (isFolderDub) ...[
+                                          const DubBadge(),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        Flexible(
+                                          child: Text(
+                                            subpath,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withValues(alpha: 0.75),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -548,6 +560,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       ...availableFolderUrls.map((url) {
                         final host = Uri.tryParse(url)?.host ?? url;
                         final subpath = _extractFolderSubpath(url);
+                        final isFolderDub = AudioTagHelper.isDub(url);
                         return PopupMenuItem(
                           value: 'open_in_browser:$url',
                           child: Row(
@@ -571,17 +584,27 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      subpath,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant
-                                            .withValues(alpha: 0.75),
-                                      ),
+                                    Row(
+                                      children: [
+                                        if (isFolderDub) ...[
+                                          const DubBadge(),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        Flexible(
+                                          child: Text(
+                                            subpath,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withValues(alpha: 0.75),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
