@@ -71,6 +71,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   // stream subs
   final List<StreamSubscription> _subscriptions = [];
   final FocusNode _focusNode = FocusNode();
+  bool _isDisposed = false;
+  bool _isClosing = false;
+  bool _playerDisposed = false;
 
   @override
   void initState() {
@@ -203,10 +206,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted || _isDisposed) return;
     await _player.open(Media(widget.url, start: startPosition));
 
-    if (startPosition != null && mounted) {
+    if (startPosition != null && mounted && !_isDisposed) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -230,6 +233,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     for (final s in _subscriptions) {
       s.cancel();
     }
@@ -251,7 +255,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       defaultExitNativeFullscreen();
     }
     _saveProgress();
-    _player.stop();
+    if (!_playerDisposed) {
+      _playerDisposed = true;
+      unawaited(_player.dispose());
+    }
     super.dispose();
   }
 
@@ -385,6 +392,23 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
   }
 
+  Future<void> _closePlayer() async {
+    if (_isClosing || !mounted) return;
+    setState(() {
+      _isClosing = true;
+    });
+
+    // detach video from the tree before destroying its native player
+    await WidgetsBinding.instance.endOfFrame;
+    if (!_playerDisposed) {
+      _playerDisposed = true;
+      await _player.dispose();
+    }
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _toggleFullscreen() async {
     final nextState = !_isFullscreen;
     setState(() {
@@ -445,7 +469,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         if (_isFullscreen) {
           _toggleFullscreen();
         } else {
-          Navigator.of(context).maybePop();
+          _closePlayer();
         }
         break;
     }
@@ -453,146 +477,160 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Focus(
-        focusNode: _focusNode,
-        autofocus: true,
-        onKeyEvent: (_, event) {
-          _handleKeyEvent(event);
-          return KeyEventResult.handled;
-        },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _toggleControls,
-              onDoubleTapDown: (d) => _handleDoubleTap(d, constraints),
-              onDoubleTap: () {},
-              onLongPressStart: (_) => _startHolding2x(),
-              onLongPressEnd: (_) => _stopHolding2x(),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Center(
-                    child: Video(
-                      controller: _controller,
-                      fit: BoxFit.contain,
-                      controls: NoVideoControls,
-                      subtitleViewConfiguration:
-                          const SubtitleViewConfiguration(visible: false),
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closePlayer();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (_, event) {
+            _handleKeyEvent(event);
+            return KeyEventResult.handled;
+          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleControls,
+                onDoubleTapDown: (d) => _handleDoubleTap(d, constraints),
+                onDoubleTap: () {},
+                onLongPressStart: (_) => _startHolding2x(),
+                onLongPressEnd: (_) => _stopHolding2x(),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Center(
+                      key: ValueKey(_isClosing),
+                      child:
+                          constraints.maxWidth > 0 &&
+                              constraints.maxHeight > 0 &&
+                              !_isClosing
+                          ? Video(
+                              controller: _controller,
+                              fit: BoxFit.contain,
+                              controls: NoVideoControls,
+                              subtitleViewConfiguration:
+                                  const SubtitleViewConfiguration(
+                                    visible: false,
+                                  ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                  ),
 
-                  AnimatedOpacity(
-                    opacity: _controlsVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: IgnorePointer(
-                      ignoring: !_controlsVisible,
-                      child: MouseRegion(
-                        opaque: false,
-                        onHover: (_) => _resetHideTimer(),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              child: PlayerTopBar(
-                                title: widget.title,
-                                onBack: () => Navigator.of(context).maybePop(),
-                                onAudio: () =>
-                                    TrackSelectorSheet.showAudioSelector(
-                                      context: context,
-                                      player: _player,
-                                      onClosed: _resetHideTimer,
-                                    ),
-                                onSubtitles: () =>
-                                    TrackSelectorSheet.showSubtitleSelector(
-                                      context: context,
-                                      player: _player,
-                                      onClosed: _resetHideTimer,
-                                    ),
-                                onSpeed: () =>
-                                    TrackSelectorSheet.showSpeedSelector(
-                                      context: context,
-                                      currentRate: _playbackRate,
-                                      onRateSelected: (rate) {
-                                        _player.setRate(rate);
-                                        _resetHideTimer();
-                                      },
-                                    ),
-                                onOpenExternal: _openInExternalPlayer,
+                    AnimatedOpacity(
+                      opacity: _controlsVisible ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: IgnorePointer(
+                        ignoring: !_controlsVisible,
+                        child: MouseRegion(
+                          opaque: false,
+                          onHover: (_) => _resetHideTimer(),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: PlayerTopBar(
+                                  title: widget.title,
+                                  onBack: _closePlayer,
+                                  onAudio: () =>
+                                      TrackSelectorSheet.showAudioSelector(
+                                        context: context,
+                                        player: _player,
+                                        onClosed: _resetHideTimer,
+                                      ),
+                                  onSubtitles: () =>
+                                      TrackSelectorSheet.showSubtitleSelector(
+                                        context: context,
+                                        player: _player,
+                                        onClosed: _resetHideTimer,
+                                      ),
+                                  onSpeed: () =>
+                                      TrackSelectorSheet.showSpeedSelector(
+                                        context: context,
+                                        currentRate: _playbackRate,
+                                        onRateSelected: (rate) {
+                                          _player.setRate(rate);
+                                          _resetHideTimer();
+                                        },
+                                      ),
+                                  onOpenExternal: _openInExternalPlayer,
+                                ),
                               ),
-                            ),
 
-                            PlayerCenterControls(
-                              isPlaying: _isPlaying,
-                              isBuffering: _isBuffering,
-                              onPlayPause: () {
-                                _player.playOrPause();
-                                _resetHideTimer();
-                              },
-                              onReplay10: () => _seekRelative(-10),
-                              onForward10: () => _seekRelative(10),
-                            ),
-
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: PlayerBottomBar(
-                                position: _position,
-                                duration: _duration,
-                                isSeeking: _isSeeking,
-                                seekPosition: _seekPosition,
-                                onSeekStart: (pos) {
-                                  setState(() {
-                                    _isSeeking = true;
-                                    _seekPosition = pos;
-                                  });
-                                  _hideTimer?.cancel();
-                                },
-                                onSeekChanged: (pos) {
-                                  setState(() => _seekPosition = pos);
-                                },
-                                onSeekEnd: (pos) {
-                                  _player.seek(pos);
-                                  setState(() {
-                                    _position = pos;
-                                    _isSeeking = false;
-                                  });
+                              PlayerCenterControls(
+                                isPlaying: _isPlaying,
+                                isBuffering: _isBuffering,
+                                onPlayPause: () {
+                                  _player.playOrPause();
                                   _resetHideTimer();
                                 },
-                                volume: _volume,
-                                isMuted: _isMuted,
-                                onVolumeChanged: _setVolume,
-                                onToggleMute: _toggleMute,
-                                playbackRate: _playbackRate,
-                                isFullscreen: _isFullscreen,
-                                onToggleFullscreen: _toggleFullscreen,
+                                onReplay10: () => _seekRelative(-10),
+                                onForward10: () => _seekRelative(10),
                               ),
-                            ),
-                          ],
+
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: PlayerBottomBar(
+                                  position: _position,
+                                  duration: _duration,
+                                  isSeeking: _isSeeking,
+                                  seekPosition: _seekPosition,
+                                  onSeekStart: (pos) {
+                                    setState(() {
+                                      _isSeeking = true;
+                                      _seekPosition = pos;
+                                    });
+                                    _hideTimer?.cancel();
+                                  },
+                                  onSeekChanged: (pos) {
+                                    setState(() => _seekPosition = pos);
+                                  },
+                                  onSeekEnd: (pos) {
+                                    _player.seek(pos);
+                                    setState(() {
+                                      _position = pos;
+                                      _isSeeking = false;
+                                    });
+                                    _resetHideTimer();
+                                  },
+                                  volume: _volume,
+                                  isMuted: _isMuted,
+                                  onVolumeChanged: _setVolume,
+                                  onToggleMute: _toggleMute,
+                                  playbackRate: _playbackRate,
+                                  isFullscreen: _isFullscreen,
+                                  onToggleFullscreen: _toggleFullscreen,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  IgnorePointer(
-                    child: PlayerHud(
-                      isHolding2x: _isHolding2x,
-                      accumulatedSeekSeconds: _accumulatedSeekSeconds,
-                      isBuffering: _isBuffering,
-                      controlsVisible: _controlsVisible,
-                      constraints: constraints,
+                    IgnorePointer(
+                      child: PlayerHud(
+                        isHolding2x: _isHolding2x,
+                        accumulatedSeekSeconds: _accumulatedSeekSeconds,
+                        isBuffering: _isBuffering,
+                        controlsVisible: _controlsVisible,
+                        constraints: constraints,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
