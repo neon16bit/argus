@@ -48,7 +48,10 @@ class SettingsScreen extends ConsumerWidget {
                 color: color,
                 shape: BoxShape.circle,
                 border: isSelected
-                    ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 2.5)
+                    ? Border.all(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        width: 2.5,
+                      )
                     : null,
                 boxShadow: isSelected
                     ? [
@@ -274,7 +277,12 @@ class SettingsScreen extends ConsumerWidget {
                                     )
                                   : null,
                               border: isSelected
-                                  ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 2.5)
+                                  ? Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                      width: 2.5,
+                                    )
                                   : null,
                               boxShadow: isSelected
                                   ? [
@@ -315,6 +323,26 @@ class SettingsScreen extends ConsumerWidget {
                 }),
               ],
             ),
+          ),
+          const Divider(height: 32),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              'Playback',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.open_in_new_rounded),
+            title: const Text('Use external player'),
+            subtitle: const Text(
+              'Open videos directly in an external player by default',
+            ),
+            value: settings.useExternalPlayer,
+            onChanged: (v) =>
+                ref.read(settingsProvider.notifier).setUseExternalPlayer(v),
           ),
           const Divider(height: 32),
           Padding(

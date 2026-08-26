@@ -1,14 +1,10 @@
-import 'dart:io';
-
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/data/database/app_database.dart';
-import 'package:argus/features/player/video_player_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:argus/core/utils/player_launcher.dart';
 
 class FileCard extends ConsumerWidget {
   final List<dynamic> group;
@@ -154,7 +150,16 @@ class FileCard extends ConsumerWidget {
               ),
               onTap: () {
                 if (!isMulti || hasPreference) {
-                  _playInApp(context, item);
+                  PlayerLauncher.playMedia(
+                    context,
+                    ref,
+                    url: item.directUrl,
+                    title: item.cleanTitle,
+                    groupTitle: item.groupTitle,
+                    season: item.season,
+                    episode: item.episode,
+                    mediaItemId: item.id,
+                  );
                 } else {
                   openSheet();
                 }
@@ -387,19 +392,60 @@ class FileCard extends ConsumerWidget {
                               );
                             },
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.open_in_new_rounded),
-                            tooltip: 'Open in External Player',
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              _openInExternalPlayer(context, ref, item);
-                            },
-                          ),
+                          (() {
+                            final useExternal = ref
+                                .watch(settingsProvider)
+                                .useExternalPlayer;
+                            return IconButton(
+                              icon: Icon(
+                                useExternal
+                                    ? Icons.smart_display_outlined
+                                    : Icons.open_in_new_rounded,
+                              ),
+                              tooltip: useExternal
+                                  ? 'Play in App'
+                                  : 'Open in External Player',
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                if (useExternal) {
+                                  PlayerLauncher.playInApp(
+                                    context,
+                                    url: item.directUrl,
+                                    title: item.cleanTitle,
+                                    groupTitle: item.groupTitle,
+                                    season: item.season,
+                                    episode: item.episode,
+                                    mediaItemId: item.id,
+                                  );
+                                } else {
+                                  PlayerLauncher.launchExternalPlayer(
+                                    context,
+                                    ref,
+                                    url: item.directUrl,
+                                    title: item.cleanTitle,
+                                    groupTitle: item.groupTitle,
+                                    season: item.season,
+                                    episode: item.episode,
+                                    mediaItemId: item.id,
+                                  );
+                                }
+                              },
+                            );
+                          })(),
                         ],
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
-                        _playInApp(context, item);
+                        PlayerLauncher.playMedia(
+                          context,
+                          ref,
+                          url: item.directUrl,
+                          title: item.cleanTitle,
+                          groupTitle: item.groupTitle,
+                          season: item.season,
+                          episode: item.episode,
+                          mediaItemId: item.id,
+                        );
                       },
                     );
                   }).toList(),
@@ -410,76 +456,5 @@ class FileCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  void _playInApp(BuildContext context, dynamic item) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => VideoPlayerScreen(
-          url: item.directUrl,
-          title: item.cleanTitle,
-          groupTitle: item.groupTitle,
-          season: item.season,
-          episode: item.episode,
-          mediaItemId: item.id,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openInExternalPlayer(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic item,
-  ) async {
-    final streamUrl = item.directUrl;
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    // update last watched timestamp
-    ref
-        .read(databaseProvider)
-        .savePlaybackProgress(
-          groupTitle: item.groupTitle,
-          mediaItemId: item.id,
-          season: item.season,
-          episode: item.episode,
-          episodeTitle: item.cleanTitle,
-          streamUrl: streamUrl,
-          positionMs: 0,
-          durationMs: 0,
-        );
-
-    try {
-      if (Platform.isAndroid) {
-        final intent = AndroidIntent(
-          action: 'action_view',
-          data: streamUrl,
-          type: 'video/*',
-        );
-        await intent.launch();
-      } else {
-        final uri = Uri.parse(streamUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Could not launch URL';
-        }
-      }
-    } catch (e) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Failed to open external player. Play in app or copy the link instead.',
-          ),
-          action: SnackBarAction(
-            label: 'Copy',
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: streamUrl));
-            },
-          ),
-        ),
-      );
-    }
   }
 }

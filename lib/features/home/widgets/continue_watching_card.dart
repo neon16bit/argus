@@ -2,7 +2,7 @@ import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
-import 'package:argus/features/player/video_player_screen.dart';
+import 'package:argus/core/utils/player_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -240,6 +240,7 @@ class ContinueWatchingCard extends ConsumerWidget {
         if (matchingItem != null) {
           _playDirect(
             context,
+            ref,
             matchingItem.directUrl,
             matchingItem.id,
             season: targetSeason,
@@ -261,6 +262,7 @@ class ContinueWatchingCard extends ConsumerWidget {
     } else if (items.length == 1) {
       _playDirect(
         context,
+        ref,
         items.first.directUrl,
         items.first.id,
         season: targetSeason,
@@ -270,6 +272,7 @@ class ContinueWatchingCard extends ConsumerWidget {
     } else {
       _playDirect(
         context,
+        ref,
         item.streamUrl,
         null,
         season: targetSeason,
@@ -281,24 +284,22 @@ class ContinueWatchingCard extends ConsumerWidget {
 
   void _playDirect(
     BuildContext context,
+    WidgetRef ref,
     String url,
     int? mediaItemId, {
     int? season,
     int? episode,
     String? title,
   }) {
-    Navigator.push(
+    PlayerLauncher.playMedia(
       context,
-      MaterialPageRoute(
-        builder: (_) => VideoPlayerScreen(
-          url: url,
-          title: title ?? item.episodeTitle ?? item.displayTitle,
-          groupTitle: item.groupTitle,
-          season: season ?? item.season,
-          episode: episode ?? item.episode,
-          mediaItemId: mediaItemId,
-        ),
-      ),
+      ref,
+      url: url,
+      title: title ?? item.episodeTitle ?? item.displayTitle,
+      groupTitle: item.groupTitle,
+      season: season ?? item.season,
+      episode: episode ?? item.episode,
+      mediaItemId: mediaItemId,
     );
   }
 
@@ -379,6 +380,7 @@ class ContinueWatchingCard extends ConsumerWidget {
                         Navigator.pop(ctx);
                         _playDirect(
                           context,
+                          ref,
                           mediaItem.directUrl,
                           mediaItem.id,
                           season: season,

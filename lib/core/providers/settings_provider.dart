@@ -7,6 +7,7 @@ const _kScrapeDelayMs = 'scrape_delay_ms';
 const _kThemeFlavor = 'theme_flavor';
 const _kAccentColor = 'accent_color';
 const _kPureBlack = 'pure_black';
+const _kUseExternalPlayer = 'use_external_player';
 
 class AppSettings {
   final bool fullScrapeMode;
@@ -14,6 +15,7 @@ class AppSettings {
   final String themeFlavor;
   final String accentColor;
   final bool pureBlack;
+  final bool useExternalPlayer;
 
   const AppSettings({
     this.fullScrapeMode = false,
@@ -21,6 +23,7 @@ class AppSettings {
     this.themeFlavor = 'system',
     this.accentColor = 'mauve',
     this.pureBlack = false,
+    this.useExternalPlayer = false,
   });
 
   AppSettings copyWith({
@@ -29,6 +32,7 @@ class AppSettings {
     String? themeFlavor,
     String? accentColor,
     bool? pureBlack,
+    bool? useExternalPlayer,
   }) {
     return AppSettings(
       fullScrapeMode: fullScrapeMode ?? this.fullScrapeMode,
@@ -36,6 +40,7 @@ class AppSettings {
       themeFlavor: themeFlavor ?? this.themeFlavor,
       accentColor: accentColor ?? this.accentColor,
       pureBlack: pureBlack ?? this.pureBlack,
+      useExternalPlayer: useExternalPlayer ?? this.useExternalPlayer,
     );
   }
 }
@@ -53,6 +58,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       themeFlavor: prefs.getString(_kThemeFlavor) ?? 'system',
       accentColor: prefs.getString(_kAccentColor) ?? 'mauve',
       pureBlack: prefs.getBool(_kPureBlack) ?? false,
+      useExternalPlayer: prefs.getBool(_kUseExternalPlayer) ?? false,
     );
   }
 
@@ -84,6 +90,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_kPureBlack, value);
     state = state.copyWith(pureBlack: value);
+  }
+
+  Future<void> setUseExternalPlayer(bool value) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_kUseExternalPlayer, value);
+    state = state.copyWith(useExternalPlayer: value);
   }
 }
 
