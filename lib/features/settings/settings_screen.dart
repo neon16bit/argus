@@ -3,6 +3,8 @@ import 'package:argus/theme/catppuccin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -82,6 +84,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final dynamicColors = ref.watch(dynamicColorSchemeProvider);
+    final packageInfo = ref.watch(packageInfoProvider);
 
     // resolve current active palette to display the correct color tones for the accent selector dots
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -381,6 +384,50 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (v) => ref
                 .read(settingsProvider.notifier)
                 .setScrapeDelay(Duration(milliseconds: v.toInt())),
+          ),
+          const Divider(height: 32),
+          AboutListTile(
+            icon: const Icon(Icons.info_outline_rounded),
+            applicationName: 'Argus',
+            applicationVersion: 'Version ${packageInfo.version}',
+            applicationLegalese: 'Licensed under the Apache 2.0 License',
+            applicationIcon: SvgPicture.asset(
+              'assets/icons/argus_icon.svg',
+              width: 48,
+              height: 48,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.primary,
+                BlendMode.srcIn,
+              ),
+            ),
+            aboutBoxChildren: [
+              const SizedBox(height: 12),
+              Text(
+                'A media aggregator for indexing and streaming from open directories.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton.icon(
+                  icon: SvgPicture.asset(
+                    'assets/icons/github.svg',
+                    width: 18,
+                    height: 18,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.primary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: const Text('https://github.com/neon16bit/argus'),
+                  onPressed: () => launchUrl(
+                    Uri.parse('https://github.com/neon16bit/argus'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+              ),
+            ],
+            child: const Text('About Argus'),
           ),
         ],
       ),

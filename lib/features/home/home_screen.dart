@@ -2,6 +2,7 @@ import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/home/widgets/continue_watching_card.dart';
 import 'package:argus/features/search/search_screen.dart';
+import 'package:argus/features/settings/settings_screen.dart';
 import 'package:argus/features/shell/app_shell.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,14 @@ class HomeScreen extends ConsumerWidget {
                 context,
               ).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),

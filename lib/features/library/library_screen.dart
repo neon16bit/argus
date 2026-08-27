@@ -1,6 +1,7 @@
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/search/widgets/search_result_card.dart';
+import 'package:argus/features/settings/settings_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +43,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             onPressed: () {
               ref.read(libraryViewGridProvider.notifier).toggle();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),

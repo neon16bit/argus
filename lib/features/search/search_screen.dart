@@ -28,6 +28,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final resultsAsync = ref.watch(searchResultsProvider);
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: TextField(
           controller: _controller,
           autofocus: true,
@@ -35,6 +36,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             hintText: 'Search for a show, movie...',
             border: InputBorder.none,
             filled: false,
+            contentPadding: EdgeInsets.zero,
           ),
           onChanged: _onSearch,
           onSubmitted: _onSearch,
@@ -57,11 +59,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search_rounded, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.search_rounded,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Search your indexed sources',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
