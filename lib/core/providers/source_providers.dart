@@ -325,12 +325,7 @@ class SourceActions {
                 // Also delete media items from deleted folders to keep DB clean
                 for (final f in foldersToDelete) {
                   if (isCancelled) return;
-                  await (db.delete(db.mediaItems)..where(
-                        (m) =>
-                            m.sourceId.equals(source.id) &
-                            m.directUrl.like('${f.folderUrl}%'),
-                      ))
-                      .go();
+                  await db.deleteMediaItemsByFolderUrl(source.id, f.folderUrl);
                 }
               }
 
@@ -517,13 +512,10 @@ class SourceActions {
       );
     }
 
-    final existingItems =
-        await (db.select(db.mediaItems)..where(
-              (m) =>
-                  m.sourceId.equals(folder.sourceId) &
-                  m.directUrl.like('${folder.folderUrl}%'),
-            ))
-            .get();
+    final existingItems = await db.getMediaItemsByFolderUrl(
+      folder.sourceId,
+      folder.folderUrl,
+    );
     final existingMap = {for (final m in existingItems) m.directUrl: m};
     final newUrls = results.map((r) => r.directUrl).toSet();
 
@@ -606,13 +598,10 @@ class SourceActions {
       }
 
       // insert only merge, dont delete existing items from good seasons
-      final existingItems =
-          await (db.select(db.mediaItems)..where(
-                (m) =>
-                    m.sourceId.equals(folder.sourceId) &
-                    m.directUrl.like('${folder.folderUrl}%'),
-              ))
-              .get();
+      final existingItems = await db.getMediaItemsByFolderUrl(
+        folder.sourceId,
+        folder.folderUrl,
+      );
       final existingMap = {for (final m in existingItems) m.directUrl: m};
       final itemsToInsert = allResults
           .where((r) => !existingMap.containsKey(r.directUrl))

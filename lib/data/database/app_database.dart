@@ -305,6 +305,42 @@ class AppDatabase extends _$AppDatabase {
     return rows.map((row) => mediaItems.map(row.data)).toList();
   }
 
+  // using case sensitive GLOB for floderurl
+  Future<List<MediaItem>> getMediaItemsByFolderUrl(
+    int sourceId,
+    String folderUrl,
+  ) async {
+    final escaped = folderUrl
+        .replaceAll(r'\', r'\\')
+        .replaceAll('[', r'\[')
+        .replaceAll(']', r'\]')
+        .replaceAll('*', r'\*')
+        .replaceAll('?', r'\?');
+    final rows = await customSelect(
+      'SELECT * FROM media_items WHERE source_id = ?1 AND direct_url GLOB ?2',
+      variables: [Variable.withInt(sourceId), Variable.withString('$escaped*')],
+      readsFrom: {mediaItems},
+    ).get();
+    return rows.map((row) => mediaItems.map(row.data)).toList();
+  }
+
+  // case sensitive
+  Future<void> deleteMediaItemsByFolderUrl(
+    int sourceId,
+    String folderUrl,
+  ) async {
+    final escaped = folderUrl
+        .replaceAll(r'\', r'\\')
+        .replaceAll('[', r'\[')
+        .replaceAll(']', r'\]')
+        .replaceAll('*', r'\*')
+        .replaceAll('?', r'\?');
+    await customStatement(
+      'DELETE FROM media_items WHERE source_id = ?1 AND direct_url GLOB ?2',
+      [sourceId, '$escaped*'],
+    );
+  }
+
   Future<List<MediaItem>> getMediaItemsForEpisode({
     required String groupTitle,
     int? season,
