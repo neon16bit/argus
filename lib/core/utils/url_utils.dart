@@ -132,3 +132,23 @@ bool isSeasonFolder(String name) {
     caseSensitive: false,
   ).hasMatch(name);
 }
+
+// Decodes a full URI string
+String safeDecodeUri(String? url) {
+  if (url == null || url.isEmpty) return '';
+  try {
+    return Uri.decodeFull(url);
+  } catch (_) {
+    return url;
+  }
+}
+
+// Decodes a URI component string
+String safeDecodeUriComponent(String? component) {
+  if (component == null || component.isEmpty) return '';
+  try {
+    return Uri.decodeComponent(component);
+  } catch (_) {
+    return component;
+  }
+}

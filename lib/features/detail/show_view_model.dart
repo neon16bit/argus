@@ -1,3 +1,4 @@
+import 'package:argus/core/utils/url_utils.dart';
 import 'package:argus/data/database/app_database.dart';
 
 class ShowViewModel {
@@ -26,11 +27,13 @@ class ShowViewModel {
         .toList();
 
     bool matchesPreferred(dynamic item) {
-      if (preferredFolderUrl == null || preferredFolderUrl.isEmpty) return false;
+      if (preferredFolderUrl == null || preferredFolderUrl.isEmpty) {
+        return false;
+      }
       final itemUrl = item.directUrl.toLowerCase();
       final prefUrl = preferredFolderUrl.toLowerCase();
-      final prefDecoded = Uri.decodeFull(preferredFolderUrl).toLowerCase();
-      final itemDecoded = Uri.decodeFull(item.directUrl).toLowerCase();
+      final prefDecoded = safeDecodeUri(preferredFolderUrl).toLowerCase();
+      final itemDecoded = safeDecodeUri(item.directUrl).toLowerCase();
       return itemUrl.startsWith(prefUrl) ||
           itemDecoded.startsWith(prefDecoded) ||
           itemUrl.contains(prefUrl) ||

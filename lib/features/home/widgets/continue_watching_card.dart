@@ -1,5 +1,6 @@
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/audio_tag_helper.dart';
+import 'package:argus/core/utils/url_utils.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/core/utils/player_launcher.dart';
@@ -224,8 +225,8 @@ class ContinueWatchingCard extends ConsumerWidget {
         bool matchesPreferred(MediaItem it) {
           final itemUrl = it.directUrl.toLowerCase();
           final prefUrl = preferredFolderUrl.toLowerCase();
-          final prefDecoded = Uri.decodeFull(preferredFolderUrl).toLowerCase();
-          final itemDecoded = Uri.decodeFull(it.directUrl).toLowerCase();
+          final prefDecoded = safeDecodeUri(preferredFolderUrl).toLowerCase();
+          final itemDecoded = safeDecodeUri(it.directUrl).toLowerCase();
           return itemUrl.startsWith(prefUrl) ||
               itemDecoded.startsWith(prefDecoded) ||
               itemUrl.contains(prefUrl) ||

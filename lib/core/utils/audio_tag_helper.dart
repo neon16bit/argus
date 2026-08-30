@@ -1,10 +1,11 @@
+import 'package:argus/core/utils/url_utils.dart';
 import 'package:flutter/material.dart';
 
 class AudioTagHelper {
   static bool isDub(String? urlOrName, {bool? override}) {
     if (override != null) return override;
     if (urlOrName == null || urlOrName.isEmpty) return false;
-    final decoded = Uri.decodeFull(urlOrName).toLowerCase();
+    final decoded = safeDecodeUri(urlOrName).toLowerCase();
 
     // reject subs
     if (RegExp(

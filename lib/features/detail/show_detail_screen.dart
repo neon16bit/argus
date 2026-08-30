@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/core/utils/episode_fixer.dart';
+import 'package:argus/core/utils/url_utils.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/widgets/metadata_card.dart';
@@ -264,7 +265,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       if (uri == null) return url;
       final segments = uri.pathSegments
           .where((s) => s.isNotEmpty)
-          .map(Uri.decodeComponent)
+          .map(safeDecodeUriComponent)
           .toList();
       if (segments.isEmpty) return uri.path;
       return segments.last;
