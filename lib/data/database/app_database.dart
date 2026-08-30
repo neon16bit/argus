@@ -445,7 +445,7 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<List<String>> getShowTitlesBySource(
+  Future<List<Map<String, dynamic>>> getShowsBySource(
     int sourceId, {
     String? searchQuery,
     int limit = 100,
@@ -453,13 +453,18 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     // try indexed_folders first (grouped sources)
     final foldersQuery = selectOnly(indexedFolders)
-      ..addColumns([indexedFolders.cleanTitle])
+      ..addColumns([
+        indexedFolders.cleanTitle,
+        indexedFolders.folderUrl,
+        indexedFolders.isScraped,
+        indexedFolders.year,
+      ])
       ..where(indexedFolders.sourceId.equals(sourceId));
     if (searchQuery != null && searchQuery.isNotEmpty) {
       foldersQuery.where(indexedFolders.cleanTitle.like('%$searchQuery%'));
     }
     foldersQuery
-      ..groupBy([indexedFolders.cleanTitle])
+      ..groupBy([indexedFolders.cleanTitle, indexedFolders.folderUrl])
       ..orderBy([OrderingTerm(expression: indexedFolders.cleanTitle)])
       ..limit(limit, offset: offset);
     final foldersResult = await foldersQuery.get();
@@ -467,7 +472,14 @@ class AppDatabase extends _$AppDatabase {
     // if we got results, or weare past the first page, use folders
     if (foldersResult.isNotEmpty || offset > 0) {
       return foldersResult
-          .map((r) => r.read(indexedFolders.cleanTitle)!)
+          .map(
+            (r) => {
+              'group_title': r.read(indexedFolders.cleanTitle)!,
+              'folder_url': r.read(indexedFolders.folderUrl),
+              'is_scraped': r.read(indexedFolders.isScraped) == true ? 1 : 0,
+              'year': r.read(indexedFolders.year),
+            },
+          )
           .toList();
     }
 
@@ -483,7 +495,31 @@ class AppDatabase extends _$AppDatabase {
       ..orderBy([OrderingTerm(expression: mediaItems.groupTitle)])
       ..limit(limit, offset: offset);
     final itemsResult = await itemsQuery.get();
-    return itemsResult.map((r) => r.read(mediaItems.groupTitle)!).toList();
+    return itemsResult
+        .map(
+          (r) => {
+            'group_title': r.read(mediaItems.groupTitle)!,
+            'folder_url': null,
+            'is_scraped': 1,
+            'year': null,
+          },
+        )
+        .toList();
+  }
+
+  Future<List<String>> getShowTitlesBySource(
+    int sourceId, {
+    String? searchQuery,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final shows = await getShowsBySource(
+      sourceId,
+      searchQuery: searchQuery,
+      limit: limit,
+      offset: offset,
+    );
+    return shows.map((s) => s['group_title'] as String).toList();
   }
 
   // saved shows
@@ -703,12 +739,12 @@ class AppDatabase extends _$AppDatabase {
                 w.season.equals(season) &
                 w.episode.equals(episode);
           } else {
-            return w.groupTitle.equals(groupTitle) &
-                w.episode.equals(episode);
+            return w.groupTitle.equals(groupTitle) & w.episode.equals(episode);
           }
         } else if (streamUrl != null) {
           return w.groupTitle.equals(groupTitle) &
-              (w.streamUrl.equals(streamUrl) | w.season.isNull() & w.episode.isNull());
+              (w.streamUrl.equals(streamUrl) |
+                  w.season.isNull() & w.episode.isNull());
         } else {
           return w.groupTitle.equals(groupTitle);
         }

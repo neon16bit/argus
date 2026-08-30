@@ -19,7 +19,7 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
-  List<String> _titles = [];
+  List<SearchResult> _items = [];
   bool _isInitialLoading = true;
   bool _isLoadingMore = false;
   bool _hasMore = true;
@@ -31,7 +31,7 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTitles();
+    _loadItems();
     _searchController.addListener(_onSearchChanged);
     _scrollController.addListener(_onScroll);
   }
@@ -45,18 +45,29 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadTitles() async {
+  Future<void> _loadItems() async {
     try {
       final db = ref.read(databaseProvider);
-      final list = await db.getShowTitlesBySource(
+      final rawList = await db.getShowsBySource(
         widget.source.id,
         searchQuery: _searchQuery,
         limit: _limit,
         offset: _offset,
       );
+      final list = rawList
+          .map(
+            (row) => SearchResult(
+              groupTitle: row['group_title'] as String,
+              folderUrl: row['folder_url'] as String?,
+              isScraped: (row['is_scraped'] as int? ?? 1) == 1,
+              year: row['year'] as int?,
+              autoScrape: widget.source.autoScrape,
+            ),
+          )
+          .toList();
       if (mounted) {
         setState(() {
-          _titles = list;
+          _items = list;
           _offset += list.length;
           _hasMore = list.length == _limit;
           _isInitialLoading = false;
@@ -79,15 +90,26 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
 
     try {
       final db = ref.read(databaseProvider);
-      final list = await db.getShowTitlesBySource(
+      final rawList = await db.getShowsBySource(
         widget.source.id,
         searchQuery: _searchQuery,
         limit: _limit,
         offset: _offset,
       );
+      final list = rawList
+          .map(
+            (row) => SearchResult(
+              groupTitle: row['group_title'] as String,
+              folderUrl: row['folder_url'] as String?,
+              isScraped: (row['is_scraped'] as int? ?? 1) == 1,
+              year: row['year'] as int?,
+              autoScrape: widget.source.autoScrape,
+            ),
+          )
+          .toList();
       if (mounted) {
         setState(() {
-          _titles = [..._titles, ...list];
+          _items = [..._items, ...list];
           _offset += list.length;
           _hasMore = list.length == _limit;
           _isLoadingMore = false;
@@ -109,12 +131,12 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
       if (_searchQuery != query) {
         setState(() {
           _searchQuery = query;
-          _titles.clear();
+          _items.clear();
           _offset = 0;
           _hasMore = true;
           _isInitialLoading = true;
         });
-        _loadTitles();
+        _loadItems();
       }
     });
   }
@@ -174,7 +196,7 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
           Expanded(
             child: _isInitialLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _titles.isEmpty
+                : _items.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -204,17 +226,17 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
                   )
                 : ListView.builder(
                     controller: _scrollController,
-                    itemCount: _titles.length + (_hasMore ? 1 : 0),
+                    itemCount: _items.length + (_hasMore ? 1 : 0),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemBuilder: (context, index) {
-                      if (index == _titles.length) {
+                      if (index == _items.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16.0),
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
 
-                      final title = _titles[index];
+                      final item = _items[index];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         elevation: 0,
@@ -239,9 +261,32 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
                             ),
                           ),
                           title: Text(
-                            title,
+                            item.displayTitle,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
+                          subtitle: !item.isScraped
+                              ? Row(
+                                  children: [
+                                    Icon(
+                                      Icons.cloud_sync_rounded,
+                                      size: 13,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.tertiary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Not indexed yet',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.tertiary,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : null,
                           trailing: Icon(
                             Icons.arrow_forward_ios_rounded,
                             size: 16,
@@ -249,14 +294,18 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
                               context,
                             ).colorScheme.onSurfaceVariant.withAlpha(178),
                           ),
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => ShowDetailScreen(
-                                  result: SearchResult(groupTitle: title),
-                                ),
+                                builder: (context) =>
+                                    ShowDetailScreen(result: item),
                               ),
                             );
+                            if (mounted) {
+                              _offset = 0;
+                              _hasMore = true;
+                              _loadItems();
+                            }
                           },
                         ),
                       );

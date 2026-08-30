@@ -24,16 +24,23 @@ class ShowDetailScreen extends ConsumerStatefulWidget {
 class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   int? _selectedSourceId;
   bool _isRetryingErrors = false;
+  String? _trackedFolderUrl;
 
   @override
   void initState() {
     super.initState();
+    _trackedFolderUrl = widget.result.folderUrl;
     // prioritize scraping any unscraped folders for this show on any active sources
     Future.microtask(() async {
       if (!mounted) return;
       final db = ref.read(databaseProvider);
       final folders = await db.getFoldersByGroupTitle(widget.result.groupTitle);
       if (!mounted) return;
+      if (_trackedFolderUrl == null && folders.isNotEmpty) {
+        setState(() {
+          _trackedFolderUrl = folders.first.folderUrl;
+        });
+      }
       for (final folder in folders) {
         if (!folder.isScraped) {
           ref.read(scrapeQueueProvider.notifier).prioritize(folder.folderUrl);
@@ -264,10 +271,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 600;
     String activeGroupTitle = widget.result.groupTitle;
-    if (widget.result.folderUrl != null) {
-      final resultFolder = ref
-          .watch(folderByUrlProvider(widget.result.folderUrl!))
-          .value;
+    final folderUrlToWatch = widget.result.folderUrl ?? _trackedFolderUrl;
+    IndexedFolder? resultFolder;
+    if (folderUrlToWatch != null) {
+      resultFolder = ref.watch(folderByUrlProvider(folderUrlToWatch)).value;
       if (resultFolder != null) {
         activeGroupTitle = resultFolder.cleanTitle;
       }
@@ -275,6 +282,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final metadataAsync = ref.watch(metadataProvider(activeGroupTitle));
     final metadata = metadataAsync.value;
+    final activeDisplayTitle =
+        metadata?.titleEn ?? metadata?.title ?? activeGroupTitle;
 
     final itemsAsync = ref.watch(showItemsProvider(activeGroupTitle));
     final items = itemsAsync.value ?? [];
@@ -286,11 +295,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final folders = foldersAsync.value ?? [];
     final availableFolderUrls = folders.isNotEmpty
         ? folders.map((f) => f.folderUrl).toSet().toList()
-        : (widget.result.folderUrl != null
-              ? [widget.result.folderUrl!]
-              : <String>[]);
+        : (folderUrlToWatch != null ? [folderUrlToWatch] : <String>[]);
     final isAnyUnscraped =
-        folders.isNotEmpty && folders.any((f) => !f.isScraped);
+        (folders.isNotEmpty && folders.any((f) => !f.isScraped)) ||
+        (resultFolder != null && !resultFolder.isScraped);
     final foldersWithErrors = folders
         .where((f) => f.scrapeErrors != null)
         .toList();
@@ -375,8 +383,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     SnackBar(
                       content: Text(
                         nowSaved
-                            ? 'Added "${widget.result.displayTitle}" to Library'
-                            : 'Removed "${widget.result.displayTitle}" from Library',
+                            ? 'Added "$activeDisplayTitle" to Library'
+                            : 'Removed "$activeDisplayTitle" from Library',
                       ),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -411,8 +419,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 tooltip: 'Refresh Metadata',
                 onPressed: () => _refreshMetadata(
                   context,
-                  widget.result.groupTitle,
-                  widget.result.displayTitle,
+                  activeGroupTitle,
+                  activeDisplayTitle,
                 ),
               ),
             ),
@@ -437,8 +445,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     } else if (value == 'refresh_metadata') {
                       _refreshMetadata(
                         context,
-                        widget.result.groupTitle,
-                        widget.result.displayTitle,
+                        activeGroupTitle,
+                        activeDisplayTitle,
                       );
                     } else if (value == 'fix_episodes') {
                       _fixEpisodeNumbers(context, activeGroupTitle);
@@ -626,7 +634,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         ],
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
-            metadata?.titleEn ?? metadata?.title ?? widget.result.displayTitle,
+            activeDisplayTitle,
             style: const TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.bold,
@@ -778,6 +786,127 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   ),
                 ]),
               ),
+            ] else if (isAnyUnscraped) ...[
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer.withAlpha(80),
+                            shape: BoxShape.circle,
+                          ),
+                          child: SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Indexing directory...',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 340),
+                          child: Text(
+                            'Scanning folder contents and discovering media files. This will only take a moment.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ] else if (items.isEmpty) ...[
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.folder_off_outlined,
+                            size: 40,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant.withAlpha(180),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'No Media Files Found',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 340),
+                          child: Text(
+                            'No compatible video or audio files were found in this directory.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        if (folders.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _refreshFolders(
+                              context,
+                              activeGroupTitle,
+                              folders,
+                            ),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Re-index Folder'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
             const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
           ],
@@ -786,9 +915,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
 
     return DefaultTabController(
-      key: ValueKey(
-        '${widget.result.groupTitle}_${viewModel.sortedSeasons.length}',
-      ),
+      key: ValueKey('${activeGroupTitle}_${viewModel.sortedSeasons.length}'),
       length: viewModel.sortedSeasons.length,
       child: Scaffold(
         body: NestedScrollView(
@@ -821,9 +948,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     context,
                   ).copyWith(scrollbars: false),
                   child: ListView.builder(
-                    key: PageStorageKey(
-                      'season_${widget.result.groupTitle}_$season',
-                    ),
+                    key: PageStorageKey('season_${activeGroupTitle}_$season'),
                     primary: true,
                     padding: const EdgeInsets.only(top: 8, bottom: 32),
                     itemCount: viewModel.seasonMap[season]!.length,
