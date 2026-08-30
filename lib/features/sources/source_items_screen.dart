@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:argus/core/providers/database_providers.dart';
-import 'package:argus/core/providers/search_providers.dart';
+import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
+import 'package:argus/features/sources/widgets/confirm_clear_source_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -165,6 +165,28 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Clear indexed folders',
+            icon: const Icon(Icons.delete_sweep_rounded),
+            onPressed: () {
+              showConfirmClearSourceDialog(
+                context,
+                ref,
+                widget.source,
+                onCleared: () {
+                  if (mounted) {
+                    setState(() {
+                      _items.clear();
+                      _offset = 0;
+                      _hasMore = false;
+                    });
+                  }
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

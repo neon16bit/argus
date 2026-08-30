@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
+import 'package:argus/features/sources/widgets/confirm_clear_source_dialog.dart';
 import 'package:argus/features/sources/widgets/source_form_dialog.dart';
 import 'package:argus/features/sources/source_items_screen.dart';
 import 'package:argus/theme/app_theme.dart';
@@ -254,6 +255,11 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                         icon: const Icon(Icons.edit_note_rounded),
                       ),
                       IconButton(
+                        onPressed: () => _confirmClear(source),
+                        icon: const Icon(Icons.delete_sweep_rounded),
+                        tooltip: 'Clear indexed folders',
+                      ),
+                      IconButton(
                         onPressed: () => _confirmDelete(source),
                         icon: Icon(
                           Icons.delete_rounded,
@@ -270,6 +276,8 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                             _pingSource();
                           } else if (value == 'edit') {
                             _showEditDialog(source);
+                          } else if (value == 'clear') {
+                            _confirmClear(source);
                           } else if (value == 'delete') {
                             _confirmDelete(source);
                           }
@@ -292,6 +300,16 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                                 Icon(Icons.edit_note_rounded, size: 20),
                                 SizedBox(width: 8),
                                 Text('Edit source'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'clear',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_sweep_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text('Clear indexed folders'),
                               ],
                             ),
                           ),
@@ -324,6 +342,10 @@ class _SourceTileState extends ConsumerState<SourceTile> {
         ],
       ),
     );
+  }
+
+  void _confirmClear(Source source) {
+    showConfirmClearSourceDialog(context, ref, source);
   }
 
   void _confirmDelete(Source source) async {

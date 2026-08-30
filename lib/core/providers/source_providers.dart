@@ -172,10 +172,7 @@ class SourceActions {
     }
 
     if (dataCleared) {
-      // clear old scraped items because source URL or structure changed
-      await db.deleteMediaItemsBySource(id);
-      await db.deleteIndexedFoldersBySource(id);
-      ref.read(scrapedSourcesProvider.notifier).clearScraped(id);
+      await clearSourceData(id);
     }
 
     await db.updateSource(
@@ -625,9 +622,16 @@ class SourceActions {
   }
 
   Future<void> deleteSource(int id) async {
+    await clearSourceData(id);
+    await db.deleteSource(id);
+  }
+
+  Future<void> clearSourceData(int id) async {
     await db.deleteMediaItemsBySource(id);
     await db.deleteIndexedFoldersBySource(id);
-    await db.deleteSource(id);
+    await (db.update(db.sources)..where((s) => s.id.equals(id))).write(
+      const SourcesCompanion(lastScraped: Value(null)),
+    );
     ref.read(scrapedSourcesProvider.notifier).clearScraped(id);
   }
 }
