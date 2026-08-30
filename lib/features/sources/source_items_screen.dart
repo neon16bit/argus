@@ -297,8 +297,10 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ShowDetailScreen(result: item),
+                                builder: (context) => ShowDetailScreen(
+                                  result: item,
+                                  initialSourceId: widget.source.id,
+                                ),
                               ),
                             );
                             if (mounted) {

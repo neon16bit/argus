@@ -14,8 +14,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 class ShowDetailScreen extends ConsumerStatefulWidget {
   final SearchResult result;
+  final int? initialSourceId;
 
-  const ShowDetailScreen({super.key, required this.result});
+  const ShowDetailScreen({
+    super.key,
+    required this.result,
+    this.initialSourceId,
+  });
 
   @override
   ConsumerState<ShowDetailScreen> createState() => _ShowDetailScreenState();
@@ -29,6 +34,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedSourceId = widget.initialSourceId;
     _trackedFolderUrl = widget.result.folderUrl;
     // prioritize scraping any unscraped folders for this show on any active sources
     Future.microtask(() async {
