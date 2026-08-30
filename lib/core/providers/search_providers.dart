@@ -58,11 +58,14 @@ class SearchQueryNotifier extends Notifier<String> {
   }
 }
 
-final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
-  SearchQueryNotifier.new,
-);
+final searchQueryProvider =
+    NotifierProvider.autoDispose<SearchQueryNotifier, String>(
+      SearchQueryNotifier.new,
+    );
 
-final searchResultsProvider = StreamProvider<List<SearchResult>>((ref) {
+final searchResultsProvider = StreamProvider.autoDispose<List<SearchResult>>((
+  ref,
+) {
   final query = ref.watch(searchQueryProvider);
   if (query.trim().isEmpty) return Stream.value([]);
 
