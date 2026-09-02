@@ -7,6 +7,9 @@ class PlayerTopBar extends StatelessWidget {
   final VoidCallback onSubtitles;
   final VoidCallback onSpeed;
   final VoidCallback onOpenExternal;
+  final VoidCallback? onSolveChallenge;
+  final VoidCallback? onMenuOpened;
+  final VoidCallback? onMenuClosed;
 
   const PlayerTopBar({
     super.key,
@@ -16,6 +19,9 @@ class PlayerTopBar extends StatelessWidget {
     required this.onSubtitles,
     required this.onSpeed,
     required this.onOpenExternal,
+    this.onSolveChallenge,
+    this.onMenuOpened,
+    this.onMenuClosed,
   });
 
   @override
@@ -58,15 +64,62 @@ class PlayerTopBar extends StatelessWidget {
             tooltip: 'Subtitles',
             onPressed: onSubtitles,
           ),
-          IconButton(
-            icon: const Icon(Icons.speed_rounded, color: Colors.white),
-            tooltip: 'Playback Speed',
-            onPressed: onSpeed,
-          ),
-          IconButton(
-            icon: const Icon(Icons.open_in_new_rounded, color: Colors.white),
-            tooltip: 'Open in External Player',
-            onPressed: onOpenExternal,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            tooltip: 'More options',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            onOpened: onMenuOpened,
+            onCanceled: onMenuClosed,
+            onSelected: (value) {
+              onMenuClosed?.call();
+              switch (value) {
+                case 'speed':
+                  onSpeed();
+                  break;
+                case 'webview':
+                  onSolveChallenge?.call();
+                  break;
+                case 'external':
+                  onOpenExternal();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'speed',
+                child: Row(
+                  children: [
+                    Icon(Icons.speed_rounded, size: 20),
+                    SizedBox(width: 12),
+                    Text('Playback Speed'),
+                  ],
+                ),
+              ),
+              if (onSolveChallenge != null)
+                const PopupMenuItem<String>(
+                  value: 'webview',
+                  child: Row(
+                    children: [
+                      Icon(Icons.language_rounded, size: 20),
+                      SizedBox(width: 12),
+                      Text('Open in WebView'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem<String>(
+                value: 'external',
+                child: Row(
+                  children: [
+                    Icon(Icons.open_in_new_rounded, size: 20),
+                    SizedBox(width: 12),
+                    Text('Open in External Player'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

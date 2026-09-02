@@ -1,8 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, SocketException;
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:argus/core/providers/database_providers.dart';
+import 'package:argus/core/utils/source_session_manager.dart';
 import 'package:argus/data/database/app_database.dart';
+import 'package:argus/features/player/widgets/challenge_solver_modal.dart';
 import 'package:argus/features/player/widgets/player_bottom_bar.dart';
 import 'package:argus/features/player/widgets/player_center_controls.dart';
 import 'package:argus/features/player/widgets/player_top_bar.dart';
@@ -11,6 +13,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -152,6 +155,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           );
         }
       }),
+      _player.stream.error.listen((err) {
+        if (!mounted || _isDisposed) return;
+        _handlePlaybackError(err);
+      }),
     ]);
 
     _initPlayerAndResume();
@@ -162,6 +169,272 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         _saveProgress();
       }
     });
+  }
+
+  bool _isHandlingChallenge = false;
+  String? _resolvedPlayUrl;
+
+  Future<void> _handleChallengeRequired() async {
+    if (_isHandlingChallenge || !mounted || _isDisposed) return;
+    _isHandlingChallenge = true;
+
+    try {
+      final result = await showChallengeSolverModal(
+        context,
+        url: widget.url,
+        hostTitle: widget.groupTitle ?? widget.title,
+      );
+
+      if (result != null && mounted && !_isDisposed) {
+        final playUrl = result.resolvedUrl.isNotEmpty
+            ? result.resolvedUrl
+            : widget.url;
+        _resolvedPlayUrl = playUrl;
+        final headers = await SourceSessionManager.getHeadersForUrl(playUrl);
+        if (result.cookies.isNotEmpty) {
+          headers['Cookie'] = result.cookies;
+        }
+        if (result.userAgent != null && result.userAgent!.isNotEmpty) {
+          headers['User-Agent'] = result.userAgent!;
+        }
+
+        if (!mounted || _isDisposed) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification session captured. Loading stream...'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        await _openStream(playUrl, headers: headers);
+      }
+    } finally {
+      _isHandlingChallenge = false;
+    }
+  }
+
+  bool _isDiagnosingError = false;
+
+  Future<void> _handlePlaybackError(String rawError) async {
+    if (!mounted || _isDisposed || _isDiagnosingError) return;
+    _isDiagnosingError = true;
+
+    try {
+      final info = await _diagnosePlaybackError(rawError);
+      if (!mounted || _isDisposed) return;
+
+      final theme = Theme.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(info.message),
+          action: info.actionLabel != null && info.onAction != null
+              ? SnackBarAction(
+                  label: info.actionLabel!,
+                  textColor: theme.colorScheme.primary,
+                  onPressed: info.onAction!,
+                )
+              : null,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      _isDiagnosingError = false;
+    }
+  }
+
+  Future<_PlaybackErrorInfo> _diagnosePlaybackError(String rawError) async {
+    final lower = rawError.toLowerCase();
+
+    if (lower.contains('403') ||
+        lower.contains('forbidden') ||
+        lower.contains('503')) {
+      unawaited(SourceSessionManager.clearSessionForUrl(widget.url));
+      if (_resolvedPlayUrl != null) {
+        unawaited(SourceSessionManager.clearSessionForUrl(_resolvedPlayUrl!));
+      }
+      return _PlaybackErrorInfo(
+        type: _PlaybackErrorType.challenge,
+        message:
+            'Playback protected (403 / Cloudflare). Solve verification to continue.',
+        actionLabel: 'Open in webview',
+        onAction: _handleChallengeRequired,
+      );
+    }
+    if (lower.contains('404') || lower.contains('not found')) {
+      return const _PlaybackErrorInfo(
+        type: _PlaybackErrorType.notFound,
+        message: 'Stream not found (404). This source link is dead or expired.',
+      );
+    }
+    if (lower.contains('timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('connection refused') ||
+        lower.contains('cannot resolve')) {
+      return _PlaybackErrorInfo(
+        type: _PlaybackErrorType.network,
+        message: 'Network error: Unable to reach stream server.',
+        actionLabel: 'Retry',
+        onAction: _retryPlayback,
+      );
+    }
+    if (lower.contains('demux') ||
+        lower.contains('codec') ||
+        lower.contains('format') ||
+        lower.contains('unsupported')) {
+      return _PlaybackErrorInfo(
+        type: _PlaybackErrorType.format,
+        message: 'Playback failed: Unsupported format or corrupted stream.',
+        actionLabel: 'External Player',
+        onAction: _openInExternalPlayer,
+      );
+    }
+
+    // probe http status if the error is a generic
+    final url = widget.url;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        final headers = await SourceSessionManager.getHeadersForUrl(url);
+        final res = await _probeUrl(url, headers);
+
+        if (res != null) {
+          if (res.statusCode == 404 || res.statusCode == 410) {
+            return const _PlaybackErrorInfo(
+              type: _PlaybackErrorType.notFound,
+              message:
+                  'Stream not found (404). This source link is dead or expired.',
+            );
+          }
+          if (res.statusCode == 403 || res.statusCode == 503) {
+            return _PlaybackErrorInfo(
+              type: _PlaybackErrorType.challenge,
+              message:
+                  'Playback protected (${res.statusCode} / Cloudflare). Solve verification to continue.',
+              actionLabel: 'Open in webview',
+              onAction: _handleChallengeRequired,
+            );
+          }
+          final contentType = res.headers['content-type']?.toLowerCase() ?? '';
+          if (contentType.contains('text/html')) {
+            return _PlaybackErrorInfo(
+              type: _PlaybackErrorType.challenge,
+              message:
+                  'Playback protected by verification. Solve verification to continue.',
+              actionLabel: 'Open in webview',
+              onAction: _handleChallengeRequired,
+            );
+          }
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            return _PlaybackErrorInfo(
+              type: _PlaybackErrorType.format,
+              message: 'Playback failed: Cannot decode stream format.',
+              actionLabel: 'External Player',
+              onAction: _openInExternalPlayer,
+            );
+          }
+          if (res.statusCode >= 500) {
+            return _PlaybackErrorInfo(
+              type: _PlaybackErrorType.network,
+              message:
+                  'Server error (${res.statusCode}): Stream provider is unreachable.',
+              actionLabel: 'Retry',
+              onAction: _retryPlayback,
+            );
+          }
+        }
+      } on SocketException {
+        return _PlaybackErrorInfo(
+          type: _PlaybackErrorType.network,
+          message: 'Network error: Cannot reach server. Check connection.',
+          actionLabel: 'Retry',
+          onAction: _retryPlayback,
+        );
+      } on TimeoutException {
+        return _PlaybackErrorInfo(
+          type: _PlaybackErrorType.network,
+          message: 'Connection timed out while loading stream.',
+          actionLabel: 'Retry',
+          onAction: _retryPlayback,
+        );
+      } catch (e) {
+        debugPrint('[VideoPlayer] Diagnostic probe error: $e');
+      }
+    }
+
+    String cleanMsg = 'Playback error: Unable to load stream.';
+    if (rawError.isNotEmpty &&
+        !rawError.contains('http://') &&
+        !rawError.contains('https://')) {
+      cleanMsg = 'Playback error: $rawError';
+    }
+
+    return _PlaybackErrorInfo(
+      type: _PlaybackErrorType.general,
+      message: cleanMsg,
+      actionLabel: 'Retry',
+      onAction: _retryPlayback,
+    );
+  }
+
+  Future<void> _openStream(
+    String url, {
+    Duration? startPosition,
+    Map<String, String>? headers,
+  }) async {
+    if (!mounted || _isDisposed) return;
+    final effectiveHeaders =
+        headers ?? await SourceSessionManager.getHeadersForUrl(url);
+    if (!mounted || _isDisposed) return;
+    await _player.open(
+      Media(
+        url,
+        start: startPosition ?? (_position > Duration.zero ? _position : null),
+        httpHeaders: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+      ),
+    );
+  }
+
+  Future<void> _retryPlayback() async {
+    if (!mounted || _isDisposed) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    await _openStream(widget.url);
+  }
+
+  Future<http.Response?> _probeUrl(
+    String url,
+    Map<String, String> headers,
+  ) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    final client = http.Client();
+    try {
+      try {
+        return await client
+            .head(uri, headers: headers)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        return await client
+            .get(uri, headers: {...headers, 'Range': 'bytes=0-10'})
+            .timeout(const Duration(seconds: 3));
+      }
+    } catch (e) {
+      debugPrint('[VideoPlayer] Probe request error: $e');
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<bool> _probeChallenge(String url, Map<String, String> headers) async {
+    final res = await _probeUrl(url, headers);
+    if (res == null) return false;
+    if (res.statusCode == 403 || res.statusCode == 503) return true;
+    final contentType = res.headers['content-type']?.toLowerCase() ?? '';
+    return contentType.contains('text/html');
   }
 
   void _saveProgress() {
@@ -206,8 +479,32 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       }
     }
 
+    var playUrl = widget.url;
+    var headers = await SourceSessionManager.getHeadersForUrl(playUrl);
+    final challengeNeeded = await _probeChallenge(playUrl, headers);
+    if (challengeNeeded && mounted && !_isDisposed) {
+      final result = await showChallengeSolverModal(
+        context,
+        url: widget.url,
+        hostTitle: widget.groupTitle ?? widget.title,
+      );
+      if (result != null) {
+        if (result.resolvedUrl.isNotEmpty) {
+          playUrl = result.resolvedUrl;
+        }
+        _resolvedPlayUrl = playUrl;
+        headers = await SourceSessionManager.getHeadersForUrl(playUrl);
+        if (result.cookies.isNotEmpty) {
+          headers['Cookie'] = result.cookies;
+        }
+        if (result.userAgent != null && result.userAgent!.isNotEmpty) {
+          headers['User-Agent'] = result.userAgent!;
+        }
+      }
+    }
+
     if (!mounted || _isDisposed) return;
-    await _player.open(Media(widget.url, start: startPosition));
+    await _openStream(playUrl, startPosition: startPosition, headers: headers);
 
     if (startPosition != null && mounted && !_isDisposed) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,6 +531,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   @override
   void dispose() {
     _isDisposed = true;
+    unawaited(SourceSessionManager.clearSessionForUrl(widget.url));
+    if (_resolvedPlayUrl != null && _resolvedPlayUrl != widget.url) {
+      unawaited(SourceSessionManager.clearSessionForUrl(_resolvedPlayUrl!));
+    }
     for (final s in _subscriptions) {
       s.cancel();
     }
@@ -561,6 +862,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                                         },
                                       ),
                                   onOpenExternal: _openInExternalPlayer,
+                                  onSolveChallenge: _handleChallengeRequired,
+                                  onMenuOpened: () => _hideTimer?.cancel(),
+                                  onMenuClosed: _resetHideTimer,
                                 ),
                               ),
 
@@ -635,4 +939,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       ),
     );
   }
+}
+
+enum _PlaybackErrorType { challenge, notFound, network, format, general }
+
+class _PlaybackErrorInfo {
+  final _PlaybackErrorType type;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _PlaybackErrorInfo({
+    required this.type,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
 }
