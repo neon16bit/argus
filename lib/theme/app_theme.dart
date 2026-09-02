@@ -61,6 +61,11 @@ class AppTheme {
         ? Colors.black
         : palette.mantle;
 
+    final seedScheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: palette.brightness,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: palette.brightness,
@@ -69,8 +74,10 @@ class AppTheme {
         brightness: palette.brightness,
         primary: primary,
         onPrimary: isDark ? palette.crust : palette.base,
-        secondary: palette.sapphire,
-        onSecondary: isDark ? palette.crust : palette.base,
+        secondary: seedScheme.secondary,
+        onSecondary: seedScheme.onSecondary,
+        secondaryContainer: seedScheme.secondaryContainer,
+        onSecondaryContainer: seedScheme.onSecondaryContainer,
         tertiary: palette.peach,
         onTertiary: isDark ? palette.crust : palette.base,
         error: palette.red,
@@ -149,6 +156,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: resolvedSurface,
+        actionTextColor: primary,
         contentTextStyle: GoogleFonts.inter(color: palette.text),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
