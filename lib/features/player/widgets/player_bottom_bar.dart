@@ -125,7 +125,7 @@ class PlayerBottomBar extends StatelessWidget {
                   onPressed: onToggleMute,
                 ),
                 SizedBox(
-                  width: 100,
+                  width: 150,
                   child: SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: theme.colorScheme.primary,

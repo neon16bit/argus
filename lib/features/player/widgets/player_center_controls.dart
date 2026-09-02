@@ -62,6 +62,8 @@ class PlayerHud extends StatelessWidget {
   final bool isBuffering;
   final bool controlsVisible;
   final BoxConstraints constraints;
+  final bool isAdjustingVolume;
+  final double volume;
 
   const PlayerHud({
     super.key,
@@ -70,6 +72,8 @@ class PlayerHud extends StatelessWidget {
     required this.isBuffering,
     required this.controlsVisible,
     required this.constraints,
+    this.isAdjustingVolume = false,
+    this.volume = 100.0,
   });
 
   @override
@@ -150,6 +154,65 @@ class PlayerHud extends StatelessWidget {
               child: CircularProgressIndicator(
                 strokeWidth: 3.5,
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
+
+        if (isAdjustingVolume)
+          Positioned(
+            right: constraints.maxWidth < 600 ? 24 : 48,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 44,
+                height: 160,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white12, width: 1),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      volume <= 0
+                          ? Icons.volume_off_rounded
+                          : volume < 50
+                          ? Icons.volume_down_rounded
+                          : Icons.volume_up_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: RotatedBox(
+                        quarterTurns: -1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: (volume / 100.0).clamp(0.0, 1.0),
+                            backgroundColor: Colors.white24,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
+                            ),
+                            minHeight: 5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${volume.round()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

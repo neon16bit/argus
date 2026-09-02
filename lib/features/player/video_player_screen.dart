@@ -71,6 +71,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   int _accumulatedSeekSeconds = 0;
   Timer? _doubleTapResetTimer;
 
+  // volume swipe gesture & hud
+  bool _isDraggingVolume = false;
+  bool _isAdjustingVolume = false;
+  Timer? _volumeHudResetTimer;
+
   // stream subs
   final List<StreamSubscription> _subscriptions = [];
   final FocusNode _focusNode = FocusNode();
@@ -542,6 +547,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _progressSaveTimer?.cancel();
     _hideTimer?.cancel();
     _doubleTapResetTimer?.cancel();
+    _volumeHudResetTimer?.cancel();
     _focusNode.dispose();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       SystemChrome.setPreferredOrientations([
@@ -645,14 +651,60 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _resetHideTimer();
   }
 
-  void _setVolume(double newVolume) {
+  void _showVolumeHud() {
+    _volumeHudResetTimer?.cancel();
+    if (!_isAdjustingVolume) {
+      setState(() => _isAdjustingVolume = true);
+    }
+    _volumeHudResetTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _isAdjustingVolume = false);
+    });
+  }
+
+  void _handleVerticalDragStart(
+    DragStartDetails details,
+    BoxConstraints constraints,
+  ) {
+    final isRight = details.localPosition.dx > constraints.maxWidth * 0.5;
+    final inVerticalZone =
+        details.localPosition.dy > 40 &&
+        details.localPosition.dy < (constraints.maxHeight - 40);
+
+    if (isRight && inVerticalZone) {
+      _isDraggingVolume = true;
+      _showVolumeHud();
+    } else {
+      _isDraggingVolume = false;
+    }
+  }
+
+  void _handleVerticalDragUpdate(
+    DragUpdateDetails details,
+    BoxConstraints constraints,
+  ) {
+    if (!_isDraggingVolume) return;
+    final delta = -details.delta.dy;
+    final deltaVolume = (delta / (constraints.maxHeight * 0.5)) * 100;
+    _setVolume((_volume + deltaVolume).clamp(0.0, 100.0), showControls: false);
+    _showVolumeHud();
+  }
+
+  void _handleVerticalDragEnd() {
+    if (!_isDraggingVolume) return;
+    _isDraggingVolume = false;
+    _showVolumeHud();
+  }
+
+  void _setVolume(double newVolume, {bool showControls = true}) {
     final clamped = newVolume.clamp(0.0, 100.0);
     _player.setVolume(clamped);
     setState(() {
       _volume = clamped;
       _isMuted = clamped == 0;
     });
-    _resetHideTimer();
+    if (showControls) {
+      _resetHideTimer();
+    }
   }
 
   void _toggleMute() {
@@ -746,9 +798,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         break;
       case LogicalKeyboardKey.arrowUp:
         _setVolume(_volume + 5);
+        _showVolumeHud();
         break;
       case LogicalKeyboardKey.arrowDown:
         _setVolume(_volume - 5);
+        _showVolumeHud();
         break;
       case LogicalKeyboardKey.keyM:
         _toggleMute();
@@ -801,6 +855,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                 onDoubleTap: () {},
                 onLongPressStart: (_) => _startHolding2x(),
                 onLongPressEnd: (_) => _stopHolding2x(),
+                onVerticalDragStart: (details) =>
+                    _handleVerticalDragStart(details, constraints),
+                onVerticalDragUpdate: (details) =>
+                    _handleVerticalDragUpdate(details, constraints),
+                onVerticalDragEnd: (_) => _handleVerticalDragEnd(),
+                onVerticalDragCancel: _handleVerticalDragEnd,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -928,6 +988,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                         isBuffering: _isBuffering,
                         controlsVisible: _controlsVisible,
                         constraints: constraints,
+                        isAdjustingVolume: _isAdjustingVolume,
+                        volume: _volume,
                       ),
                     ),
                   ],
