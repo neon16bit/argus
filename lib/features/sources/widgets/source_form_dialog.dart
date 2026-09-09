@@ -22,6 +22,8 @@ class SourceFormDialog extends StatefulWidget {
 class _SourceFormDialogState extends State<SourceFormDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _urlController;
+  late final TextEditingController _delayController;
+  late String _delayUnit;
   late int _selectedDepth;
   late bool _autoScrape;
   int? _requestDelayMs;
@@ -34,7 +36,17 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     _urlController = TextEditingController(text: widget.source?.baseUrl ?? '');
     _selectedDepth = widget.source?.maxDepth ?? kFlatScrapeDepth;
     _autoScrape = widget.source?.autoScrape ?? false;
-    _requestDelayMs = widget.source?.requestDelayMs;
+    final initialDelay = widget.source?.requestDelayMs;
+    _requestDelayMs = initialDelay;
+    if (initialDelay != null &&
+        initialDelay >= 1000 &&
+        initialDelay % 1000 == 0) {
+      _delayUnit = 's';
+      _delayController = TextEditingController(text: '${initialDelay ~/ 1000}');
+    } else {
+      _delayUnit = 'ms';
+      _delayController = TextEditingController(text: '${initialDelay ?? 250}');
+    }
 
     if (widget.source != null) {
       _urlController.addListener(_checkIfModified);
@@ -53,6 +65,33 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     }
   }
 
+  void _parseDelayInput(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      _requestDelayMs = 0;
+      return;
+    }
+    final val = num.tryParse(trimmed);
+    if (val != null) {
+      _requestDelayMs = _delayUnit == 's' ? (val * 1000).round() : val.toInt();
+    }
+  }
+
+  void _switchDelayUnit(String newUnit) {
+    if (newUnit == _delayUnit) return;
+    setState(() {
+      _delayUnit = newUnit;
+      if (newUnit == 's') {
+        final s = _requestDelayMs! / 1000.0;
+        _delayController.text = s.toStringAsFixed(
+          s.truncateToDouble() == s ? 0 : 2,
+        );
+      } else {
+        _delayController.text = '$_requestDelayMs';
+      }
+    });
+  }
+
   @override
   void dispose() {
     if (widget.source != null) {
@@ -60,6 +99,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     }
     _nameController.dispose();
     _urlController.dispose();
+    _delayController.dispose();
     super.dispose();
   }
 
@@ -93,20 +133,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Grouped structure'),
-                subtitle: const Text('Nested by year or letter (e.g. /2010/)'),
-                value: _selectedDepth == kGroupedScrapeDepth,
-                onChanged: (bool val) {
-                  setState(() {
-                    _selectedDepth = val
-                        ? kGroupedScrapeDepth
-                        : kFlatScrapeDepth;
-                  });
-                  _checkIfModified();
-                },
-              ),
+
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Auto-index on search'),
@@ -121,37 +148,98 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                   });
                 },
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int?>(
-                initialValue: _requestDelayMs,
-                decoration: const InputDecoration(
-                  labelText: 'Request delay',
-                  helperText: 'Override global delay for this source',
-                  helperMaxLines: 2,
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Default request delay'),
+                subtitle: Text(
+                  _requestDelayMs == null
+                      ? 'Using global delay setting'
+                      : 'Override global delay for this source',
+                  style: const TextStyle(fontSize: 11),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text('Default (Global)'),
-                  ),
-                  DropdownMenuItem(value: 0, child: Text('0ms (None)')),
-                  DropdownMenuItem(value: 100, child: Text('100ms')),
-                  DropdownMenuItem(value: 250, child: Text('250ms')),
-                  DropdownMenuItem(value: 500, child: Text('500ms')),
-                  DropdownMenuItem(value: 1000, child: Text('1s')),
-                  DropdownMenuItem(value: 2000, child: Text('2s')),
-                  DropdownMenuItem(value: 3000, child: Text('3s')),
-                  DropdownMenuItem(value: 5000, child: Text('5s')),
-                ],
-                onChanged: (val) {
+                value: _requestDelayMs == null,
+                onChanged: (bool useDefault) {
                   setState(() {
-                    _requestDelayMs = val;
+                    if (useDefault) {
+                      _requestDelayMs = null;
+                    } else {
+                      _requestDelayMs = 250;
+                      _delayUnit = 'ms';
+                      _delayController.text = '250';
+                    }
                   });
                 },
               ),
-              const SizedBox(height: 16),
+              if (_requestDelayMs != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _delayController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: _delayUnit == 's' ? '0.25' : '250',
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        onChanged: _parseDelayInput,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.secondary,
+                          width: 0.8,
+                        ),
+                      ),
+                      segments: const [
+                        ButtonSegment(value: 'ms', label: Text('ms')),
+                        ButtonSegment(value: 's', label: Text('s')),
+                      ],
+                      selected: {_delayUnit},
+                      onSelectionChanged: (newSet) {
+                        _switchDelayUnit(newSet.first);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Grouped structure'),
+                subtitle: const Text(
+                  'Nested by year or letter (e.g. /2010/)',
+                  style: TextStyle(fontSize: 11),
+                ),
+                value: _selectedDepth == kGroupedScrapeDepth,
+                onChanged: (bool val) {
+                  setState(() {
+                    _selectedDepth = val
+                        ? kGroupedScrapeDepth
+                        : kFlatScrapeDepth;
+                  });
+                  _checkIfModified();
+                },
+              ),
+              const SizedBox(height: 8),
               const Text(
-                'Expected folder structure:',
+                'Expected directory structure:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               const SizedBox(height: 8),
@@ -171,17 +259,15 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                             '\n└── [Show or Movie Folder]/'
                       : 'root/\n└── [Year / Alphabet Group]/'
                             '\n     └── [Show or Movie Folder]/'
-                            '\n     └── [Show or Movie Folder]/'
-                            '\n└── [Year / Alphabet Group]/'
-                            '\n     └── [Show or Movie Folder]/'
                             '\n     └── [Show or Movie Folder]/',
                   style: TextStyle(
                     fontFamily: 'monospace',
-                    fontSize: 12,
+                    fontSize: 10,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
+
               if (_urlModified) ...[
                 const SizedBox(height: 12),
                 Row(
@@ -217,8 +303,8 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
             final url = _urlController.text.trim();
             if (name.isEmpty || url.isEmpty) return;
 
-            Navigator.pop(context);
             final messenger = ScaffoldMessenger.of(context);
+            Navigator.pop(context);
             final warning = await widget.onSave(
               name,
               url,
@@ -226,7 +312,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
               _autoScrape,
               _requestDelayMs,
             );
-            if (context.mounted && warning != null) {
+            if (messenger.mounted && warning != null) {
               messenger.showSnackBar(SnackBar(content: Text(warning)));
             }
           },
