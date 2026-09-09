@@ -16,10 +16,25 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
   @override
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(sourcesProvider);
+    final isWide = MediaQuery.sizeOf(context).width >= 500;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sources'),
         actions: [
+          if (isWide)
+            FilledButton.icon(
+              onPressed: () => _showAddDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add Source'),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add Source',
+              onPressed: () => _showAddDialog(context),
+            ),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.settings_rounded),
             tooltip: 'Settings',
@@ -28,6 +43,7 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
               MaterialPageRoute(builder: (_) => const SettingsScreen()),
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: sourcesAsync.when(
@@ -37,13 +53,25 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.dns_rounded, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.dns_rounded,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 16),
                   const Text('No sources yet'),
                   const SizedBox(height: 8),
                   Text(
                     'Add an open directory URL to get started',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => _showAddDialog(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add Source'),
                   ),
                 ],
               ),
@@ -57,10 +85,6 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context),
-        child: const Icon(Icons.add_rounded),
       ),
     );
   }
