@@ -80,7 +80,10 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: sources.length,
-            itemBuilder: (context, index) => SourceTile(source: sources[index]),
+            itemBuilder: (context, index) => SourceTile(
+              key: ValueKey(sources[index].id),
+              source: sources[index],
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

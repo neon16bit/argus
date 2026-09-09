@@ -11,7 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SourceTile extends ConsumerStatefulWidget {
   final Source source;
-  const SourceTile({super.key, required this.source});
+  final bool? initiallyExpanded;
+  const SourceTile({super.key, required this.source, this.initiallyExpanded});
 
   @override
   ConsumerState<SourceTile> createState() => _SourceTileState();
@@ -24,6 +25,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
 
   Future<void> _pingSource() async {
     final source = widget.source;
+    if (ref.read(pingingSourcesProvider).contains(source.id)) return;
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(sourceActionsProvider);
     final online = await actions.pingSource(source);
@@ -34,7 +36,6 @@ class _SourceTileState extends ConsumerState<SourceTile> {
         ),
       );
     }
-    ref.invalidate(sourcesProvider);
   }
 
   @override
@@ -52,29 +53,43 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     final mediaItemsCountAsync = ref.watch(
       mediaItemsCountBySourceProvider(source.id),
     );
-    final scrapedIds = ref.watch(scrapedSourcesProvider);
-    final hasBeenScraped = scrapedIds.contains(source.id);
+    final hasBeenScraped = ref.watch(
+      scrapedSourcesProvider.select((s) => s.contains(source.id)),
+    );
+    final isPinging = ref.watch(
+      pingingSourcesProvider.select((s) => s.contains(source.id)),
+    );
+    final isNewlyAdded = ref.watch(
+      newlyAddedSourcesProvider.select((s) => s.contains(source.id)),
+    );
+    final shouldExpand = widget.initiallyExpanded ?? isNewlyAdded;
     final isWide = MediaQuery.of(context).size.width >= 600;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
+        key: PageStorageKey('source_${source.id}'),
+        initiallyExpanded: shouldExpand,
         shape: const Border(),
         collapsedShape: const Border(),
         leading: Tooltip(
-          message: 'Tap to check online status',
+          message: isPinging
+              ? 'Checking online status...'
+              : 'Tap to check online status (${source.isOnline ? "online" : "offline"})',
           child: InkWell(
-            onTap: _pingSource,
+            onTap: isPinging ? null : _pingSource,
             customBorder: const CircleBorder(),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Icon(
-                Icons.circle,
-                size: 12,
-                color: source.isOnline
-                    ? AppTheme.online
-                    : Theme.of(context).colorScheme.error,
-              ),
+              child: isPinging
+                  ? _PulsingDot(color: Theme.of(context).colorScheme.tertiary)
+                  : Icon(
+                      Icons.circle,
+                      size: 12,
+                      color: source.isOnline
+                          ? AppTheme.online
+                          : Theme.of(context).colorScheme.error,
+                    ),
             ),
           ),
         ),
@@ -91,29 +106,38 @@ class _SourceTileState extends ConsumerState<SourceTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                folderCountAsync.when(
-                  data: (foldersCount) {
-                    if (foldersCount > 0) {
-                      return Text('$foldersCount folders indexed');
-                    }
-                    return mediaItemsCountAsync.when(
+                if (!hasBeenScraped && source.lastScraped == null)
+                  Text(
+                    'Not indexed yet, tap Scrape to get started',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  )
+                else ...[
+                  folderCountAsync.when(
+                    data: (foldersCount) {
+                      if (foldersCount > 0) {
+                        return Text('$foldersCount folders indexed');
+                      }
+                      return mediaItemsCountAsync.when(
+                        data: (itemsCount) => Text('$itemsCount items indexed'),
+                        loading: () => const Text('Loading items...'),
+                        error: (err, stack) => const Text('0 folders indexed'),
+                      );
+                    },
+                    loading: () => const Text('Loading...'),
+                    error: (e, st) => mediaItemsCountAsync.when(
                       data: (itemsCount) => Text('$itemsCount items indexed'),
                       loading: () => const Text('Loading items...'),
                       error: (err, stack) => const Text('0 folders indexed'),
-                    );
-                  },
-                  loading: () => const Text('Loading...'),
-                  error: (e, st) => mediaItemsCountAsync.when(
-                    data: (itemsCount) => Text('$itemsCount items indexed'),
-                    loading: () => const Text('Loading items...'),
-                    error: (err, stack) => const Text('0 folders indexed'),
+                    ),
                   ),
-                ),
-                if (source.lastScraped != null)
-                  Text(
-                    'Last scraped: ${_formatDate(source.lastScraped!)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  if (source.lastScraped != null)
+                    Text(
+                      'Last scraped: ${_formatDate(source.lastScraped!)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
                 if (_progress != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -532,6 +556,36 @@ class _StatChip extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.2, end: 1.0).animate(_controller),
+      child: Icon(Icons.circle, size: 12, color: widget.color),
     );
   }
 }

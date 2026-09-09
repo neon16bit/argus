@@ -50,6 +50,32 @@ final scrapedSourcesProvider =
       ScrapedSourcesNotifier.new,
     );
 
+class PingingSourcesNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => {};
+
+  void add(int id) => state = {...state, id};
+  void remove(int id) => state = {...state}..remove(id);
+}
+
+final pingingSourcesProvider =
+    NotifierProvider<PingingSourcesNotifier, Set<int>>(
+      PingingSourcesNotifier.new,
+    );
+
+class NewlyAddedSourcesNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => {};
+
+  void add(int id) => state = {...state, id};
+  void remove(int id) => state = {...state}..remove(id);
+}
+
+final newlyAddedSourcesProvider =
+    NotifierProvider<NewlyAddedSourcesNotifier, Set<int>>(
+      NewlyAddedSourcesNotifier.new,
+    );
+
 final mediaItemCountProvider = FutureProvider<int>((ref) {
   final db = ref.watch(databaseProvider);
   return db.getMediaItemCount();
@@ -118,24 +144,34 @@ class SourceActions {
     final existing = await db.getSourceByUrl(url);
     if (existing != null) return 'Source already exists';
 
-    bool online = false;
-    try {
-      final response = await http.get(Uri.parse(url)).timeout(kPingTimeout);
-      online = response.statusCode == 200;
-    } catch (_) {}
-
-    await db.insertSource(
+    final id = await db.insertSource(
       SourcesCompanion(
         name: Value(name),
         baseUrl: Value(url),
-        isOnline: Value(online),
+        isOnline: const Value(false),
         maxDepth: Value(maxDepth),
         autoScrape: Value(autoScrape),
         requestDelayMs: Value(requestDelayMs),
       ),
     );
 
-    return online ? null : 'Source saved but appears offline';
+    ref.read(newlyAddedSourcesProvider.notifier).add(id);
+    ref.read(pingingSourcesProvider.notifier).add(id);
+
+    unawaited(() async {
+      try {
+        final response = await http.get(Uri.parse(url)).timeout(kPingTimeout);
+        final online = response.statusCode == 200;
+        await db.setSourceOnline(id, online);
+      } catch (_) {
+        await db.setSourceOnline(id, false);
+      } finally {
+        ref.read(pingingSourcesProvider.notifier).remove(id);
+        ref.invalidate(sourcesProvider);
+      }
+    }());
+
+    return null;
   }
 
   Future<String?> updateSource(
@@ -193,6 +229,7 @@ class SourceActions {
   }
 
   Future<bool> pingSource(Source source) async {
+    ref.read(pingingSourcesProvider.notifier).add(source.id);
     try {
       final response = await http
           .get(Uri.parse(source.baseUrl))
@@ -203,6 +240,9 @@ class SourceActions {
     } catch (_) {
       await db.setSourceOnline(source.id, false);
       return false;
+    } finally {
+      ref.read(pingingSourcesProvider.notifier).remove(source.id);
+      ref.invalidate(sourcesProvider);
     }
   }
 
