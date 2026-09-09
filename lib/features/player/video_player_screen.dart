@@ -235,6 +235,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
+          showCloseIcon: true,
+          closeIconColor: theme.colorScheme.primary,
           content: Text(info.message),
           action: info.actionLabel != null && info.onAction != null
               ? SnackBarAction(
