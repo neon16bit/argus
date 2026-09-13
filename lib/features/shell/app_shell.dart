@@ -76,6 +76,14 @@ class _SidebarHeaderLogoToggleState extends State<_SidebarHeaderLogoToggle> {
   bool _isHovered = false;
 
   @override
+  void didUpdateWidget(covariant _SidebarHeaderLogoToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isExtended != widget.isExtended) {
+      _isHovered = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
