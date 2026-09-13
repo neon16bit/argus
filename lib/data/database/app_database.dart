@@ -481,6 +481,18 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Stream<bool> watchHasIndexedContent() {
+    return customSelect(
+      '''
+      SELECT (
+        EXISTS (SELECT 1 FROM media_items) OR
+        EXISTS (SELECT 1 FROM indexed_folders)
+      ) AS has_indexed
+      ''',
+      readsFrom: {mediaItems, indexedFolders},
+    ).watchSingle().map((row) => (row.data['has_indexed'] as int? ?? 0) == 1);
+  }
+
   Future<List<Map<String, dynamic>>> getShowsBySource(
     int sourceId, {
     String? searchQuery,

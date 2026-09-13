@@ -76,6 +76,11 @@ final newlyAddedSourcesProvider =
       NewlyAddedSourcesNotifier.new,
     );
 
+final hasIndexedContentProvider = StreamProvider<bool>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.watchHasIndexedContent();
+});
+
 final mediaItemCountProvider = FutureProvider<int>((ref) {
   final db = ref.watch(databaseProvider);
   return db.getMediaItemCount();
