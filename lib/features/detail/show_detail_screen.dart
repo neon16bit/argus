@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/core/utils/audio_tag_helper.dart';
 import 'package:argus/core/utils/episode_fixer.dart';
@@ -12,6 +13,8 @@ import 'package:argus/features/detail/widgets/file_card.dart';
 import 'package:argus/features/detail/widgets/source_filter.dart';
 import 'package:argus/features/detail/show_view_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+const double _kMaxContentWidth = 1100.0;
 
 class ShowDetailScreen extends ConsumerStatefulWidget {
   final SearchResult result;
@@ -276,7 +279,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 600;
+    final isWide = context.isMedium;
+    final isDesktop = context.isDesktop;
     String activeGroupTitle = widget.result.groupTitle;
     final folderUrlToWatch = widget.result.folderUrl ?? _trackedFolderUrl;
     IndexedFolder? resultFolder;
@@ -340,7 +344,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final commonSlivers = [
       SliverAppBar(
-        expandedHeight: 200,
+        expandedHeight: isDesktop ? 300 : 200,
         pinned: true,
         leading: Center(
           child: IconButton(
@@ -349,6 +353,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -642,8 +647,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         flexibleSpace: FlexibleSpaceBar(
           title: Text(
             activeDisplayTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 23,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.white,
               shadows: [
@@ -673,93 +680,113 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           ),
         ),
       ),
-      SliverToBoxAdapter(child: MetadataCard(metadata: metadata)),
+      SliverToBoxAdapter(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+            child: MetadataCard(metadata: metadata),
+          ),
+        ),
+      ),
       if (foldersWithErrors.isNotEmpty)
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Material(
-              color: Theme.of(context).colorScheme.errorContainer,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
               child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Some folders couldn\'t be fully indexed due to rate limits or errors.',
-                        style: TextStyle(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
                           color: Theme.of(context).colorScheme.onErrorContainer,
-                          fontSize: 13,
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Some folders couldn\'t be fully indexed due to rate limits or errors.',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onErrorContainer,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        if (_isRetryingErrors)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          FilledButton.tonal(
+                            onPressed: () async {
+                              setState(() {
+                                _isRetryingErrors = true;
+                              });
+                              final actions = ref.read(sourceActionsProvider);
+                              final settings = ref.read(settingsProvider);
+                              final db = ref.read(databaseProvider);
+
+                              for (final folder in foldersWithErrors) {
+                                final source =
+                                    await db.getSource(folder.sourceId);
+                                final delay = source.requestDelayMs != null
+                                    ? Duration(
+                                        milliseconds: source.requestDelayMs!,
+                                      )
+                                    : settings.scrapeDelay;
+
+                                await actions.retryScrapeErrors(
+                                  folder,
+                                  requestDelay: delay,
+                                );
+                              }
+
+                              if (mounted) {
+                                setState(() {
+                                  _isRetryingErrors = false;
+                                });
+                              }
+                            },
+                            child: const Text('Retry Failed'),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    if (_isRetryingErrors)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      FilledButton.tonal(
-                        onPressed: () async {
-                          setState(() {
-                            _isRetryingErrors = true;
-                          });
-                          final actions = ref.read(sourceActionsProvider);
-                          final settings = ref.read(settingsProvider);
-                          final db = ref.read(databaseProvider);
-
-                          for (final folder in foldersWithErrors) {
-                            final source = await db.getSource(folder.sourceId);
-                            final delay = source.requestDelayMs != null
-                                ? Duration(milliseconds: source.requestDelayMs!)
-                                : settings.scrapeDelay;
-
-                            await actions.retryScrapeErrors(
-                              folder,
-                              requestDelay: delay,
-                            );
-                          }
-
-                          if (mounted) {
-                            setState(() {
-                              _isRetryingErrors = false;
-                            });
-                          }
-                        },
-                        child: const Text('Retry Failed'),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       SliverToBoxAdapter(
-        child: SourceFilterBar(
-          viewModel: viewModel,
-          selectedSourceId: _selectedSourceId,
-          totalItems: items.length,
-          folders: folders,
-          preferredFolderUrl: preferredFolderUrl,
-          onSourceSelected: (sourceId) {
-            setState(() {
-              _selectedSourceId = sourceId;
-            });
-          },
-          onVersionSelected: (folderUrl) {
-            ref
-                .read(versionPreferenceProvider.notifier)
-                .setPreferred(activeGroupTitle, folderUrl);
-          },
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+            child: SourceFilterBar(
+              viewModel: viewModel,
+              selectedSourceId: _selectedSourceId,
+              totalItems: items.length,
+              folders: folders,
+              preferredFolderUrl: preferredFolderUrl,
+              onSourceSelected: (sourceId) {
+                setState(() {
+                  _selectedSourceId = sourceId;
+                });
+              },
+              onVersionSelected: (folderUrl) {
+                ref
+                    .read(versionPreferenceProvider.notifier)
+                    .setPreferred(activeGroupTitle, folderUrl);
+              },
+            ),
+          ),
         ),
       ),
     ];
@@ -775,20 +802,32 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
             ...commonSlivers,
             if (hasOnlyNullSeason) ...[
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Text(
-                    'Available Files',
-                    style: Theme.of(context).textTheme.titleLarge,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: _kMaxContentWidth),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Text(
+                        'Available Files',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
                   ),
                 ),
               ),
               SliverList(
                 delegate: SliverChildListDelegate([
                   ...viewModel.seasonMap[null]!.map(
-                    (group) => FileCard(
-                      group: group,
-                      preferredFolderUrl: preferredFolderUrl,
+                    (group) => Center(
+                      child: ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(maxWidth: _kMaxContentWidth),
+                        child: FileCard(
+                          group: group,
+                          preferredFolderUrl: preferredFolderUrl,
+                        ),
+                      ),
                     ),
                   ),
                 ]),
@@ -797,53 +836,55 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 32,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primaryContainer.withAlpha(80),
-                            shape: BoxShape.circle,
-                          ),
-                          child: SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Indexing directory...',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 340),
-                          child: Text(
-                            'Scanning folder contents and discovering media files. This will only take a moment.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 14,
+                              ).colorScheme.primaryContainer.withAlpha(80),
+                              shape: BoxShape.circle,
+                            ),
+                            child: SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Indexing directory...',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 340),
+                            child: Text(
+                              'Scanning folder contents and discovering media files. This will only take a moment.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -852,64 +893,66 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 32,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.folder_off_outlined,
-                            size: 40,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant.withAlpha(180),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'No Media Files Found',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 340),
-                          child: Text(
-                            'No compatible video or audio files were found in this directory.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 13,
+                              ).colorScheme.surfaceContainerHighest,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.folder_off_outlined,
+                              size: 36,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant.withAlpha(180),
                             ),
                           ),
-                        ),
-                        if (folders.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-                          FilledButton.tonalIcon(
-                            onPressed: () => _refreshFolders(
-                              context,
-                              activeGroupTitle,
-                              folders,
-                            ),
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('Re-index Folder'),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No Media Files Found',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
+                          const SizedBox(height: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 340),
+                            child: Text(
+                              'No compatible video or audio files were found in this directory.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          if (folders.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            FilledButton.tonalIcon(
+                              onPressed: () => _refreshFolders(
+                                context,
+                                activeGroupTitle,
+                                folders,
+                              ),
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Re-index Folder'),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -961,9 +1004,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     itemCount: viewModel.seasonMap[season]!.length,
                     itemBuilder: (context, index) {
                       final group = viewModel.seasonMap[season]![index];
-                      return FileCard(
-                        group: group,
-                        preferredFolderUrl: preferredFolderUrl,
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(maxWidth: _kMaxContentWidth),
+                          child: FileCard(
+                            group: group,
+                            preferredFolderUrl: preferredFolderUrl,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -994,12 +1043,20 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: _tabBar,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _tabBar,
+          ),
+        ),
+      ),
     );
   }
 
   @override
   bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return false;
+    return _tabBar != oldDelegate._tabBar;
   }
 }

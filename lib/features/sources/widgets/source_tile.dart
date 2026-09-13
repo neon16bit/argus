@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
@@ -63,7 +64,7 @@ class _SourceTileState extends ConsumerState<SourceTile> {
       newlyAddedSourcesProvider.select((s) => s.contains(source.id)),
     );
     final shouldExpand = widget.initiallyExpanded ?? isNewlyAdded;
-    final isWide = MediaQuery.of(context).size.width >= 600;
+    final isWide = context.isMedium;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

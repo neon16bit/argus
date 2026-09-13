@@ -60,8 +60,7 @@ class PlayerLauncher {
     int? episode,
     int? mediaItemId,
   }) {
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => VideoPlayerScreen(
           url: url,

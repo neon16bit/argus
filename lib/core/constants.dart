@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 const Set<String> kMediaExtensions = {
   // video
   'mkv', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'ts', 'mpg',
@@ -49,3 +51,18 @@ const int kGroupedScrapeDepth = 2;
 
 const String kSimklBaseUrl = 'https://api.simkl.com';
 const String kSimklImageBase = 'https://wsrv.nl/?url=https://simkl.in';
+
+const double kCompactBreakpoint = 500.0;
+const double kMediumBreakpoint = 600.0;
+const double kDesktopBreakpoint = 720.0;
+const double kSidebarExpandBreakpoint = 1100.0;
+const double kGridPosterMaxExtent = 180.0;
+
+extension ResponsiveContext on BuildContext {
+  double get screenWidth => MediaQuery.sizeOf(this).width;
+  double get screenHeight => MediaQuery.sizeOf(this).height;
+
+  bool get isDesktop => screenWidth >= kDesktopBreakpoint;
+  bool get isMedium => screenWidth >= kMediumBreakpoint;
+  bool get isCompact => screenWidth < kCompactBreakpoint;
+}

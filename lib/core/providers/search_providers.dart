@@ -30,7 +30,6 @@ class SearchResult {
     this.autoScrape = true,
   });
 
-  // title to show in the ui (titleEn > resolvedTitle > groupTitle)
   String get displayTitle => titleEn ?? resolvedTitle ?? groupTitle;
 
   // build poster URL from cached path
@@ -91,3 +90,16 @@ final searchResultsProvider = StreamProvider.autoDispose<List<SearchResult>>((
             .toList(),
       );
 });
+
+class SearchFocusNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void trigger() {
+    state++;
+  }
+}
+
+final searchFocusTriggerProvider = NotifierProvider<SearchFocusNotifier, int>(
+  SearchFocusNotifier.new,
+);

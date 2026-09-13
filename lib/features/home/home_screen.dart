@@ -1,3 +1,4 @@
+import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/home/widgets/continue_watching_card.dart';
@@ -7,6 +8,7 @@ import 'package:argus/features/shell/app_shell.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -16,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
     final continueWatchingAsync = ref.watch(continueWatchingProvider);
     final savedShowsAsync = ref.watch(savedShowsProvider);
     final sourcesAsync = ref.watch(sourcesProvider);
+    final isDesktop = context.isDesktop;
 
     return Scaffold(
       appBar: AppBar(
@@ -24,23 +27,25 @@ class HomeScreen extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            tooltip: 'Search',
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          if (!isDesktop)
+            IconButton(
+              icon: const Icon(Icons.search_rounded),
+              tooltip: 'Search',
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
+              },
             ),
-          ),
+          if (!isDesktop)
+            IconButton(
+              icon: const Icon(Icons.settings_rounded),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+            ),
         ],
       ),
       body: continueWatchingAsync.when(
@@ -58,10 +63,14 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.folder_open_rounded,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    SvgPicture.asset(
+                      'assets/icons/argus_icon.svg',
+                      width: 64,
+                      height: 64,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.primary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -99,10 +108,14 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.explore_outlined,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    SvgPicture.asset(
+                      'assets/icons/argus_icon.svg',
+                      width: 64,
+                      height: 64,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.primary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -122,11 +135,20 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     FilledButton.icon(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SearchScreen(),
-                          ),
-                        );
+                        if (isDesktop) {
+                          ref
+                              .read(navigationIndexProvider.notifier)
+                              .setIndex(4);
+                          ref
+                              .read(searchFocusTriggerProvider.notifier)
+                              .trigger();
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SearchScreen(),
+                            ),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.search_rounded),
                       label: const Text('Search & Explore'),

@@ -325,11 +325,14 @@ class _SourceItemsScreenState extends ConsumerState<SourceItemsScreen> {
                                 ),
                               ),
                             );
-                            if (mounted) {
-                              _offset = 0;
-                              _hasMore = true;
-                              _loadItems();
-                            }
+                            // wait until all route transitions are completely done
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                _offset = 0;
+                                _hasMore = true;
+                                _loadItems();
+                              }
+                            });
                           },
                         ),
                       );

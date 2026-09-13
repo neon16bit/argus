@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:argus/core/constants.dart';
 
 class PlayerCenterControls extends StatelessWidget {
   final bool isPlaying;
@@ -160,7 +161,7 @@ class PlayerHud extends StatelessWidget {
 
         if (isAdjustingVolume)
           Positioned(
-            right: constraints.maxWidth < 600 ? 24 : 48,
+            right: constraints.maxWidth < kMediumBreakpoint ? 24 : 48,
             top: 0,
             bottom: 0,
             child: Center(

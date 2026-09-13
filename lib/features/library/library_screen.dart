@@ -1,3 +1,4 @@
+import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/providers.dart';
 import 'package:argus/features/detail/show_detail_screen.dart';
 import 'package:argus/features/search/widgets/search_result_card.dart';
@@ -30,6 +31,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget build(BuildContext context) {
     final savedShowsAsync = ref.watch(savedShowsProvider);
     final isGrid = ref.watch(libraryViewGridProvider);
+    final isDesktop = context.isDesktop;
 
     return Scaffold(
       appBar: AppBar(
@@ -44,14 +46,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ref.read(libraryViewGridProvider.notifier).toggle();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          if (!isDesktop)
+            IconButton(
+              icon: const Icon(Icons.settings_rounded),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
             ),
-          ),
         ],
       ),
       body: savedShowsAsync.when(
@@ -137,7 +140,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         padding: const EdgeInsets.all(16),
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 180,
+                              maxCrossAxisExtent: kGridPosterMaxExtent,
                               childAspectRatio: 0.62,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,

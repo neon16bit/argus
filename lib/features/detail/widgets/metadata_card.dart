@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:argus/core/constants.dart';
 import 'package:argus/data/remote/metadata/metadata_provider.dart';
 
 class DetailHeader extends StatelessWidget {
@@ -47,6 +48,10 @@ class MetadataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = context.isDesktop;
+    final posterWidth = isDesktop ? 130.0 : 100.0;
+    final posterHeight = isDesktop ? 195.0 : 150.0;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -57,20 +62,20 @@ class MetadataCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
                 imageUrl: metadata!.posterUrl!,
-                width: 100,
-                height: 150,
+                width: posterWidth,
+                height: posterHeight,
                 fit: BoxFit.cover,
-                errorWidget: (_, _, _) => const SizedBox(
-                  width: 100,
-                  height: 150,
-                  child: Center(child: Icon(Icons.image_not_supported)),
+                errorWidget: (_, _, _) => SizedBox(
+                  width: posterWidth,
+                  height: posterHeight,
+                  child: const Center(child: Icon(Icons.image_not_supported)),
                 ),
               ),
             )
           else
             Container(
-              width: 100,
-              height: 150,
+              width: posterWidth,
+              height: posterHeight,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(8),
@@ -184,7 +189,7 @@ class _ExpandableOverviewState extends State<_ExpandableOverview> {
         alignment: Alignment.topLeft,
         child: Text(
           widget.text,
-          maxLines: _isExpanded ? null : 5,
+          maxLines: _isExpanded ? null : (context.isDesktop ? 7 : 5),
           overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodyMedium,
         ),

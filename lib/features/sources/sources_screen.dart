@@ -1,3 +1,4 @@
+import 'package:argus/core/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:argus/features/sources/widgets/source_tile.dart';
 import 'package:argus/features/settings/settings_screen.dart';
@@ -16,7 +17,8 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
   @override
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(sourcesProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 500;
+    final isWide = !context.isCompact;
+    final isDesktop = context.isDesktop;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,15 +36,17 @@ class _SourcesScreenState extends ConsumerState<SourcesScreen> {
               tooltip: 'Add Source',
               onPressed: () => _showAddDialog(context),
             ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          if (!isDesktop) ...[
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.settings_rounded),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
             ),
-          ),
+          ],
           const SizedBox(width: 8),
         ],
       ),
