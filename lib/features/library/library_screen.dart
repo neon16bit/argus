@@ -141,7 +141,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: kGridPosterMaxExtent,
-                              childAspectRatio: 0.62,
+                              childAspectRatio: 0.56,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
                             ),
