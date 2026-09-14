@@ -45,8 +45,10 @@ class _SearchResultCardState extends ConsumerState<SearchResultCard> {
 
   @override
   Widget build(BuildContext context) {
-    // only watch metadata for fully scraped results (need filenames for accuracy)
-    final metadataAsync = widget.result.isScraped
+    // only watch metadata for scraped results if not already resolved in database
+    final needsMetadata =
+        widget.result.isScraped && widget.result.posterUrl == null;
+    final metadataAsync = needsMetadata
         ? ref.watch(metadataProvider(widget.result.groupTitle))
         : const AsyncData(null);
     final metadata = metadataAsync.value;
