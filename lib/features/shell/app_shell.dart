@@ -278,7 +278,7 @@ class _SidebarItem extends StatelessWidget {
 class _ShellContentStack extends ConsumerWidget {
   const _ShellContentStack();
 
-  static const List<Widget> _screens = [
+  static const List<Widget> _desktopScreens = [
     HomeScreen(),
     LibraryScreen(),
     SourcesScreen(),
@@ -286,10 +286,19 @@ class _ShellContentStack extends ConsumerWidget {
     SearchScreen(),
   ];
 
+  static const List<Widget> _mobileScreens = [
+    HomeScreen(),
+    LibraryScreen(),
+    SourcesScreen(),
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(navigationIndexProvider);
-    return IndexedStack(index: currentIndex, children: _screens);
+    final isDesktop = context.isDesktop;
+    final screens = isDesktop ? _desktopScreens : _mobileScreens;
+    final safeIndex = currentIndex.clamp(0, screens.length - 1);
+    return IndexedStack(index: safeIndex, children: screens);
   }
 }
 
