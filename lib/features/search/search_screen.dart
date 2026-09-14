@@ -18,23 +18,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _focusNode = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onTextChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _focusNode.requestFocus();
-      }
-    });
-  }
-
-  void _onTextChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
   void dispose() {
-    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -86,7 +70,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         title: TextField(
           controller: _controller,
           focusNode: _focusNode,
-          autofocus: true,
+          autofocus: !isDesktop,
           decoration: const InputDecoration(
             hintText: 'Search for a show, movie...',
             border: InputBorder.none,
@@ -97,14 +81,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onSubmitted: _onSearch,
         ),
         actions: [
-          if (_controller.text.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear_rounded),
-              onPressed: () {
-                _controller.clear();
-                _onSearch('');
-              },
-            ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _controller,
+            builder: (context, value, _) {
+              if (value.text.isEmpty) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.clear_rounded),
+                onPressed: () {
+                  _controller.clear();
+                  _onSearch('');
+                },
+              );
+            },
+          ),
         ],
       ),
       body: Builder(
