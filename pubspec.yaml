@@ -46,6 +46,7 @@ dependencies:
   dynamic_color: ^1.9.0
   flutter_svg: ^2.3.0
   webview_flutter: ^4.14.1
+  volume_controller: ^3.7.0
   
 dev_dependencies:
   flutter_test:

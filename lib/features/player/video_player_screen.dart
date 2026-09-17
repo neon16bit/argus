@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:volume_controller/volume_controller.dart';
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
   final String url;
@@ -55,6 +56,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   bool _isPlaying = true;
   bool _isBuffering = false;
   double _volume = 100.0;
+  double _lastNonZeroVolume = 100.0;
   bool _isMuted = false;
   double _playbackRate = 1.0;
   double _previousRate = 1.0;
@@ -93,6 +95,28 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         DeviceOrientation.landscapeRight,
       ]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      VolumeController.instance.showSystemUI = false;
+      VolumeController.instance.getVolume().then((vol) {
+        if (mounted) {
+          setState(() {
+            _volume = (vol * 100.0).clamp(0.0, 100.0);
+            _isMuted = _volume == 0;
+            if (_volume > 0) _lastNonZeroVolume = _volume;
+          });
+        }
+      });
+      VolumeController.instance.addListener((vol) {
+        if (!mounted || _isDraggingVolume) return;
+        setState(() {
+          _volume = (vol * 100.0).clamp(0.0, 100.0);
+          _isMuted = _volume == 0;
+          if (_volume > 0) _lastNonZeroVolume = _volume;
+        });
+        _showVolumeHud();
+      });
     }
 
     _player = Player();
@@ -551,6 +575,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _doubleTapResetTimer?.cancel();
     _volumeHudResetTimer?.cancel();
     _focusNode.dispose();
+    if (!kIsWeb && Platform.isAndroid) {
+      VolumeController.instance.removeListener();
+      VolumeController.instance.showSystemUI = false;
+    }
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
@@ -699,10 +727,17 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   void _setVolume(double newVolume, {bool showControls = true}) {
     final clamped = newVolume.clamp(0.0, 100.0);
-    _player.setVolume(clamped);
+    if (!kIsWeb && Platform.isAndroid) {
+      VolumeController.instance.setVolume(clamped / 100.0);
+    } else {
+      _player.setVolume(clamped);
+    }
     setState(() {
       _volume = clamped;
       _isMuted = clamped == 0;
+      if (clamped > 0) {
+        _lastNonZeroVolume = clamped;
+      }
     });
     if (showControls) {
       _resetHideTimer();
@@ -711,10 +746,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   void _toggleMute() {
     if (_isMuted) {
-      _setVolume(_volume > 0 ? _volume : 100);
+      _setVolume(_lastNonZeroVolume > 0 ? _lastNonZeroVolume : 100);
     } else {
-      _player.setVolume(0);
-      setState(() => _isMuted = true);
+      _setVolume(0);
     }
     _resetHideTimer();
   }
@@ -777,58 +811,60 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _resetHideTimer();
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
+  KeyEventResult _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     switch (event.logicalKey) {
       case LogicalKeyboardKey.space:
       case LogicalKeyboardKey.keyK:
         _player.playOrPause();
         _resetHideTimer();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowLeft:
         _seekRelative(-5);
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
         _seekRelative(5);
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyJ:
         _seekRelative(-10);
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyL:
         _seekRelative(10);
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         _setVolume(_volume + 5);
         _showVolumeHud();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowDown:
         _setVolume(_volume - 5);
         _showVolumeHud();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyM:
         _toggleMute();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyF:
         _toggleFullscreen();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.bracketLeft:
         final newRate = (_playbackRate - 0.25).clamp(0.25, 3.0);
         _player.setRate(newRate);
         _resetHideTimer();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.bracketRight:
         final newRate = (_playbackRate + 0.25).clamp(0.25, 3.0);
         _player.setRate(newRate);
         _resetHideTimer();
-        break;
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.escape:
         if (_isFullscreen) {
           _toggleFullscreen();
         } else {
           _closePlayer();
         }
-        break;
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
     }
   }
 
@@ -844,10 +880,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         body: Focus(
           focusNode: _focusNode,
           autofocus: true,
-          onKeyEvent: (_, event) {
-            _handleKeyEvent(event);
-            return KeyEventResult.handled;
-          },
+          onKeyEvent: (_, event) => _handleKeyEvent(event),
           child: LayoutBuilder(
             builder: (context, constraints) {
               return GestureDetector(
