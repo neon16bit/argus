@@ -413,8 +413,8 @@ class _SourceTileState extends ConsumerState<SourceTile> {
   }
 
   void _startScrapeFlow(Source source) async {
-    final fullScrape = ref.read(settingsProvider).fullScrapeMode;
-    if (fullScrape) {
+    final isRecursive = source.maxDepth == kFullScrapeDepth;
+    if (isRecursive) {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -425,13 +425,14 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                 color: Theme.of(context).colorScheme.tertiary,
               ),
               const SizedBox(width: 8),
-              const Text('Full Scrape Warning'),
+              const Text('Recursive Scrape Warning'),
             ],
           ),
           content: const Text(
-            'Full scrape mode is currently enabled in settings. '
-            'This will scrape all media files recursively, which can take a lot of time and network requests. '
-            'This might get rate-limited or blocked by the provider. '
+            'This source is configured with a Recursive directory structure.\n\n'
+            '• This will scrape all media files recursively, which can take considerable time and network requests.\n'
+            '• The server may rate-limit or temporarily block your IP.\n'
+            '• Grouping and show hierarchies may be less accurate depending on the server\'s directory layout.\n\n'
             'Do you want to proceed?',
           ),
           actions: [
@@ -463,14 +464,8 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     });
 
     final actions = ref.read(sourceActionsProvider);
-    final fullScrape = ref.read(settingsProvider).fullScrapeMode;
-
     _scrapeSubscription = actions
-        .scrapeSourceWithProgress(
-          source,
-          fullScrape: fullScrape,
-          maxDepth: source.maxDepth,
-        )
+        .scrapeSourceWithProgress(source, maxDepth: source.maxDepth)
         .listen(
           (progress) {
             if (!mounted) return;

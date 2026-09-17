@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/database_providers.dart';
+import 'package:argus/core/providers/settings_provider.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/scrapers/directory_scraper.dart';
 import 'package:argus/data/scrapers/scrape_result.dart';
@@ -252,9 +253,13 @@ class SourceActions {
   }
 
   Future<int> scrapeSource(Source source) async {
+    final delay = source.requestDelayMs != null
+        ? Duration(milliseconds: source.requestDelayMs!)
+        : ref.read(settingsProvider).scrapeDelay;
     List<ScrapeResult> results = [];
     await for (final progress in DirectoryScraper.scrapeWithProgress(
       source.baseUrl,
+      requestDelay: delay,
     )) {
       if (progress.isDone) {
         results = progress.results;
@@ -308,8 +313,9 @@ class SourceActions {
     bool fullScrape = false,
     int maxDepth = 1,
   }) async* {
+    final isRecursive = fullScrape || source.maxDepth == kFullScrapeDepth;
     // shallow mode: index top level folders only
-    if (!fullScrape) {
+    if (!isRecursive) {
       final controller = StreamController<ScrapeProgress>();
       bool isCancelled = false;
       controller.onCancel = () {
@@ -324,9 +330,14 @@ class SourceActions {
         ),
       );
 
+      final delay = source.requestDelayMs != null
+          ? Duration(milliseconds: source.requestDelayMs!)
+          : ref.read(settingsProvider).scrapeDelay;
+
       DirectoryScraper.shallowIndex(
             source.baseUrl,
             maxDepth: maxDepth,
+            requestDelay: delay,
             onProgress: (pages, folders) {
               if (isCancelled) return;
               controller.add(
@@ -442,10 +453,14 @@ class SourceActions {
       }
     }
 
+    final delay = source.requestDelayMs != null
+        ? Duration(milliseconds: source.requestDelayMs!)
+        : ref.read(settingsProvider).scrapeDelay;
     List<ScrapeResult> collectedResults = [];
 
     await for (final progress in DirectoryScraper.scrapeWithProgress(
       source.baseUrl,
+      requestDelay: delay,
     )) {
       if (progress.isDone) {
         collectedResults = progress.results;

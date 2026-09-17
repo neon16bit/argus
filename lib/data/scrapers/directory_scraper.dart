@@ -69,6 +69,7 @@ class DirectoryScraper {
   static Future<List<FolderEntry>?> shallowIndex(
     String baseUrl, {
     int maxDepth = 1,
+    Duration requestDelay = Duration.zero,
     void Function(int pagesVisited, int foldersFound)? onProgress,
   }) async {
     final baseUri = Uri.parse(baseUrl);
@@ -80,6 +81,7 @@ class DirectoryScraper {
       results,
       _initialDepth,
       maxDepth,
+      requestDelay: requestDelay,
       pagesVisited: pagesVisited,
       onProgress: onProgress,
     );
@@ -93,6 +95,7 @@ class DirectoryScraper {
     List<FolderEntry> results,
     int depth,
     int maxDepth, {
+    Duration requestDelay = Duration.zero,
     required List<int> pagesVisited,
     void Function(int pagesVisited, int foldersFound)? onProgress,
   }) async {
@@ -195,12 +198,16 @@ class DirectoryScraper {
       onProgress?.call(pagesVisited[0], results.length);
 
       for (final groupUri in nextLevelDirs) {
+        if (requestDelay > Duration.zero) {
+          await Future.delayed(requestDelay);
+        }
         final ok = await _shallowIndexRecurse(
           baseUri,
           groupUri,
           results,
           depth + 1,
           maxDepth,
+          requestDelay: requestDelay,
           pagesVisited: pagesVisited,
           onProgress: onProgress,
         );

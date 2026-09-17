@@ -2,7 +2,6 @@ import 'package:argus/core/constants.dart';
 import 'package:argus/core/providers/database_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-const _kScrapeModeFull = 'scrape_mode_full';
 const _kScrapeDelayMs = 'scrape_delay_ms';
 const _kThemeFlavor = 'theme_flavor';
 const _kAccentColor = 'accent_color';
@@ -10,7 +9,6 @@ const _kPureBlack = 'pure_black';
 const _kUseExternalPlayer = 'use_external_player';
 
 class AppSettings {
-  final bool fullScrapeMode;
   final Duration scrapeDelay;
   final String themeFlavor;
   final String accentColor;
@@ -18,7 +16,6 @@ class AppSettings {
   final bool useExternalPlayer;
 
   const AppSettings({
-    this.fullScrapeMode = false,
     this.scrapeDelay = kDefaultScrapeDelay,
     this.themeFlavor = 'system',
     this.accentColor = 'mauve',
@@ -27,7 +24,6 @@ class AppSettings {
   });
 
   AppSettings copyWith({
-    bool? fullScrapeMode,
     Duration? scrapeDelay,
     String? themeFlavor,
     String? accentColor,
@@ -35,7 +31,6 @@ class AppSettings {
     bool? useExternalPlayer,
   }) {
     return AppSettings(
-      fullScrapeMode: fullScrapeMode ?? this.fullScrapeMode,
       scrapeDelay: scrapeDelay ?? this.scrapeDelay,
       themeFlavor: themeFlavor ?? this.themeFlavor,
       accentColor: accentColor ?? this.accentColor,
@@ -50,7 +45,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
   AppSettings build() {
     final prefs = ref.read(sharedPreferencesProvider);
     return AppSettings(
-      fullScrapeMode: prefs.getBool(_kScrapeModeFull) ?? false,
       scrapeDelay: Duration(
         milliseconds:
             prefs.getInt(_kScrapeDelayMs) ?? kDefaultScrapeDelay.inMilliseconds,
@@ -60,12 +54,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
       pureBlack: prefs.getBool(_kPureBlack) ?? false,
       useExternalPlayer: prefs.getBool(_kUseExternalPlayer) ?? false,
     );
-  }
-
-  Future<void> setFullScrapeMode(bool value) async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setBool(_kScrapeModeFull, value);
-    state = state.copyWith(fullScrapeMode: value);
   }
 
   Future<void> setScrapeDelay(Duration value) async {

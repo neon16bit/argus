@@ -46,6 +46,7 @@ const int kMaxConcurrentRequests = 2;
 const Duration kDefaultScrapeDelay = Duration(milliseconds: 200);
 const int kInsertBatchSize = 100;
 
+const int kFullScrapeDepth = 0;
 const int kFlatScrapeDepth = 1;
 const int kGroupedScrapeDepth = 2;
 

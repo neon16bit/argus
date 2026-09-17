@@ -92,6 +92,38 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
     });
   }
 
+  String _getStructureSubtitle() {
+    switch (_selectedDepth) {
+      case kGroupedScrapeDepth:
+        return 'Nested by year or letter (e.g. /2010/, /A-Z/)';
+      case kFullScrapeDepth:
+        return 'Deep crawl; indexes all media files across subfolders';
+      case kFlatScrapeDepth:
+      default:
+        return 'Direct show or movie folders at root';
+    }
+  }
+
+  String _getStructureDiagram() {
+    switch (_selectedDepth) {
+      case kGroupedScrapeDepth:
+        return 'root/\n'
+            '└── [Year / Alphabet Group]/\n'
+            '     ├── [Show or Movie Folder]/\n'
+            '     └── [Show or Movie Folder]/';
+      case kFullScrapeDepth:
+        return 'root/\n'
+            '├── [Any Folder]/\n'
+            '│    └── [Subfolder / Files]\n'
+            '└── [Loose Video Files]';
+      case kFlatScrapeDepth:
+      default:
+        return 'root/\n'
+            '├── [Show or Movie Folder]/\n'
+            '└── [Show or Movie Folder]/';
+    }
+  }
+
   @override
   void dispose() {
     if (widget.source != null) {
@@ -220,24 +252,65 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                 ),
                 const SizedBox(height: 8),
               ],
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Grouped structure'),
-                subtitle: const Text(
-                  'Nested by year or letter (e.g. /2010/)',
-                  style: TextStyle(fontSize: 11),
+              const SizedBox(height: 8),
+              Text(
+                'Directory Structure',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
-                value: _selectedDepth == kGroupedScrapeDepth,
-                onChanged: (bool val) {
-                  setState(() {
-                    _selectedDepth = val
-                        ? kGroupedScrapeDepth
-                        : kFlatScrapeDepth;
-                  });
-                  _checkIfModified();
-                },
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _getStructureSubtitle(),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<int>(
+                  showSelectedIcon: false,
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    textStyle: const TextStyle(fontSize: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 0.8,
+                    ),
+                  ),
+                  segments: const [
+                    ButtonSegment(
+                      value: kFlatScrapeDepth,
+                      label: Text('Standard'),
+                    ),
+                    ButtonSegment(
+                      value: kGroupedScrapeDepth,
+                      label: Text('Grouped'),
+                    ),
+                    ButtonSegment(
+                      value: kFullScrapeDepth,
+                      label: Text('Recursive'),
+                    ),
+                  ],
+                  selected: {_selectedDepth},
+                  onSelectionChanged: (newSet) {
+                    setState(() {
+                      _selectedDepth = newSet.first;
+                    });
+                    _checkIfModified();
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
               const Text(
                 'Expected directory structure:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -254,12 +327,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
                   ),
                 ),
                 child: Text(
-                  _selectedDepth == kFlatScrapeDepth
-                      ? 'root/\n└── [Show or Movie Folder]/'
-                            '\n└── [Show or Movie Folder]/'
-                      : 'root/\n└── [Year / Alphabet Group]/'
-                            '\n     └── [Show or Movie Folder]/'
-                            '\n     └── [Show or Movie Folder]/',
+                  _getStructureDiagram(),
                   style: TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 10,

@@ -357,22 +357,11 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          SwitchListTile(
-            title: const Text('Full scrape mode'),
-            subtitle: const Text(
-              'Recursively scrape all files on source index. '
-              'Slower but indexes everything upfront.',
-            ),
-            value: settings.fullScrapeMode,
-            onChanged: (v) =>
-                ref.read(settingsProvider.notifier).setFullScrapeMode(v),
-          ),
-          const Divider(),
           ListTile(
-            title: const Text('Request delay'),
+            title: const Text('Default request delay'),
             subtitle: Text(
               '${settings.scrapeDelay.inMilliseconds}ms between requests '
-              '(reduces rate-limiting risk)',
+              '(can be overridden per source)',
             ),
           ),
           Slider(
