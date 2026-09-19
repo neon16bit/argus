@@ -93,6 +93,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final db = ref.read(databaseProvider);
     await db.clearShowCache(groupTitle);
     ref.invalidate(metadataProvider(groupTitle));
+    ref.invalidate(episodeNamesProvider(groupTitle));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -296,6 +297,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final activeDisplayTitle =
         metadata?.titleEn ?? metadata?.title ?? activeGroupTitle;
 
+    // load episode titles for this show
+    ref.watch(episodeNamesProvider(activeGroupTitle));
+
     final itemsAsync = ref.watch(showItemsProvider(activeGroupTitle));
     final items = itemsAsync.value ?? [];
 
@@ -324,6 +328,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       (previous, currentIsUnscraped) {
         if (previous == true && currentIsUnscraped == false) {
           ref.invalidate(metadataProvider(activeGroupTitle));
+          ref.invalidate(episodeNamesProvider(activeGroupTitle));
         }
       },
     );
@@ -712,7 +717,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           child: Text(
                             'Some folders couldn\'t be fully indexed due to rate limits or errors.',
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onErrorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
                               fontSize: 13,
                             ),
                           ),
@@ -735,8 +742,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                               final db = ref.read(databaseProvider);
 
                               for (final folder in foldersWithErrors) {
-                                final source =
-                                    await db.getSource(folder.sourceId);
+                                final source = await db.getSource(
+                                  folder.sourceId,
+                                );
                                 final delay = source.requestDelayMs != null
                                     ? Duration(
                                         milliseconds: source.requestDelayMs!,
@@ -804,8 +812,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
               SliverToBoxAdapter(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: _kMaxContentWidth),
+                    constraints: const BoxConstraints(
+                      maxWidth: _kMaxContentWidth,
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       child: Text(
@@ -821,8 +830,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   ...viewModel.seasonMap[null]!.map(
                     (group) => Center(
                       child: ConstrainedBox(
-                        constraints:
-                            const BoxConstraints(maxWidth: _kMaxContentWidth),
+                        constraints: const BoxConstraints(
+                          maxWidth: _kMaxContentWidth,
+                        ),
                         child: FileCard(
                           group: group,
                           preferredFolderUrl: preferredFolderUrl,
@@ -1006,8 +1016,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       final group = viewModel.seasonMap[season]![index];
                       return Center(
                         child: ConstrainedBox(
-                          constraints:
-                              const BoxConstraints(maxWidth: _kMaxContentWidth),
+                          constraints: const BoxConstraints(
+                            maxWidth: _kMaxContentWidth,
+                          ),
                           child: FileCard(
                             group: group,
                             preferredFolderUrl: preferredFolderUrl,
@@ -1046,10 +1057,7 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _tabBar,
-          ),
+          child: Align(alignment: Alignment.centerLeft, child: _tabBar),
         ),
       ),
     );

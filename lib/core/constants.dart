@@ -53,6 +53,9 @@ const int kGroupedScrapeDepth = 2;
 const String kSimklBaseUrl = 'https://api.simkl.com';
 const String kSimklImageBase = 'https://wsrv.nl/?url=https://simkl.in';
 
+const String kTvdbBaseUrl = 'https://api4.thetvdb.com/v4';
+const String kTvdbImageBase = 'https://artworks.thetvdb.com';
+
 const double kCompactBreakpoint = 500.0;
 const double kMediumBreakpoint = 600.0;
 const double kDesktopBreakpoint = 720.0;

@@ -4079,6 +4079,282 @@ class WatchHistoryCompanion extends UpdateCompanion<WatchHistoryData> {
   }
 }
 
+class $ShowEpisodesCacheTable extends ShowEpisodesCache
+    with TableInfo<$ShowEpisodesCacheTable, ShowEpisodesCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ShowEpisodesCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupTitleMeta = const VerificationMeta(
+    'groupTitle',
+  );
+  @override
+  late final GeneratedColumn<String> groupTitle = GeneratedColumn<String>(
+    'group_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodesJsonMeta = const VerificationMeta(
+    'episodesJson',
+  );
+  @override
+  late final GeneratedColumn<String> episodesJson = GeneratedColumn<String>(
+    'episodes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [groupTitle, episodesJson, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'show_episodes_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ShowEpisodesCacheData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_title')) {
+      context.handle(
+        _groupTitleMeta,
+        groupTitle.isAcceptableOrUnknown(data['group_title']!, _groupTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupTitleMeta);
+    }
+    if (data.containsKey('episodes_json')) {
+      context.handle(
+        _episodesJsonMeta,
+        episodesJson.isAcceptableOrUnknown(
+          data['episodes_json']!,
+          _episodesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodesJsonMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupTitle};
+  @override
+  ShowEpisodesCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ShowEpisodesCacheData(
+      groupTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_title'],
+      )!,
+      episodesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episodes_json'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ShowEpisodesCacheTable createAlias(String alias) {
+    return $ShowEpisodesCacheTable(attachedDatabase, alias);
+  }
+}
+
+class ShowEpisodesCacheData extends DataClass
+    implements Insertable<ShowEpisodesCacheData> {
+  final String groupTitle;
+  final String episodesJson;
+  final DateTime cachedAt;
+  const ShowEpisodesCacheData({
+    required this.groupTitle,
+    required this.episodesJson,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_title'] = Variable<String>(groupTitle);
+    map['episodes_json'] = Variable<String>(episodesJson);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  ShowEpisodesCacheCompanion toCompanion(bool nullToAbsent) {
+    return ShowEpisodesCacheCompanion(
+      groupTitle: Value(groupTitle),
+      episodesJson: Value(episodesJson),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory ShowEpisodesCacheData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ShowEpisodesCacheData(
+      groupTitle: serializer.fromJson<String>(json['groupTitle']),
+      episodesJson: serializer.fromJson<String>(json['episodesJson']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupTitle': serializer.toJson<String>(groupTitle),
+      'episodesJson': serializer.toJson<String>(episodesJson),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  ShowEpisodesCacheData copyWith({
+    String? groupTitle,
+    String? episodesJson,
+    DateTime? cachedAt,
+  }) => ShowEpisodesCacheData(
+    groupTitle: groupTitle ?? this.groupTitle,
+    episodesJson: episodesJson ?? this.episodesJson,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  ShowEpisodesCacheData copyWithCompanion(ShowEpisodesCacheCompanion data) {
+    return ShowEpisodesCacheData(
+      groupTitle: data.groupTitle.present
+          ? data.groupTitle.value
+          : this.groupTitle,
+      episodesJson: data.episodesJson.present
+          ? data.episodesJson.value
+          : this.episodesJson,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShowEpisodesCacheData(')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('episodesJson: $episodesJson, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(groupTitle, episodesJson, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ShowEpisodesCacheData &&
+          other.groupTitle == this.groupTitle &&
+          other.episodesJson == this.episodesJson &&
+          other.cachedAt == this.cachedAt);
+}
+
+class ShowEpisodesCacheCompanion
+    extends UpdateCompanion<ShowEpisodesCacheData> {
+  final Value<String> groupTitle;
+  final Value<String> episodesJson;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const ShowEpisodesCacheCompanion({
+    this.groupTitle = const Value.absent(),
+    this.episodesJson = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ShowEpisodesCacheCompanion.insert({
+    required String groupTitle,
+    required String episodesJson,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : groupTitle = Value(groupTitle),
+       episodesJson = Value(episodesJson);
+  static Insertable<ShowEpisodesCacheData> custom({
+    Expression<String>? groupTitle,
+    Expression<String>? episodesJson,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupTitle != null) 'group_title': groupTitle,
+      if (episodesJson != null) 'episodes_json': episodesJson,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ShowEpisodesCacheCompanion copyWith({
+    Value<String>? groupTitle,
+    Value<String>? episodesJson,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return ShowEpisodesCacheCompanion(
+      groupTitle: groupTitle ?? this.groupTitle,
+      episodesJson: episodesJson ?? this.episodesJson,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupTitle.present) {
+      map['group_title'] = Variable<String>(groupTitle.value);
+    }
+    if (episodesJson.present) {
+      map['episodes_json'] = Variable<String>(episodesJson.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShowEpisodesCacheCompanion(')
+          ..write('groupTitle: $groupTitle, ')
+          ..write('episodesJson: $episodesJson, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4088,6 +4364,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IndexedFoldersTable indexedFolders = $IndexedFoldersTable(this);
   late final $SavedShowsTable savedShows = $SavedShowsTable(this);
   late final $WatchHistoryTable watchHistory = $WatchHistoryTable(this);
+  late final $ShowEpisodesCacheTable showEpisodesCache =
+      $ShowEpisodesCacheTable(this);
   late final Index idxItemsSourceGroup = Index(
     'idx_items_source_group',
     'CREATE INDEX idx_items_source_group ON media_items (source_id, group_title)',
@@ -4115,6 +4393,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     indexedFolders,
     savedShows,
     watchHistory,
+    showEpisodesCache,
     idxItemsSourceGroup,
     idxFoldersSourceTitle,
     idxWatchHistoryLookup,
@@ -6702,6 +6981,185 @@ typedef $$WatchHistoryTableProcessedTableManager =
       WatchHistoryData,
       PrefetchHooks Function({bool mediaItemId})
     >;
+typedef $$ShowEpisodesCacheTableCreateCompanionBuilder =
+    ShowEpisodesCacheCompanion Function({
+      required String groupTitle,
+      required String episodesJson,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$ShowEpisodesCacheTableUpdateCompanionBuilder =
+    ShowEpisodesCacheCompanion Function({
+      Value<String> groupTitle,
+      Value<String> episodesJson,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$ShowEpisodesCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $ShowEpisodesCacheTable> {
+  $$ShowEpisodesCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ShowEpisodesCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $ShowEpisodesCacheTable> {
+  $$ShowEpisodesCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ShowEpisodesCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ShowEpisodesCacheTable> {
+  $$ShowEpisodesCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupTitle => $composableBuilder(
+    column: $table.groupTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$ShowEpisodesCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ShowEpisodesCacheTable,
+          ShowEpisodesCacheData,
+          $$ShowEpisodesCacheTableFilterComposer,
+          $$ShowEpisodesCacheTableOrderingComposer,
+          $$ShowEpisodesCacheTableAnnotationComposer,
+          $$ShowEpisodesCacheTableCreateCompanionBuilder,
+          $$ShowEpisodesCacheTableUpdateCompanionBuilder,
+          (
+            ShowEpisodesCacheData,
+            BaseReferences<
+              _$AppDatabase,
+              $ShowEpisodesCacheTable,
+              ShowEpisodesCacheData
+            >,
+          ),
+          ShowEpisodesCacheData,
+          PrefetchHooks Function()
+        > {
+  $$ShowEpisodesCacheTableTableManager(
+    _$AppDatabase db,
+    $ShowEpisodesCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ShowEpisodesCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ShowEpisodesCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ShowEpisodesCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> groupTitle = const Value.absent(),
+                Value<String> episodesJson = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ShowEpisodesCacheCompanion(
+                groupTitle: groupTitle,
+                episodesJson: episodesJson,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupTitle,
+                required String episodesJson,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ShowEpisodesCacheCompanion.insert(
+                groupTitle: groupTitle,
+                episodesJson: episodesJson,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ShowEpisodesCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ShowEpisodesCacheTable,
+      ShowEpisodesCacheData,
+      $$ShowEpisodesCacheTableFilterComposer,
+      $$ShowEpisodesCacheTableOrderingComposer,
+      $$ShowEpisodesCacheTableAnnotationComposer,
+      $$ShowEpisodesCacheTableCreateCompanionBuilder,
+      $$ShowEpisodesCacheTableUpdateCompanionBuilder,
+      (
+        ShowEpisodesCacheData,
+        BaseReferences<
+          _$AppDatabase,
+          $ShowEpisodesCacheTable,
+          ShowEpisodesCacheData
+        >,
+      ),
+      ShowEpisodesCacheData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6718,4 +7176,6 @@ class $AppDatabaseManager {
       $$SavedShowsTableTableManager(_db, _db.savedShows);
   $$WatchHistoryTableTableManager get watchHistory =>
       $$WatchHistoryTableTableManager(_db, _db.watchHistory);
+  $$ShowEpisodesCacheTableTableManager get showEpisodesCache =>
+      $$ShowEpisodesCacheTableTableManager(_db, _db.showEpisodesCache);
 }

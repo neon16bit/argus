@@ -12,6 +12,7 @@ import 'tables/media_shows.dart';
 import 'tables/indexed_folders.dart';
 import 'tables/saved_shows.dart';
 import 'tables/watch_history.dart';
+import 'tables/show_episodes_cache.dart';
 
 part 'app_database.g.dart';
 
@@ -23,6 +24,7 @@ part 'app_database.g.dart';
     IndexedFolders,
     SavedShows,
     WatchHistory,
+    ShowEpisodesCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -32,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +102,11 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 11) {
         await m.createTable(watchHistory);
+      }
+      if (from < 12) {
+        try {
+          await m.createTable(showEpisodesCache);
+        } catch (_) {}
       }
     },
   );
@@ -270,10 +277,81 @@ class AppDatabase extends _$AppDatabase {
     onConflict: DoUpdate((old) => show, target: [mediaShows.groupTitle]),
   );
 
-  Future<void> clearShowCache(String groupTitle) =>
-      (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle))).write(
-        const MediaShowsCompanion(resolvedAt: Value(null)),
-      );
+  Future<void> clearShowCache(String groupTitle) async {
+    await (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle)))
+        .write(const MediaShowsCompanion(resolvedAt: Value(null)));
+    await clearEpisodeCache(groupTitle);
+  }
+
+  Future<Map<(int, int), String>?> getCachedEpisodes(String groupTitle) async {
+    final row = await customSelect(
+      '''
+      SELECT episodes_json FROM show_episodes_cache
+      WHERE group_title IN ($_kGroupTitlesSubquery)
+      LIMIT 1
+      ''',
+      variables: [Variable.withString(groupTitle)],
+      readsFrom: {showEpisodesCache, mediaShows},
+    ).getSingleOrNull();
+
+    if (row == null) return null;
+    final jsonStr = row.data['episodes_json'] as String?;
+    if (jsonStr == null || jsonStr.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final result = <(int, int), String>{};
+      for (final entry in decoded.entries) {
+        final parts = entry.key.split(':');
+        if (parts.length == 2) {
+          final s = int.tryParse(parts[0]);
+          final e = int.tryParse(parts[1]);
+          if (s != null && e != null) {
+            result[(s, e)] = entry.value.toString();
+          }
+        }
+      }
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveCachedEpisodes(
+    String groupTitle,
+    Map<(int, int), String> episodes,
+  ) async {
+    if (episodes.isEmpty) return;
+    final Map<String, String> jsonMap = {
+      for (final entry in episodes.entries)
+        '${entry.key.$1}:${entry.key.$2}': entry.value,
+    };
+    final jsonStr = jsonEncode(jsonMap);
+    await into(showEpisodesCache).insert(
+      ShowEpisodesCacheCompanion(
+        groupTitle: Value(groupTitle),
+        episodesJson: Value(jsonStr),
+        cachedAt: Value(DateTime.now()),
+      ),
+      onConflict: DoUpdate(
+        (old) => ShowEpisodesCacheCompanion(
+          episodesJson: Value(jsonStr),
+          cachedAt: Value(DateTime.now()),
+        ),
+        target: [showEpisodesCache.groupTitle],
+      ),
+    );
+  }
+
+  Future<void> clearEpisodeCache(String groupTitle) async {
+    await customStatement(
+      '''
+      DELETE FROM show_episodes_cache
+      WHERE group_title IN ($_kGroupTitlesSubquery)
+      ''',
+      [groupTitle],
+    );
+  }
 
   Future<void> insertShowStub(String groupTitle, int year) =>
       into(mediaShows).insert(
@@ -283,12 +361,17 @@ class AppDatabase extends _$AppDatabase {
 
   static const _kGroupTitlesSubquery = '''
     SELECT s2.group_title FROM media_shows s2
-    WHERE s2.simkl_id = (
-      SELECT simkl_id FROM media_shows WHERE group_title = ?1
+    WHERE (
+      (s2.simkl_id IS NOT NULL AND s2.simkl_id = (
+        SELECT simkl_id FROM media_shows WHERE group_title = ?1
+      ))
+      OR
+      (s2.tvdb_id IS NOT NULL AND s2.tvdb_id = (
+        SELECT tvdb_id FROM media_shows WHERE group_title = ?1
+      ))
     )
-    AND s2.simkl_id IS NOT NULL
     UNION
-    SELECT ?1 -- fallback if simkl_id is null
+    SELECT ?1 -- fallback if both simkl_id and tvdb_id are null
   ''';
 
   Future<List<MediaItem>> getMediaItemsByGroupTitle(String groupTitle) async {
@@ -374,7 +457,7 @@ class AppDatabase extends _$AppDatabase {
   // FTS5 search on titles + indexed folders
   static const _kSearchSql = '''
     SELECT
-      COALESCE(s.simkl_id, m.group_title) as result_key,
+      COALESCE(s.simkl_id, s.tvdb_id, m.group_title) as result_key,
       m.group_title,
       s.resolved_title, s.title_en, s.poster_path,
       CASE
@@ -397,7 +480,7 @@ class AppDatabase extends _$AppDatabase {
       INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
       WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
     )
-    GROUP BY COALESCE(s.simkl_id, m.group_title)
+    GROUP BY COALESCE(s.simkl_id, s.tvdb_id, m.group_title)
 
     UNION
 

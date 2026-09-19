@@ -20,8 +20,18 @@ class FileCard extends ConsumerWidget {
     final isMulti = group.length > 1;
     final hasPreference = preferredFolderUrl != null;
 
+    final episodeNames = ref.watch(episodeNamesProvider(item.groupTitle)).value;
+    final String? epName;
+    if (item.season != null && item.episode != null && episodeNames != null) {
+      epName = episodeNames[(item.season!, item.episode!)];
+    } else {
+      epName = null;
+    }
+
     final titleStr = item.episode != null
-        ? 'Episode ${item.episode}'
+        ? (epName != null
+              ? 'Episode ${item.episode}: $epName'
+              : 'Episode ${item.episode}')
         : item.rawName;
     final subtitleStr = isMulti && !hasPreference
         ? 'Multiple versions available (${group.length})'
@@ -154,7 +164,9 @@ class FileCard extends ConsumerWidget {
                     context,
                     ref,
                     url: item.directUrl,
-                    title: item.cleanTitle,
+                    title: epName != null
+                        ? 'Episode ${item.episode}: $epName'
+                        : item.cleanTitle,
                     groupTitle: item.groupTitle,
                     season: item.season,
                     episode: item.episode,
