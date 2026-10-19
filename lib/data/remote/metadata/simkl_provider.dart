@@ -9,12 +9,20 @@ import 'metadata_provider.dart';
 
 class SimklProvider extends MetadataProvider {
   static const _clientId = String.fromEnvironment('SIMKL_CLIENT_ID');
+  static String get clientId => _clientId;
   static const _timeout = Duration(seconds: 8);
 
   final String appName;
   final String appVersion;
+  final Future<String?> Function()? getAccessToken;
+  final String? currentAccessToken;
 
-  SimklProvider({required this.appName, required this.appVersion}) {
+  SimklProvider({
+    required this.appName,
+    required this.appVersion,
+    this.getAccessToken,
+    this.currentAccessToken,
+  }) {
     if (_clientId.isEmpty) {
       debugPrint(
         '[Simkl] WARNING: SIMKL_CLIENT_ID is empty.'
@@ -31,11 +39,20 @@ class SimklProvider extends MetadataProvider {
   @override
   String get name => 'Simkl';
 
-  Map<String, String> get _headers => {
-    'simkl-api-key': _clientId,
-    'User-Agent': '$appName/$appVersion',
-    'Content-Type': 'application/json',
-  };
+  Future<Map<String, String>> _buildHeaders() async {
+    String? token = currentAccessToken;
+    if (getAccessToken != null) {
+      try {
+        token = await getAccessToken!();
+      } catch (_) {}
+    }
+    return {
+      'simkl-api-key': _clientId,
+      'User-Agent': '$appName/$appVersion',
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   // search by title
   @override
@@ -96,8 +113,14 @@ class SimklProvider extends MetadataProvider {
       },
     );
 
-    final response = await http.get(uri, headers: _headers).timeout(_timeout);
-    if (response.statusCode != 200) return null;
+    final headers = await _buildHeaders();
+    final response = await http.get(uri, headers: headers).timeout(_timeout);
+    if (response.statusCode != 200) {
+      debugPrint(
+        '[Simkl] /search/$type error ${response.statusCode}: ${response.body}',
+      );
+      return null;
+    }
 
     final results = jsonDecode(response.body);
     if (results is! List || results.isEmpty) return null;
@@ -140,8 +163,14 @@ class SimklProvider extends MetadataProvider {
         },
       );
 
-      final response = await http.get(uri, headers: _headers).timeout(_timeout);
-      if (response.statusCode != 200) return null;
+      final headers = await _buildHeaders();
+      final response = await http.get(uri, headers: headers).timeout(_timeout);
+      if (response.statusCode != 200) {
+        debugPrint(
+          '[Simkl] fetchMetadataById error ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
 
       final data = jsonDecode(response.body);
       if (data is! Map<String, dynamic>) return null;
@@ -220,10 +249,16 @@ class SimklProvider extends MetadataProvider {
         },
       );
 
+      final headers = await _buildHeaders();
       final response = await http
-          .post(uri, headers: _headers, body: jsonEncode({'file': filename}))
+          .post(uri, headers: headers, body: jsonEncode({'file': filename}))
           .timeout(_timeout);
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        debugPrint(
+          '[Simkl] /search/file error ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
 
       final json = jsonDecode(response.body);
       if (json is! Map<String, dynamic>) return null;
@@ -245,6 +280,12 @@ class SimklProvider extends MetadataProvider {
         if (val is String) return int.tryParse(val);
         return null;
       }
+
+      final epObj = json['episode'] as Map<String, dynamic>?;
+      final matchedSeason = parseIntSafe(epObj?['season']);
+      final matchedEpisode = parseIntSafe(
+        epObj?['episode'] ?? epObj?['number'],
+      );
 
       // year mismatch checking to mitigate false positives
       final clean = NameCleaner.clean(filename);
@@ -341,6 +382,8 @@ class SimklProvider extends MetadataProvider {
         titleEn: titleEn,
         mediaType: resolvedMediaType,
         animeType: animeType,
+        season: matchedSeason,
+        episode: matchedEpisode,
         year: resolvedYear,
         totalEpisodes: parseIntSafe(mediaObject['total_episodes']),
         posterPath: posterPath,

@@ -9,6 +9,7 @@ class ArgusApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeState = ref.watch(appThemeProvider);
+    ref.watch(simklSyncServiceProvider);
 
     return MaterialApp(
       title: 'Argus',

@@ -714,7 +714,15 @@ class AppDatabase extends _$AppDatabase {
     ).watch().map((rows) => rows.map((row) => row.data).toList());
   }
 
-  // watch history / playback progress
+  // callback for sync service
+  void Function({
+    required String groupTitle,
+    int? season,
+    int? episode,
+    String? rawName,
+    required bool isWatched,
+  })?
+  onWatchStatusChanged;
 
   Future<void> savePlaybackProgress({
     required String groupTitle,
@@ -744,6 +752,9 @@ class AppDatabase extends _$AppDatabase {
       });
 
     final existing = await query.getSingleOrNull();
+    final wasCompleted = existing?.isCompleted ?? false;
+    final isNewlyCompleted = completed && !wasCompleted;
+
     if (existing != null) {
       await (update(
         watchHistory,
@@ -774,6 +785,23 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
+
+    if (isNewlyCompleted) {
+      String? rawName;
+      if (mediaItemId != null) {
+        final item = await (select(
+          mediaItems,
+        )..where((i) => i.id.equals(mediaItemId))).getSingleOrNull();
+        rawName = item?.rawName;
+      }
+      onWatchStatusChanged?.call(
+        groupTitle: groupTitle,
+        season: season,
+        episode: episode,
+        rawName: rawName,
+        isWatched: true,
+      );
+    }
   }
 
   Future<void> markEpisodeWatched({
@@ -781,6 +809,7 @@ class AppDatabase extends _$AppDatabase {
     int? season,
     int? episode,
     String? streamUrl,
+    String? rawName,
     required bool isWatched,
   }) async {
     final query = select(watchHistory)
@@ -822,6 +851,22 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
+
+    String? resolvedRawName = rawName;
+    if (resolvedRawName == null && streamUrl != null && streamUrl.isNotEmpty) {
+      final item = await (select(
+        mediaItems,
+      )..where((i) => i.directUrl.equals(streamUrl))).getSingleOrNull();
+      resolvedRawName = item?.rawName;
+    }
+
+    onWatchStatusChanged?.call(
+      groupTitle: groupTitle,
+      season: season,
+      episode: episode,
+      rawName: resolvedRawName,
+      isWatched: isWatched,
+    );
   }
 
   Future<void> markEpisodesUpToWatched({
@@ -850,6 +895,7 @@ class AppDatabase extends _$AppDatabase {
           season: season,
           episode: item.episode,
           streamUrl: item.directUrl,
+          rawName: item.rawName,
           isWatched: isWatched,
         );
       }

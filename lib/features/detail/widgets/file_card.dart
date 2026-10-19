@@ -208,6 +208,7 @@ class FileCard extends ConsumerWidget {
             season: item.season,
             episode: item.episode,
             streamUrl: item.directUrl,
+            rawName: item.rawName,
             isWatched: false,
           );
       return;
@@ -235,6 +236,7 @@ class FileCard extends ConsumerWidget {
             season: item.season,
             episode: item.episode,
             streamUrl: item.directUrl,
+            rawName: item.rawName,
             isWatched: true,
           );
       return;
@@ -285,6 +287,7 @@ class FileCard extends ConsumerWidget {
             season: item.season,
             episode: item.episode,
             streamUrl: item.directUrl,
+            rawName: item.rawName,
             isWatched: true,
           );
     }

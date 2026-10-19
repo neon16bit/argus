@@ -200,10 +200,32 @@ class TvdbProvider extends MetadataProvider {
     }
   }
 
-  // series by title text with optional type and year filter
+  // movie extended record
+  Future<TvdbSeriesExtended?> fetchMovieExtended(int tvdbId) async {
+    if (_apiKey.isEmpty) return null;
+    try {
+      final uri = Uri.parse('$kTvdbBaseUrl/movies/$tvdbId/extended');
+      final response = await _get(uri);
+      if (response == null || response.statusCode != 200) return null;
+
+      final json = jsonDecode(response.body);
+      if (json is Map<String, dynamic> &&
+          json['data'] is Map<String, dynamic>) {
+        return TvdbSeriesExtended.fromJson(
+          json['data'] as Map<String, dynamic>,
+        );
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[TheTVDB] Error fetching extended movie $tvdbId: $e');
+      return null;
+    }
+  }
+
+  // search by title text with optional type and year filter
   Future<List<TvdbSeries>> searchSeries(
     String query, {
-    String? type = 'series',
+    String? type,
     int? year,
   }) async {
     if (_apiKey.isEmpty) return const [];

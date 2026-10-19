@@ -65,6 +65,8 @@ class SimklFileResult {
   final String? titleEn;
   final String? mediaType; // tv, anime, movie
   final String? animeType; // tv, movie, ova, ona, special
+  final int? season;
+  final int? episode;
   final int? year;
   final int? totalEpisodes;
   final String? posterPath; // raw path, not full URL
@@ -89,6 +91,8 @@ class SimklFileResult {
     this.titleEn,
     this.mediaType,
     this.animeType,
+    this.season,
+    this.episode,
     this.year,
     this.totalEpisodes,
     this.posterPath,

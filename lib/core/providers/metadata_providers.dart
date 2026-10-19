@@ -2,6 +2,7 @@ import 'package:argus/core/providers/database_providers.dart';
 import 'package:argus/core/utils/name_cleaner.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/remote/metadata/metadata_provider.dart';
+import 'package:argus/core/providers/simkl_providers.dart';
 import 'package:argus/data/remote/metadata/simkl_provider.dart';
 import 'package:argus/data/remote/metadata/tvdb_provider.dart';
 import 'package:drift/drift.dart';
@@ -10,9 +11,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final simklProvider = Provider<SimklProvider>((ref) {
   final packageInfo = ref.watch(packageInfoProvider);
+  final authState = ref.watch(simklAuthProvider);
   return SimklProvider(
     appName: packageInfo.appName,
     appVersion: packageInfo.version,
+    currentAccessToken: authState.accessToken,
+    getAccessToken: () =>
+        ref.read(simklAuthProvider.notifier).getValidAccessToken(),
   );
 });
 
@@ -97,6 +102,12 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
     if (folders.isNotEmpty) {
       targetYear = folders.first.year;
     }
+  }
+
+  // check representative file name for a year if folder did  not have one
+  if (targetYear == null) {
+    final fileClean = NameCleaner.clean(representative.rawName);
+    targetYear = fileClean.year;
   }
 
   final clean = NameCleaner.cleanFolderName(groupTitle);
@@ -222,18 +233,43 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   final tvdb = ref.watch(tvdbProvider);
   final year = targetYear ?? clean.year;
 
-  var tvdbResults = await tvdb.searchSeries(clean.title, year: year);
+  final isMovieGroup = !items.any((i) => i.season != null || i.episode != null);
+  final preferredType = isMovieGroup ? 'movie' : 'series';
+
+  var tvdbResults = await tvdb.searchSeries(
+    clean.title,
+    type: preferredType,
+    year: year,
+  );
   if (tvdbResults.isEmpty && year != null) {
-    tvdbResults = await tvdb.searchSeries(clean.title);
+    tvdbResults = await tvdb.searchSeries(clean.title, type: preferredType);
+  }
+  if (tvdbResults.isEmpty) {
+    tvdbResults = await tvdb.searchSeries(clean.title, year: year);
+    if (tvdbResults.isEmpty && year != null) {
+      tvdbResults = await tvdb.searchSeries(clean.title);
+    }
   }
 
   if (tvdbResults.isNotEmpty) {
-    final first = tvdbResults.first;
+    // result that strictly matches the target year
+    TvdbSeries? matched;
+    if (year != null) {
+      matched = tvdbResults
+          .where((r) => int.tryParse(r.year ?? '') == year)
+          .firstOrNull;
+    }
+    final first = matched ?? tvdbResults.first;
     debugPrint(
-      '[TheTVDB] Found fallback match for "$groupTitle": "${first.name}" (id: ${first.id})',
+      '[TheTVDB] Found fallback match for "$groupTitle": "${first.name}" '
+      '(id: ${first.id}, year: ${first.year}, type: ${first.type})',
     );
 
-    final extended = await tvdb.fetchSeriesExtended(first.id);
+    final isMovie = first.type == 'movie' || isMovieGroup;
+    final extended = isMovie
+        ? await tvdb.fetchMovieExtended(first.id)
+        : await tvdb.fetchSeriesExtended(first.id);
+
     final posterUrl =
         extended?.artworks.where((a) => a.isPoster).firstOrNull?.fullImageUrl ??
         first.posterUrl;
@@ -247,7 +283,7 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
     final isAnime =
         first.primaryLanguage == 'jpn' ||
         first.genres.any((g) => g.toLowerCase().contains('anime'));
-    final mediaType = isAnime ? 'anime' : 'tv';
+    final mediaType = isMovie ? 'movie' : (isAnime ? 'anime' : 'tv');
 
     await db.upsertShow(
       MediaShowsCompanion(

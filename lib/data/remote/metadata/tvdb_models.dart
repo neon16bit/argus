@@ -12,9 +12,12 @@ class TvdbSeries {
   final String? primaryLanguage;
   final List<String> genres;
 
+  final String? type;
+
   const TvdbSeries({
     required this.id,
     required this.name,
+    this.type,
     this.slug,
     this.image,
     this.year,
@@ -76,9 +79,12 @@ class TvdbSeries {
           .toList();
     }
 
+    final type = json['type'] as String?;
+
     return TvdbSeries(
       id: id,
       name: name,
+      type: type,
       slug: slug,
       image: image,
       year: year,
