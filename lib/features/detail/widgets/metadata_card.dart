@@ -96,7 +96,9 @@ class MetadataCard extends StatelessWidget {
                 ],
                 if (metadata?.ratingImdb != null ||
                     metadata?.ratingMal != null ||
-                    metadata?.ratingSimkl != null) ...[
+                    metadata?.ratingAnilist != null ||
+                    metadata?.ratingSimkl != null ||
+                    metadata?.rating != null) ...[
                   Wrap(
                     spacing: 8,
                     runSpacing: 4,
@@ -109,11 +111,27 @@ class MetadataCard extends StatelessWidget {
                         ),
                       if (metadata?.ratingMal != null)
                         _buildRatingBadge(context, 'MAL', metadata!.ratingMal!),
+                      if (metadata?.ratingAnilist != null)
+                        _buildRatingBadge(
+                          context,
+                          'AniList',
+                          metadata!.ratingAnilist!,
+                        ),
                       if (metadata?.ratingSimkl != null)
                         _buildRatingBadge(
                           context,
                           'Simkl',
                           metadata!.ratingSimkl!,
+                        ),
+                      if (metadata?.rating != null &&
+                          metadata?.ratingImdb == null &&
+                          metadata?.ratingMal == null &&
+                          metadata?.ratingAnilist == null &&
+                          metadata?.ratingSimkl == null)
+                        _buildRatingBadge(
+                          context,
+                          'TheTVDB',
+                          metadata!.rating!,
                         ),
                     ],
                   ),

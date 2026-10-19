@@ -13,6 +13,7 @@ class TvdbSeries {
   final List<String> genres;
 
   final String? type;
+  final List<String> aliases;
 
   const TvdbSeries({
     required this.id,
@@ -26,6 +27,7 @@ class TvdbSeries {
     this.score,
     this.primaryLanguage,
     this.genres = const [],
+    this.aliases = const [],
   });
 
   String? get posterUrl => TvdbProvider.buildImageUrl(image);
@@ -79,6 +81,22 @@ class TvdbSeries {
           .toList();
     }
 
+    List<String> parsedAliases = [];
+    final rawAliases = json['aliases'];
+    if (rawAliases is List) {
+      parsedAliases.addAll(
+        rawAliases.map((a) => a.toString().trim()).where((s) => s.isNotEmpty),
+      );
+    }
+    final rawTranslations = json['translations'];
+    if (rawTranslations is Map) {
+      for (final val in rawTranslations.values) {
+        if (val is String && val.trim().isNotEmpty) {
+          parsedAliases.add(val.trim());
+        }
+      }
+    }
+
     final type = json['type'] as String?;
 
     return TvdbSeries(
@@ -93,6 +111,7 @@ class TvdbSeries {
       score: score,
       primaryLanguage: primaryLanguage,
       genres: parsedGenres,
+      aliases: parsedAliases,
     );
   }
 }
@@ -101,11 +120,15 @@ class TvdbSeriesExtended {
   final TvdbSeries series;
   final List<TvdbSeason> seasons;
   final List<TvdbArtwork> artworks;
+  final String? imdbId;
+  final String? tmdbId;
 
   const TvdbSeriesExtended({
     required this.series,
     this.seasons = const [],
     this.artworks = const [],
+    this.imdbId,
+    this.tmdbId,
   });
 
   factory TvdbSeriesExtended.fromJson(Map<String, dynamic> json) {
@@ -129,10 +152,36 @@ class TvdbSeriesExtended {
           .toList();
     }
 
+    String? imdbId;
+    String? tmdbId;
+    final rawRemoteIds = json['remoteIds'];
+    if (rawRemoteIds is List) {
+      for (final r in rawRemoteIds) {
+        if (r is Map<String, dynamic>) {
+          final idStr = r['id']?.toString().trim();
+          final sourceName = r['sourceName']?.toString().toLowerCase() ?? '';
+          final type = r['type'];
+          if (idStr != null && idStr.isNotEmpty) {
+            if (sourceName.contains('imdb') ||
+                idStr.startsWith('tt') ||
+                type == 2) {
+              imdbId ??= idStr;
+            } else if (sourceName.contains('moviedb') ||
+                sourceName.contains('tmdb') ||
+                type == 10) {
+              tmdbId ??= idStr;
+            }
+          }
+        }
+      }
+    }
+
     return TvdbSeriesExtended(
       series: series,
       seasons: seasons,
       artworks: artworks,
+      imdbId: imdbId,
+      tmdbId: tmdbId,
     );
   }
 }

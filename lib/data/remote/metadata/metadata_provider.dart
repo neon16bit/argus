@@ -19,6 +19,7 @@ class ShowMetadata {
   final double? ratingSimkl;
   final double? ratingMal;
   final double? ratingImdb;
+  final double? ratingAnilist;
   final int? year;
   final int? simklId;
   final String? mediaType;
@@ -44,6 +45,7 @@ class ShowMetadata {
     this.ratingSimkl,
     this.ratingMal,
     this.ratingImdb,
+    this.ratingAnilist,
     this.year,
     this.simklId,
     this.mediaType,

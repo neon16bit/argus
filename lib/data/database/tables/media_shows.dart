@@ -19,6 +19,7 @@ class MediaShows extends Table {
   RealColumn get ratingSimkl => real().nullable()();
   RealColumn get ratingMal => real().nullable()();
   RealColumn get ratingImdb => real().nullable()();
+  RealColumn get ratingAnilist => real().nullable()();
 
   // external IDs from Simkl /search/file response
   IntColumn get simklId => integer().nullable()();

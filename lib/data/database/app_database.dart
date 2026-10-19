@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +107,9 @@ class AppDatabase extends _$AppDatabase {
         try {
           await m.createTable(showEpisodesCache);
         } catch (_) {}
+      }
+      if (from < 13) {
+        await m.addColumn(mediaShows, mediaShows.ratingAnilist);
       }
     },
   );
@@ -278,6 +281,13 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<void> clearShowCache(String groupTitle) async {
+    await (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle))).write(
+      const MediaShowsCompanion(resolvedAt: Value(null)),
+    );
+    await clearEpisodeCache(groupTitle);
+  }
+
+  Future<void> deleteShowCache(String groupTitle) async {
     await (delete(
       mediaShows,
     )..where((s) => s.groupTitle.equals(groupTitle))).go();

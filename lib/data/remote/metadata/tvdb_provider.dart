@@ -288,6 +288,37 @@ class TvdbProvider extends MetadataProvider {
     }
   }
 
+  // translation for a series or movie
+  Future<({String? name, String? overview})?> fetchSeriesTranslation(
+    int seriesId, {
+    bool isMovie = false,
+    String lang = 'eng',
+  }) async {
+    if (_apiKey.isEmpty) return null;
+    try {
+      final type = isMovie ? 'movies' : 'series';
+      final uri = Uri.parse('$kTvdbBaseUrl/$type/$seriesId/translations/$lang');
+      final response = await _get(uri);
+      if (response == null || response.statusCode != 200) return null;
+
+      final json = jsonDecode(response.body);
+      if (json is Map<String, dynamic> &&
+          json['data'] is Map<String, dynamic>) {
+        final data = json['data'] as Map<String, dynamic>;
+        final name = (data['name'] as String?)?.trim();
+        final overview = (data['overview'] as String?)?.trim();
+        return (
+          name: name?.isNotEmpty == true ? name : null,
+          overview: overview?.isNotEmpty == true ? overview : null,
+        );
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[TheTVDB] Error fetching translation for $seriesId: $e');
+      return null;
+    }
+  }
+
   // episodes by series TVDB ID
   Future<List<TvdbEpisode>> fetchEpisodes(
     int tvdbId, {
