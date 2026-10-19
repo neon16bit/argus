@@ -34,13 +34,14 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
       await _createFts(m);
+      await _createIndexes();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -111,8 +112,76 @@ class AppDatabase extends _$AppDatabase {
       if (from < 13) {
         await m.addColumn(mediaShows, mediaShows.ratingAnilist);
       }
+      if (from < 14) {
+        await _createIndexes();
+        // group_title-scoped trigger
+        await customStatement('DROP TRIGGER IF EXISTS media_items_au');
+        await customStatement('''
+          CREATE TRIGGER IF NOT EXISTS media_items_au
+          AFTER UPDATE OF group_title ON media_items
+          WHEN old.group_title != new.group_title
+          BEGIN
+            INSERT INTO search_index(search_index, rowid, group_title)
+            VALUES ('delete', old.id, old.group_title);
+            INSERT INTO search_index(rowid, group_title)
+            VALUES (new.id, new.group_title);
+          END
+        ''');
+      }
     },
   );
+
+  Future<void> _createIndexes() async {
+    // source scoped browse pagination indexes
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_folders_source_title '
+      'ON indexed_folders (source_id, clean_title)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_source_group '
+      'ON media_items (source_id, group_title)',
+    );
+
+    // title indexes for joins, search NOT EXISTS, and show lookups
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_group_title '
+      'ON media_items (group_title)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_folders_clean_title '
+      'ON indexed_folders (clean_title)',
+    );
+
+    // show external ID indexes for _kGroupTitlesSubquery
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_shows_simkl_id '
+      'ON media_shows (simkl_id) WHERE simkl_id IS NOT NULL',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_shows_tvdb_id '
+      'ON media_shows (tvdb_id) WHERE tvdb_id IS NOT NULL',
+    );
+
+    // url indexes for prefix GLOB scans and streamUrl lookups
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_source_url '
+      'ON media_items (source_id, direct_url)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_direct_url '
+      'ON media_items (direct_url)',
+    );
+
+    // watch history indexes for progress lookups and continue watching
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_watch_group_url '
+      'ON watch_history (group_title, stream_url)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_watch_group_recent '
+      'ON watch_history (group_title, last_watched_at DESC)',
+    );
+  }
 
   Future<void> _createFts(Migrator m) async {
     // only group_title for search
@@ -137,7 +206,10 @@ class AppDatabase extends _$AppDatabase {
       END
     ''');
     await customStatement('''
-      CREATE TRIGGER IF NOT EXISTS media_items_au AFTER UPDATE ON media_items BEGIN
+      CREATE TRIGGER IF NOT EXISTS media_items_au
+      AFTER UPDATE OF group_title ON media_items
+      WHEN old.group_title != new.group_title
+      BEGIN
         INSERT INTO search_index(search_index, rowid, group_title)
         VALUES ('delete', old.id, old.group_title);
         INSERT INTO search_index(rowid, group_title)
@@ -281,9 +353,8 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<void> clearShowCache(String groupTitle) async {
-    await (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle))).write(
-      const MediaShowsCompanion(resolvedAt: Value(null)),
-    );
+    await (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle)))
+        .write(const MediaShowsCompanion(resolvedAt: Value(null)));
     await clearEpisodeCache(groupTitle);
   }
 
@@ -291,7 +362,6 @@ class AppDatabase extends _$AppDatabase {
     await (delete(
       mediaShows,
     )..where((s) => s.groupTitle.equals(groupTitle))).go();
-    await clearEpisodeCache(groupTitle);
   }
 
   Future<Map<(int, int), String>?> getCachedEpisodes(String groupTitle) async {
@@ -440,15 +510,27 @@ class AppDatabase extends _$AppDatabase {
     int? season,
     int? episode,
   }) async {
-    final allItems = await getMediaItemsByGroupTitle(groupTitle);
-    return allItems.where((m) {
-      if (season != null && episode != null) {
-        return m.season == season && m.episode == episode;
-      } else if (episode != null) {
-        return m.episode == episode;
-      }
-      return true;
-    }).toList();
+    if (episode == null) {
+      return getMediaItemsByGroupTitle(groupTitle);
+    }
+
+    final rows = await customSelect(
+      '''
+      SELECT m.* FROM media_items m
+      WHERE m.group_title IN ($_kGroupTitlesSubquery)
+        AND m.episode = ?2
+        AND (?3 IS NULL OR m.season = ?3)
+      ORDER BY m.group_title, m.id
+      ''',
+      variables: [
+        Variable.withString(groupTitle),
+        Variable.withInt(episode),
+        Variable<int>(season),
+      ],
+      readsFrom: {mediaItems, mediaShows},
+    ).get();
+
+    return rows.map((row) => mediaItems.map(row.data)).toList();
   }
 
   Stream<List<MediaItem>> watchMediaItemsByGroupTitle(String groupTitle) {
@@ -467,6 +549,12 @@ class AppDatabase extends _$AppDatabase {
 
   // FTS5 search on titles + indexed folders
   static const _kSearchSql = '''
+    WITH matched_titles AS (
+      SELECT DISTINCT group_title FROM search_index WHERE search_index MATCH ?1
+      UNION
+      SELECT group_title FROM media_shows
+      WHERE resolved_title LIKE ?2 OR title_en LIKE ?2
+    )
     SELECT
       COALESCE(s.simkl_id, s.tvdb_id, m.group_title) as result_key,
       m.group_title,
@@ -474,7 +562,7 @@ class AppDatabase extends _$AppDatabase {
       CASE
         WHEN s.mal_id IS NOT NULL OR s.anilist_id IS NOT NULL OR s.anidb_id IS NOT NULL THEN 'anime'
         WHEN s.media_type IS NOT NULL THEN s.media_type
-        WHEN COUNT(CASE WHEN m.season IS NOT NULL OR m.episode IS NOT NULL THEN 1 END) > 0 THEN 'tv'
+        WHEN MAX(CASE WHEN m.season IS NOT NULL OR m.episode IS NOT NULL THEN 1 ELSE 0 END) = 1 THEN 'tv'
         ELSE 'movie'
       END as media_type,
       s.year,
@@ -482,18 +570,12 @@ class AppDatabase extends _$AppDatabase {
       NULL as folder_url,
       1 as is_scraped,
       1 as auto_scrape
-    FROM media_items m
+    FROM matched_titles mt
+    INNER JOIN media_items m ON m.group_title = mt.group_title
     LEFT JOIN media_shows s ON m.group_title = s.group_title
-    WHERE m.id IN (
-      SELECT rowid FROM search_index WHERE search_index MATCH ?1
-      UNION
-      SELECT m2.id FROM media_items m2
-      INNER JOIN media_shows s2 ON m2.group_title = s2.group_title
-      WHERE s2.resolved_title LIKE ?2 OR s2.title_en LIKE ?2
-    )
     GROUP BY COALESCE(s.simkl_id, s.tvdb_id, m.group_title)
 
-    UNION
+    UNION ALL
 
     SELECT
       f.folder_url as result_key,
@@ -577,14 +659,17 @@ class AppDatabase extends _$AppDatabase {
 
   Stream<bool> watchHasIndexedContent() {
     return customSelect(
-      '''
+          '''
       SELECT (
         EXISTS (SELECT 1 FROM media_items) OR
         EXISTS (SELECT 1 FROM indexed_folders)
       ) AS has_indexed
       ''',
-      readsFrom: {mediaItems, indexedFolders},
-    ).watchSingle().map((row) => (row.data['has_indexed'] as int? ?? 0) == 1);
+          readsFrom: {mediaItems, indexedFolders},
+        )
+        .watchSingle()
+        .map((row) => (row.data['has_indexed'] as int? ?? 0) == 1)
+        .distinct();
   }
 
   Future<List<Map<String, dynamic>>> getShowsBySource(
@@ -709,7 +794,11 @@ class AppDatabase extends _$AppDatabase {
         CASE
           WHEN s.mal_id IS NOT NULL OR s.anilist_id IS NOT NULL OR s.anidb_id IS NOT NULL THEN 'anime'
           WHEN s.media_type IS NOT NULL THEN s.media_type
-          WHEN (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = b.group_title AND (m.season IS NOT NULL OR m.episode IS NOT NULL)) > 0 THEN 'tv'
+          WHEN EXISTS (
+            SELECT 1 FROM media_items m
+            WHERE m.group_title = b.group_title
+              AND (m.season IS NOT NULL OR m.episode IS NOT NULL)
+          ) THEN 'tv'
           ELSE 'movie'
         END as media_type,
         s.year,
@@ -898,18 +987,74 @@ class AppDatabase extends _$AppDatabase {
             ))
             .get();
 
-    final distinctEpisodes = <int?>{};
+    if (items.isEmpty) return;
+
+    final distinctItems = <MediaItem>[];
+    final seenEpisodes = <int>{};
     for (final item in items) {
-      if (distinctEpisodes.add(item.episode)) {
-        await markEpisodeWatched(
-          groupTitle: groupTitle,
-          season: season,
-          episode: item.episode,
-          streamUrl: item.directUrl,
-          rawName: item.rawName,
-          isWatched: isWatched,
-        );
+      final ep = item.episode;
+      if (ep != null && seenEpisodes.add(ep)) {
+        distinctItems.add(item);
       }
+    }
+
+    final existingRows =
+        await (select(watchHistory)..where(
+              (w) =>
+                  w.groupTitle.equals(groupTitle) &
+                  (season != null
+                      ? w.season.equals(season)
+                      : w.season.isNull()) &
+                  w.episode.isIn(seenEpisodes),
+            ))
+            .get();
+
+    final existingByEpisode = <int, WatchHistoryData>{
+      for (final row in existingRows)
+        if (row.episode != null) row.episode!: row,
+    };
+
+    final now = DateTime.now();
+    await batch((b) {
+      for (final item in distinctItems) {
+        final ep = item.episode!;
+        final existing = existingByEpisode[ep];
+        if (existing != null) {
+          b.update(
+            watchHistory,
+            WatchHistoryCompanion(
+              isCompleted: Value(isWatched),
+              positionMs: Value(isWatched ? existing.durationMs : 0),
+              lastWatchedAt: Value(now),
+            ),
+            where: (w) => w.id.equals(existing.id),
+          );
+        } else {
+          b.insert(
+            watchHistory,
+            WatchHistoryCompanion.insert(
+              groupTitle: groupTitle,
+              season: Value(season),
+              episode: Value(ep),
+              streamUrl: item.directUrl,
+              positionMs: const Value(0),
+              durationMs: const Value(0),
+              isCompleted: Value(isWatched),
+              lastWatchedAt: Value(now),
+            ),
+          );
+        }
+      }
+    });
+
+    for (final item in distinctItems) {
+      onWatchStatusChanged?.call(
+        groupTitle: groupTitle,
+        season: season,
+        episode: item.episode,
+        rawName: item.rawName,
+        isWatched: isWatched,
+      );
     }
   }
 
@@ -975,7 +1120,7 @@ class AppDatabase extends _$AppDatabase {
         (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = w.group_title) as item_count
       FROM watch_history w
       LEFT JOIN media_shows s ON w.group_title = s.group_title
-      WHERE (SELECT COUNT(m.id) FROM media_items m WHERE m.group_title = w.group_title) > 0
+      WHERE EXISTS (SELECT 1 FROM media_items m WHERE m.group_title = w.group_title)
       GROUP BY w.group_title
       HAVING w.last_watched_at = MAX(w.last_watched_at)
       ORDER BY w.last_watched_at DESC
@@ -992,7 +1137,17 @@ class AppDatabase extends _$AppDatabase {
       final cachebase = (await getTemporaryDirectory()).path;
       sqlite3.tempDirectory = cachebase;
 
-      return NativeDatabase.createInBackground(file);
+      return NativeDatabase.createInBackground(
+        file,
+        readPool: 2,
+        setup: (rawDb) {
+          rawDb.execute('PRAGMA journal_mode = WAL;');
+          rawDb.execute('PRAGMA synchronous = NORMAL;');
+          rawDb.execute('PRAGMA temp_store = MEMORY;');
+          rawDb.execute('PRAGMA cache_size = -8000;');
+          rawDb.execute('PRAGMA busy_timeout = 5000;');
+        },
+      );
     });
   }
 }

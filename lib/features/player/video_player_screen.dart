@@ -193,7 +193,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _initPlayerAndResume();
     _resetHideTimer();
 
-    _progressSaveTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted && _isPlaying && _position.inSeconds > 0) {
         _saveProgress();
       }

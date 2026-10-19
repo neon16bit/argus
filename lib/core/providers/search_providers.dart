@@ -51,7 +51,7 @@ class SearchQueryNotifier extends Notifier<String> {
       state = '';
       return;
     }
-    _timer = Timer(const Duration(milliseconds: 300), () {
+    _timer = Timer(const Duration(milliseconds: 250), () {
       state = query;
     });
   }
@@ -62,33 +62,30 @@ final searchQueryProvider =
       SearchQueryNotifier.new,
     );
 
-final searchResultsProvider = StreamProvider.autoDispose<List<SearchResult>>((
+final searchResultsProvider = FutureProvider.autoDispose<List<SearchResult>>((
   ref,
-) {
+) async {
   final query = ref.watch(searchQueryProvider);
-  if (query.trim().isEmpty) return Stream.value([]);
+  if (query.trim().isEmpty) return [];
 
   final db = ref.watch(databaseProvider);
-  return db
-      .watchSearchShows(query)
+  final rows = await db.searchShows(query);
+  return rows
       .map(
-        (rows) => rows
-            .map(
-              (row) => SearchResult(
-                groupTitle: row['group_title'] as String,
-                resolvedTitle: row['resolved_title'] as String?,
-                titleEn: row['title_en'] as String?,
-                posterPath: row['poster_path'] as String?,
-                mediaType: row['media_type'] as String?,
-                year: row['year'] as int?,
-                itemCount: row['item_count'] as int? ?? 0,
-                folderUrl: row['folder_url'] as String?,
-                isScraped: (row['is_scraped'] as int? ?? 1) == 1,
-                autoScrape: (row['auto_scrape'] as int? ?? 1) == 1,
-              ),
-            )
-            .toList(),
-      );
+        (row) => SearchResult(
+          groupTitle: row['group_title'] as String,
+          resolvedTitle: row['resolved_title'] as String?,
+          titleEn: row['title_en'] as String?,
+          posterPath: row['poster_path'] as String?,
+          mediaType: row['media_type'] as String?,
+          year: row['year'] as int?,
+          itemCount: row['item_count'] as int? ?? 0,
+          folderUrl: row['folder_url'] as String?,
+          isScraped: (row['is_scraped'] as int? ?? 1) == 1,
+          autoScrape: (row['auto_scrape'] as int? ?? 1) == 1,
+        ),
+      )
+      .toList();
 });
 
 class SearchFocusNotifier extends Notifier<int> {
