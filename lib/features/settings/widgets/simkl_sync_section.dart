@@ -231,7 +231,6 @@ class SimklSyncSection extends ConsumerWidget {
           subtitle: const Text(
             'Push all locally watched episodes to your Simkl account',
           ),
-          trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () async {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

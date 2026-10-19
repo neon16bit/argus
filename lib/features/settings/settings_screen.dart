@@ -6,6 +6,7 @@ import 'package:argus/core/providers/providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:argus/features/settings/widgets/simkl_sync_section.dart';
+import 'package:argus/features/settings/widgets/storage_cache_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -386,6 +387,8 @@ class SettingsScreen extends ConsumerWidget {
                 .read(settingsProvider.notifier)
                 .setScrapeDelay(Duration(milliseconds: v.toInt())),
           ),
+          const Divider(height: 32),
+          const StorageCacheSection(),
           const Divider(height: 32),
           AboutListTile(
             icon: const Icon(Icons.info_outline_rounded),
