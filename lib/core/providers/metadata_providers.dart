@@ -51,35 +51,49 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
 
   // check cache
   final cached = await db.getShowByGroupTitle(groupTitle);
+  final clean = NameCleaner.cleanFolderName(groupTitle);
+
   if (cached != null && cached.resolvedAt != null) {
-    if (cached.simklId == null &&
-        cached.tvdbId == null &&
-        cached.resolvedTitle == null) {
-      return null;
+    // if the cache was resolved for a completely different year than the folder specifies,
+    // the cached entry was a false match. Invalidate it so it resolves with the correct year
+    final yearMismatch =
+        clean.year != null && cached.year != null && clean.year != cached.year;
+
+    if (!yearMismatch) {
+      if (cached.simklId == null &&
+          cached.tvdbId == null &&
+          cached.resolvedTitle == null) {
+        return null;
+      }
+      return ShowMetadata(
+        title: cached.resolvedTitle ?? groupTitle,
+        titleEn: cached.titleEn,
+        overview: cached.overview,
+        posterUrl: _resolveImageUrl(cached.posterPath),
+        backdropUrl: _resolveImageUrl(cached.fanartPath, isFanart: true),
+        posterPath: cached.posterPath,
+        fanartPath: cached.fanartPath,
+        year: cached.year,
+        rating: cached.ratingSimkl ?? cached.ratingImdb ?? cached.ratingMal,
+        ratingSimkl: cached.ratingSimkl,
+        ratingMal: cached.ratingMal,
+        ratingImdb: cached.ratingImdb,
+        simklId: cached.simklId,
+        mediaType: cached.mediaType,
+        slug: cached.simklSlug,
+        imdbId: cached.imdbId,
+        tmdbId: cached.tmdbId,
+        malId: cached.malId,
+        anilistId: cached.anilistId,
+        tvdbId: cached.tvdbId,
+        anidbId: cached.anidbId,
+      );
+    } else {
+      debugPrint(
+        '[Metadata] Cache year mismatch for "$groupTitle": cached ${cached.year} != expected ${clean.year}. Re-resolving...',
+      );
+      await db.clearShowCache(groupTitle);
     }
-    return ShowMetadata(
-      title: cached.resolvedTitle ?? groupTitle,
-      titleEn: cached.titleEn,
-      overview: cached.overview,
-      posterUrl: _resolveImageUrl(cached.posterPath),
-      backdropUrl: _resolveImageUrl(cached.fanartPath, isFanart: true),
-      posterPath: cached.posterPath,
-      fanartPath: cached.fanartPath,
-      year: cached.year,
-      rating: cached.ratingSimkl ?? cached.ratingImdb ?? cached.ratingMal,
-      ratingSimkl: cached.ratingSimkl,
-      ratingMal: cached.ratingMal,
-      ratingImdb: cached.ratingImdb,
-      simklId: cached.simklId,
-      mediaType: cached.mediaType,
-      slug: cached.simklSlug,
-      imdbId: cached.imdbId,
-      tmdbId: cached.tmdbId,
-      malId: cached.malId,
-      anilistId: cached.anilistId,
-      tvdbId: cached.tvdbId,
-      anidbId: cached.anidbId,
-    );
   }
 
   // pick file search by filename
@@ -95,8 +109,8 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
   );
   if (representative == null) return null;
 
-  // get target year from cached stub if available, fallback to indexed folder year
-  int? targetYear = cached?.year;
+  int? targetYear = clean.year;
+
   if (targetYear == null) {
     final folders = await db.getFoldersByGroupTitle(groupTitle);
     if (folders.isNotEmpty) {
@@ -110,7 +124,8 @@ final metadataProvider = FutureProvider.family<ShowMetadata?, String>((
     targetYear = fileClean.year;
   }
 
-  final clean = NameCleaner.cleanFolderName(groupTitle);
+  // only fallback to cached stub year if neither folder nor filename contained a year
+  targetYear ??= cached?.year;
 
   // if the representative has a detected season/episode, inject it if missing
   final filename =
@@ -369,6 +384,30 @@ final episodeNamesProvider = FutureProvider.family<Map<(int, int), String>, Stri
 ) async {
   final db = ref.watch(databaseProvider);
 
+  // if no items in this group have season or episode numbers, it is a movie or non-episodic media
+  final items = await db.getMediaItemsByGroupTitle(groupTitle);
+  final hasEpisodes = items.any((i) => i.season != null || i.episode != null);
+  if (items.isNotEmpty && !hasEpisodes) {
+    return const {};
+  }
+
+  final meta = await ref.watch(metadataProvider(groupTitle).future);
+  final isMovie =
+      meta?.mediaType == 'movie' ||
+      meta?.mediaType == 'movies' ||
+      (items.isNotEmpty && !hasEpisodes);
+
+  if (isMovie) {
+    // if stale cached episodes exist from a prior false match, clear them
+    final cached = await db.getCachedEpisodes(groupTitle);
+    if (cached != null && cached.isNotEmpty) {
+      await db.clearEpisodeCache(groupTitle);
+    }
+    return const {};
+  }
+
+  if (meta == null) return const {};
+
   // check database cache first
   final cached = await db.getCachedEpisodes(groupTitle);
   if (cached != null && cached.isNotEmpty) {
@@ -377,9 +416,6 @@ final episodeNamesProvider = FutureProvider.family<Map<(int, int), String>, Stri
     );
     return cached;
   }
-
-  final meta = await ref.watch(metadataProvider(groupTitle).future);
-  if (meta == null) return const {};
 
   final tvdb = ref.watch(tvdbProvider);
 

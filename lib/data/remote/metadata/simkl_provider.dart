@@ -307,6 +307,11 @@ class SimklProvider extends MetadataProvider {
       String? anidbId = ids['anidb']?.toString();
 
       // determine media type for anime, also extract anime_type
+      final isMovie =
+          type == 'movie' ||
+          mediaObject['type'] == 'movie' ||
+          mediaObject['anime_type'] == 'movie';
+
       final isAnime =
           mediaObject['anime_type'] != null ||
           malId != null ||
@@ -315,11 +320,14 @@ class SimklProvider extends MetadataProvider {
 
       String? resolvedMediaType;
       String? animeType;
-      if (isAnime) {
+      if (isMovie) {
+        resolvedMediaType = 'movie';
+        if (isAnime) {
+          animeType = (mediaObject['anime_type'] as String?) ?? 'movie';
+        }
+      } else if (isAnime) {
         resolvedMediaType = 'anime';
         animeType = (mediaObject['anime_type'] as String?) ?? 'tv';
-      } else if (type == 'movie' || mediaObject['type'] == 'movie') {
-        resolvedMediaType = 'movie';
       } else {
         resolvedMediaType = 'tv';
       }
@@ -423,6 +431,12 @@ class SimklProvider extends MetadataProvider {
     String ext = '.jpg',
   }) {
     if (posterPath == null || posterPath.isEmpty) return null;
+    if (posterPath.startsWith('http://') || posterPath.startsWith('https://')) {
+      return posterPath;
+    }
+    if (posterPath.startsWith('/banners/')) {
+      return '$kTvdbImageBase$posterPath';
+    }
     return '$kSimklImageBase/posters/$posterPath$size$ext&q=90';
   }
 
@@ -435,6 +449,12 @@ class SimklProvider extends MetadataProvider {
     String ext = '.jpg',
   }) {
     if (fanartPath == null || fanartPath.isEmpty) return null;
+    if (fanartPath.startsWith('http://') || fanartPath.startsWith('https://')) {
+      return fanartPath;
+    }
+    if (fanartPath.startsWith('/banners/')) {
+      return '$kTvdbImageBase$fanartPath';
+    }
     return '$kSimklImageBase/fanart/$fanartPath$size$ext&q=90';
   }
 
@@ -491,23 +511,25 @@ class SimklProvider extends MetadataProvider {
     }
     final rating = ratingImdb ?? ratingMal ?? ratingSimkl;
 
-    final isAnime =
-        endpointType == 'anime' ||
-        data['endpoint_type'] == 'anime' ||
-        data['anime_type'] != null ||
-        malId != null ||
-        anilistId != null ||
-        anidbId != null;
+    final isMovie =
+        endpointType == 'movies' ||
+        endpointType == 'movie' ||
+        data['endpoint_type'] == 'movies' ||
+        data['endpoint_type'] == 'movie' ||
+        data['type'] == 'movie' ||
+        data['anime_type'] == 'movie';
 
-    final mediaType = isAnime
-        ? 'anime'
-        : (endpointType == 'movies' ||
-                  endpointType == 'movie' ||
-                  data['endpoint_type'] == 'movies' ||
-                  data['endpoint_type'] == 'movie' ||
-                  data['type'] == 'movie'
-              ? 'movie'
-              : 'tv');
+    final isAnime =
+        !isMovie &&
+        (endpointType == 'anime' ||
+            data['endpoint_type'] == 'anime' ||
+            (data['anime_type'] != null &&
+                data['anime_type'].toString().isNotEmpty) ||
+            malId != null ||
+            anilistId != null ||
+            anidbId != null);
+
+    final mediaType = isMovie ? 'movie' : (isAnime ? 'anime' : 'tv');
 
     return ShowMetadata(
       title: title,

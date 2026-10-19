@@ -166,15 +166,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
-class _LibraryGridCard extends StatelessWidget {
+class _LibraryGridCard extends ConsumerWidget {
   final SearchResult result;
 
   const _LibraryGridCard({required this.result});
 
   @override
-  Widget build(BuildContext context) {
-    final posterUrl = result.posterUrl;
-    final displayTitle = result.displayTitle;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final needsMetadata = result.isScraped && result.posterUrl == null;
+    final metadataAsync = needsMetadata
+        ? ref.watch(metadataProvider(result.groupTitle))
+        : const AsyncData(null);
+    final metadata = metadataAsync.value;
+
+    final posterUrl = result.posterUrl ?? metadata?.posterUrl;
+    final displayTitle = result.displayTitle != result.groupTitle
+        ? result.displayTitle
+        : metadata?.titleEn ?? metadata?.title ?? result.displayTitle;
 
     return Card(
       clipBehavior: Clip.antiAlias,

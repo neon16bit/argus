@@ -278,8 +278,9 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<void> clearShowCache(String groupTitle) async {
-    await (update(mediaShows)..where((s) => s.groupTitle.equals(groupTitle)))
-        .write(const MediaShowsCompanion(resolvedAt: Value(null)));
+    await (delete(
+      mediaShows,
+    )..where((s) => s.groupTitle.equals(groupTitle))).go();
     await clearEpisodeCache(groupTitle);
   }
 
