@@ -83,7 +83,7 @@ class NameCleaner {
       caseSensitive: false,
     ),
     // hdr, remux,
-    RegExp(r'\b(?:HDR10|HDR|SDR|DV|DoVi|Remux)\b', caseSensitive: false),
+    RegExp(r'\b(?:HDR10|HDR|SDR|DV|BD|DoVi|Remux)\b', caseSensitive: false),
     // common streaming service tags
     RegExp(
       r'\b(?:NF|AMZN|DSNP|ATVP|HMAX|PEACOCK|CRAV)\b',
@@ -97,14 +97,14 @@ class NameCleaner {
       r'\b(?:PROPER|REPACK|INTERNAL|EXTENDED|UNRATED|DIRECTORS\.?CUT)\b',
       caseSensitive: false,
     ),
-    RegExp(r'\b(?:MULTI|DUAL|DUBBED|SUBBED)\b', caseSensitive: false),
+    RegExp(r'\b(?:MULTI|DUAL|DUBBED|SUBBED|ESUB)\b', caseSensitive: false),
     RegExp(r'\b(?:8|10)bit\b', caseSensitive: false),
   ];
 
   // Cleans a folder name into a show title + year.
   static CleanResult cleanFolderName(String folderName) {
     var name = folderName;
-    // extract year before stripping brackets
+    // extract year before stripping bracketsS
     int? year;
     final yearMatch = _yearPattern.firstMatch(name);
     if (yearMatch != null) {
