@@ -134,9 +134,12 @@ class _SourceTileState extends ConsumerState<SourceTile> {
                     ),
                   ),
                   if (source.lastScraped != null)
-                    Text(
-                      'Last scraped: ${_formatDate(source.lastScraped!)}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    Tooltip(
+                      message: _formatAbsoluteDate(source.lastScraped!),
+                      child: Text(
+                        'Last scraped: ${_formatRelativeTime(source.lastScraped!)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                 ],
                 if (_progress != null) ...[
@@ -525,7 +528,31 @@ class _SourceTileState extends ConsumerState<SourceTile> {
     );
   }
 
-  String _formatDate(DateTime dt) {
+  String _formatRelativeTime(DateTime dt) {
+    final now = DateTime.now();
+    final difference = now.difference(dt);
+
+    if (difference.isNegative || difference.inSeconds < 45) {
+      return 'just a moment ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return '${weeks}w ago';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return '${months}mo ago';
+    } else {
+      final years = (difference.inDays / 365).floor();
+      return '${years}y ago';
+    }
+  }
+
+  String _formatAbsoluteDate(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }

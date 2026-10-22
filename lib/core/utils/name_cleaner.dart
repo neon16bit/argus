@@ -97,7 +97,10 @@ class NameCleaner {
       r'\b(?:PROPER|REPACK|INTERNAL|EXTENDED|UNRATED|DIRECTORS\.?CUT)\b',
       caseSensitive: false,
     ),
-    RegExp(r'\b(?:MULTI|DUAL|DUBBED|SUBBED|ESUB)\b', caseSensitive: false),
+    RegExp(
+      r'\b(?:MULTI|DUAL|DUBBED|SUBBED|ESUB)(?:[\s._-]*AUDIO)?\b',
+      caseSensitive: false,
+    ),
     RegExp(r'\b(?:8|10)bit\b', caseSensitive: false),
   ];
 

@@ -423,7 +423,7 @@ class SettingsScreen extends ConsumerWidget {
                       BlendMode.srcIn,
                     ),
                   ),
-                  label: const Text('https://github.com/neon16bit/argus'),
+                  label: const Text('github.com/neon16bit/argus'),
                   onPressed: () => launchUrl(
                     Uri.parse('https://github.com/neon16bit/argus'),
                     mode: LaunchMode.externalApplication,

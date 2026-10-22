@@ -1,0 +1,379 @@
+name: Build And Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+  TVDB_API_KEY: ${{ secrets.TVDB_API_KEY }}
+
+jobs:
+  build-android:
+    name: Build Android (arm64-v8a & Universal)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .flutter-version
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          flutter config --no-analytics
+          flutter pub get --enforce-lockfile
+
+      - name: Configure Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using custom release keystore from repository secrets..."
+            echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/keystore.jks
+            printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=keystore.jks\n" \
+              "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+          else
+            echo "No custom release keystore secret configured. Creating fallback signing key for CI/testing..."
+            keytool -genkey -v -keystore android/app/keystore.jks \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+            printf "storePassword=android\nkeyPassword=android\nkeyAlias=androiddebugkey\nstoreFile=keystore.jks\n" > android/key.properties
+          fi
+
+      - name: Build Android Release APKs (arm64-v8a and Universal)
+        run: |
+          DART_DEFINES=()
+          [ -n "$SIMKL_CLIENT_ID" ] && DART_DEFINES+=(--dart-define="SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID")
+          [ -n "$TVDB_API_KEY" ] && DART_DEFINES+=(--dart-define="TVDB_API_KEY=$TVDB_API_KEY")
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
+          fi
+
+          mkdir -p dist
+
+          echo "Building split-per-ABI APKs..."
+          flutter build apk --release --split-per-abi "${DART_DEFINES[@]}"
+          cp "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" "dist/argus-android-arm64-v8a-v${VERSION}.apk"
+
+          echo "Building universal APK..."
+          flutter build apk --release "${DART_DEFINES[@]}"
+          cp "build/app/outputs/flutter-apk/app-release.apk" "dist/argus-android-universal-v${VERSION}.apk"
+
+          rm -rf build/app/intermediates
+
+      - name: Clean Up Keystore Files
+        if: always()
+        run: |
+          rm -f android/app/keystore.jks android/key.properties
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-android
+          path: dist/*.apk
+
+  build-linux:
+    name: Build Linux (x64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libmpv-dev \
+            libsqlite3-dev
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .flutter-version
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Linux Release
+        run: |
+          DART_DEFINES=()
+          [ -n "$SIMKL_CLIENT_ID" ] && DART_DEFINES+=(--dart-define="SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID")
+          [ -n "$TVDB_API_KEY" ] && DART_DEFINES+=(--dart-define="TVDB_API_KEY=$TVDB_API_KEY")
+
+          flutter build linux --release "${DART_DEFINES[@]}"
+
+      - name: Package Linux Formats (Tarball, .deb)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
+          fi
+
+          mkdir -p dist
+
+          TAR_NAME="argus-linux-x64-v${VERSION}.tar.gz"
+          tar -czf "dist/${TAR_NAME}" -C build/linux/x64/release/bundle .
+
+          DEB_DIR="build/deb"
+          mkdir -p "${DEB_DIR}/DEBIAN"
+          mkdir -p "${DEB_DIR}/usr/bin"
+          mkdir -p "${DEB_DIR}/usr/lib/argus"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"
+
+          cp -r build/linux/x64/release/bundle/* "${DEB_DIR}/usr/lib/argus/"
+
+          cat << 'EOF' > "${DEB_DIR}/usr/bin/argus"
+          #!/bin/sh
+          export LD_LIBRARY_PATH="/usr/lib/argus/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec /usr/lib/argus/argus "$@"
+          EOF
+          chmod +x "${DEB_DIR}/usr/bin/argus"
+
+          cat << 'EOF' > "${DEB_DIR}/usr/share/applications/me.neon16bit.argus.desktop"
+          [Desktop Entry]
+          Name=Argus
+          Comment=Media aggregator for indexing and streaming open directories
+          Exec=/usr/bin/argus
+          Icon=argus
+          Terminal=false
+          Type=Application
+          Categories=AudioVideo;Video;Player;
+          Keywords=media;player;streaming;
+          EOF
+
+          cp assets/icons/argus_icon.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/argus.png"
+
+          cat << EOF > "${DEB_DIR}/DEBIAN/control"
+          Package: argus
+          Version: ${VERSION}
+          Section: video
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Neon16bit
+          Depends: libgtk-3-0, libmpv2 | libmpv1, libsqlite3-0
+          Description: Media aggregator for indexing and streaming open directories.
+           Stream and index media hosted across open directories with hardware acceleration.
+          EOF
+
+          dpkg-deb --build --root-owner-group "${DEB_DIR}" "dist/argus-linux-amd64-v${VERSION}.deb"
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-linux
+          path: dist/*
+
+
+  build-windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Enable Git Longpaths
+        shell: pwsh
+        run: git config --system core.longpaths true
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .flutter-version
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Windows Release
+        shell: pwsh
+        run: |
+          $dartDefines = @()
+          if ($env:SIMKL_CLIENT_ID) { $dartDefines += "--dart-define=SIMKL_CLIENT_ID=$($env:SIMKL_CLIENT_ID)" }
+          if ($env:TVDB_API_KEY) { $dartDefines += "--dart-define=TVDB_API_KEY=$($env:TVDB_API_KEY)" }
+
+          flutter build windows --release @dartDefines
+
+      - name: Package Windows Release (Installer and Portable Zip)
+        shell: pwsh
+        run: |
+          $VERSION = "${{ github.ref_name }}" -replace '^v', ''
+          if (-not $VERSION -or $VERSION -eq 'main') {
+            $VERSION = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([^+]+)').Matches.Groups[1].Value.Trim()
+          }
+
+          New-Item -ItemType Directory -Force -Path dist
+
+          # Compile Inno Setup Installer (.exe)
+          $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            Write-Host "Installing Inno Setup..."
+            $installer = "$env:TEMP\innosetup.exe"
+            Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $installer -UseBasicParsing
+            Start-Process -FilePath $installer -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" -Wait -NoNewWindow
+          }
+
+          if (Test-Path $isccPath) {
+            Write-Host "Building Windows Setup Installer..."
+            & $isccPath /DAppVersion="$VERSION" packaging\windows\inno_setup.iss
+          } else {
+            Write-Warning "ISCC.exe not found, skipping installer generation."
+          }
+
+          # Package Portable Zip
+          $ZIP_NAME = "argus-windows-x64-v${VERSION}.zip"
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\$ZIP_NAME"
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-windows
+          path: dist/*
+
+
+  build-macos:
+    name: Build macOS (Universal)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .flutter-version
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build macOS Release
+        run: |
+          DART_DEFINES=()
+          [ -n "$SIMKL_CLIENT_ID" ] && DART_DEFINES+=(--dart-define="SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID")
+          [ -n "$TVDB_API_KEY" ] && DART_DEFINES+=(--dart-define="TVDB_API_KEY=$TVDB_API_KEY")
+
+          flutter build macos --release "${DART_DEFINES[@]}"
+
+      - name: Package macOS Zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
+          fi
+
+          mkdir -p dist
+          ZIP_NAME="argus-macos-universal-v${VERSION}.zip"
+
+          ditto -c -k --keepParent "build/macos/Build/Products/Release/Argus.app" "dist/${ZIP_NAME}"
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-macos
+          path: dist/*.zip
+
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-android, build-linux, build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Download All Platform Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate Checksum Table and Release Body
+        run: |
+          > release_body.md
+
+          echo "### Checksums (SHA-256)" >> release_body.md
+          echo "" >> release_body.md
+          echo "| Platform | Filename | SHA-256 Checksum |" >> release_body.md
+          echo "| :--- | :--- | :--- |" >> release_body.md
+
+          cd dist
+          for f in *.apk *.tar.gz *.zip *.deb *.exe; do
+            if [ -f "$f" ]; then
+              HASH=$(sha256sum "$f" | cut -d' ' -f1)
+              PLATFORM="Unknown"
+              if [[ "$f" =~ android.*arm64 ]]; then PLATFORM="Android (arm64-v8a)";
+              elif [[ "$f" =~ android.*universal ]]; then PLATFORM="Android (Universal)";
+              elif [[ "$f" =~ android ]]; then PLATFORM="Android"; fi
+              if [[ "$f" =~ \.deb$ ]]; then PLATFORM="Linux (.deb)"; fi
+              if [[ "$f" =~ \.tar\.gz$ ]]; then PLATFORM="Linux (tar.gz)"; fi
+              if [[ "$f" =~ -setup\.exe$ ]]; then PLATFORM="Windows (Installer .exe)";
+              elif [[ "$f" =~ windows.*\.zip$ ]]; then PLATFORM="Windows (Portable .zip)"; fi
+              if [[ "$f" =~ macos ]]; then PLATFORM="macOS (Universal)"; fi
+              echo "| $PLATFORM | \`$f\` | \`$HASH\` |" >> ../release_body.md
+            fi
+          done
+          cd ..
+
+          echo "Generated Release Body:"
+          cat release_body.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_body.md
+          files: |
+            dist/*.apk
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/*.exe
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+
