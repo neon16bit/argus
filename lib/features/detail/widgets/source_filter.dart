@@ -290,6 +290,8 @@ class SourceFilterBar extends ConsumerWidget {
                             folder.folderUrl,
                             override: dubOverrides[folder.folderUrl],
                           );
+                          final hasOverride =
+                              dubOverrides[folder.folderUrl] != null;
                           final isSelected =
                               currentPreferredFolderUrl == folder.folderUrl;
 
@@ -369,43 +371,46 @@ class SourceFilterBar extends ConsumerWidget {
                                   );
                                 }
                               },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: 'dub',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.record_voice_over_rounded,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text('Mark as DUB'),
-                                    ],
+                              itemBuilder: (context) => [
+                                if (isDub)
+                                  const PopupMenuItem(
+                                    value: 'sub',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.subtitles_rounded, size: 18),
+                                        SizedBox(width: 10),
+                                        Text('Mark as SUB'),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  const PopupMenuItem(
+                                    value: 'dub',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.record_voice_over_rounded,
+                                          size: 18,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('Mark as DUB'),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                PopupMenuItem(
-                                  value: 'sub',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.subtitles_rounded, size: 18),
-                                      SizedBox(width: 10),
-                                      Text('Mark as SUB'),
-                                    ],
+                                if (hasOverride)
+                                  const PopupMenuItem(
+                                    value: 'auto',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.auto_awesome_rounded,
+                                          size: 18,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('Reset to Auto-detect'),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                PopupMenuItem(
-                                  value: 'auto',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.auto_awesome_rounded,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text('Reset to Auto-detect'),
-                                    ],
-                                  ),
-                                ),
                               ],
                             ),
                             onTap: () {
