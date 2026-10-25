@@ -17,20 +17,43 @@
 
 ---
 
-<table>
-  <tr>
-    <td><img width="1220" height="2571" alt="Argus_Welcome_Dark" src="https://github.com/user-attachments/assets/174f9c31-8a0f-4c08-acc8-bdb11ceabec8" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Add_Source_Dark" src="https://github.com/user-attachments/assets/1e85b082-6a96-46c2-8f62-399d01d02b80" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Source_Dark" src="https://github.com/user-attachments/assets/ac02430d-4135-40e1-a7c8-1a320e1ff98a" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Settings_Dark" src="https://github.com/user-attachments/assets/9f28af31-74ed-4327-90d1-9c28e4e6041e" /></td>
-  </tr>
-  <tr>
-    <td><img width="1220" height="2571" alt="Argus_Welcome" src="https://github.com/user-attachments/assets/d8ecfc55-c6c2-4fb6-84b4-4f2e95d01f47" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Add_Source" src="https://github.com/user-attachments/assets/ad5457e5-bc7e-4a17-a298-329adf025018" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Source" src="https://github.com/user-attachments/assets/d2408cc2-75ed-4af3-a626-7637b9295f1d" /></td>
-    <td><img width="1220" height="2571" alt="Argus_Settings" src="https://github.com/user-attachments/assets/ac076979-f437-4583-869c-b80da5aa6d30" /></td>
-  </tr>
-</table>
+<div align="center">
+  <table>
+    <tr>
+      <td><img width="180" alt="welcome" src=".github/assets/welcome.gif" /></td>
+      <td><img width="180" alt="add_source" src=".github/assets/add_source.gif" /></td>
+      <td><img width="180" alt="source" src=".github/assets/source.gif" /></td>
+      <td><img width="180" alt="settings" src=".github/assets/settings.gif" /></td>
+    </tr>
+    <tr>
+      <td><img width="180" alt="home" src=".github/assets/home.gif" /></td>
+      <td><img width="180" alt="lib_card" src=".github/assets/lib_card.gif" /></td>
+      <td><img width="180" alt="lib" src=".github/assets/lib.gif" /></td>
+      <td><img width="180" alt="ep_list" src=".github/assets/ep_list.gif" /></td>
+    </tr>
+  </table>
+</div>
+
+<details>
+  <summary><b>Screenshots</b></summary>
+  <br>
+  <div align="center">
+    <table>
+      <tr>
+        <td><img width="180" alt="Argus_Welcome_Dark" src="https://github.com/user-attachments/assets/174f9c31-8a0f-4c08-acc8-bdb11ceabec8" /></td>
+        <td><img width="180" alt="Argus_Add_Source_Dark" src="https://github.com/user-attachments/assets/1e85b082-6a96-46c2-8f62-399d01d02b80" /></td>
+        <td><img width="180" alt="Argus_Source_Dark" src="https://github.com/user-attachments/assets/ac02430d-4135-40e1-a7c8-1a320e1ff98a" /></td>
+        <td><img width="180" alt="Argus_Settings_Dark" src="https://github.com/user-attachments/assets/9f28af31-74ed-4327-90d1-9c28e4e6041e" /></td>
+      </tr>
+      <tr>
+        <td><img width="180" alt="Argus_Welcome" src="https://github.com/user-attachments/assets/d8ecfc55-c6c2-4fb6-84b4-4f2e95d01f47" /></td>
+        <td><img width="180" alt="Argus_Add_Source" src="https://github.com/user-attachments/assets/ad5457e5-bc7e-4a17-a298-329adf025018" /></td>
+        <td><img width="180" alt="Argus_Source" src="https://github.com/user-attachments/assets/d2408cc2-75ed-4af3-a626-7637b9295f1d" /></td>
+        <td><img width="180" alt="Argus_Settings" src="https://github.com/user-attachments/assets/ac076979-f437-4583-869c-b80da5aa6d30" /></td>
+      </tr>
+    </table>
+  </div>
+</details>
 
 ---
 
