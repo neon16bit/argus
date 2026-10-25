@@ -1,12 +1,11 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/icons/argus_icon_white.png">
-    <source media="(prefers-color-scheme: light)" srcset="assets/icons/argus_icon_dark.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/342594c7-d52a-43e4-aa0f-af46c1c03f4e">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/854d1948-817f-405b-b88d-8820c49d8f28">
     <img alt="Argus Logo" src="assets/icons/argus_icon_dark.png" width="100" height="100">
   </picture>
 </p>
 <h1 align="center">argus</h1>
-
 <p align="center">
   A media aggregator for indexing and streaming from open directories.
 </p>
@@ -17,6 +16,22 @@
 </p>
 
 ---
+
+<table>
+  <tr>
+    <td><img width="1220" height="2571" alt="Argus_Welcome_Dark" src="https://github.com/user-attachments/assets/174f9c31-8a0f-4c08-acc8-bdb11ceabec8" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Add_Source_Dark" src="https://github.com/user-attachments/assets/1e85b082-6a96-46c2-8f62-399d01d02b80" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Source_Dark" src="https://github.com/user-attachments/assets/ac02430d-4135-40e1-a7c8-1a320e1ff98a" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Settings_Dark" src="https://github.com/user-attachments/assets/9f28af31-74ed-4327-90d1-9c28e4e6041e" /></td>
+  </tr>
+  <tr>
+    <td><img width="1220" height="2571" alt="Argus_Welcome" src="https://github.com/user-attachments/assets/d8ecfc55-c6c2-4fb6-84b4-4f2e95d01f47" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Add_Source" src="https://github.com/user-attachments/assets/ad5457e5-bc7e-4a17-a298-329adf025018" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Source" src="https://github.com/user-attachments/assets/d2408cc2-75ed-4af3-a626-7637b9295f1d" /></td>
+    <td><img width="1220" height="2571" alt="Argus_Settings" src="https://github.com/user-attachments/assets/ac076979-f437-4583-869c-b80da5aa6d30" /></td>
+  </tr>
+</table>
+
 ---
 
 ## Features
