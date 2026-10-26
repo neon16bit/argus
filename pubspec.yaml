@@ -2,7 +2,7 @@ name: argus
 description: "A media aggregator for indexing and streaming from open directories."
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ^3.12.1

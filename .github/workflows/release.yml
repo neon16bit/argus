@@ -333,40 +333,9 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Generate Checksum Table and Release Body
-        run: |
-          > release_body.md
-
-          echo "### Checksums (SHA-256)" >> release_body.md
-          echo "" >> release_body.md
-          echo "| Platform | Filename | SHA-256 Checksum |" >> release_body.md
-          echo "| :--- | :--- | :--- |" >> release_body.md
-
-          cd dist
-          for f in *.apk *.tar.gz *.zip *.deb *.exe; do
-            if [ -f "$f" ]; then
-              HASH=$(sha256sum "$f" | cut -d' ' -f1)
-              PLATFORM="Unknown"
-              if [[ "$f" =~ android.*arm64 ]]; then PLATFORM="Android (arm64-v8a)";
-              elif [[ "$f" =~ android.*universal ]]; then PLATFORM="Android (Universal)";
-              elif [[ "$f" =~ android ]]; then PLATFORM="Android"; fi
-              if [[ "$f" =~ \.deb$ ]]; then PLATFORM="Linux (.deb)"; fi
-              if [[ "$f" =~ \.tar\.gz$ ]]; then PLATFORM="Linux (tar.gz)"; fi
-              if [[ "$f" =~ -setup\.exe$ ]]; then PLATFORM="Windows (Installer .exe)";
-              elif [[ "$f" =~ windows.*\.zip$ ]]; then PLATFORM="Windows (Portable .zip)"; fi
-              if [[ "$f" =~ macos ]]; then PLATFORM="macOS (Universal)"; fi
-              echo "| $PLATFORM | \`$f\` | \`$HASH\` |" >> ../release_body.md
-            fi
-          done
-          cd ..
-
-          echo "Generated Release Body:"
-          cat release_body.md
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: release_body.md
           files: |
             dist/*.apk
             dist/*.tar.gz
