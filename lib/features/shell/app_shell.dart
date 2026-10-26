@@ -6,6 +6,7 @@ import 'package:argus/features/search/search_screen.dart';
 import 'package:argus/features/settings/settings_screen.dart';
 import 'package:argus/features/sources/sources_screen.dart';
 import 'package:argus/features/shell/widgets/metadata_notice_dialog.dart';
+import 'package:argus/core/services/update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -322,6 +323,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         showMetadataNoticeDialogIfNeeded(context, ref);
+        checkAppUpdateOnLaunchIfNeeded(context, ref);
       }
     });
   }

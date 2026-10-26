@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:argus/features/settings/widgets/simkl_sync_section.dart';
 import 'package:argus/features/settings/widgets/storage_cache_section.dart';
 import 'package:argus/features/settings/widgets/tvdb_settings_section.dart';
+import 'package:argus/core/services/update_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -393,6 +394,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(height: 32),
           const StorageCacheSection(),
           const Divider(height: 32),
+          const _CheckForUpdatesTile(),
           AboutListTile(
             icon: const Icon(Icons.info_outline_rounded),
             applicationName: 'Argus',
@@ -438,6 +440,92 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CheckForUpdatesTile extends ConsumerStatefulWidget {
+  const _CheckForUpdatesTile();
+
+  @override
+  ConsumerState<_CheckForUpdatesTile> createState() =>
+      _CheckForUpdatesTileState();
+}
+
+class _CheckForUpdatesTileState extends ConsumerState<_CheckForUpdatesTile> {
+  bool _isChecking = false;
+
+  Future<void> _checkUpdate() async {
+    if (_isChecking) return;
+    setState(() => _isChecking = true);
+
+    try {
+      final packageInfo = ref.read(packageInfoProvider);
+      final isFdroid = ref.read(settingsProvider).isFdroidBuild;
+      final currentCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+
+      final update = await UpdateService.checkForUpdate(
+        currentVersion: packageInfo.version,
+        currentVersionCode: currentCode,
+        isFdroid: isFdroid,
+      );
+
+      if (!mounted) return;
+
+      if (update == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not check for updates. Check your connection.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (update.hasUpdate) {
+        await showAppUpdateDialog(context, ref, update);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Argus is up to date (v${packageInfo.version})'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to check for updates.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isChecking = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final packageInfo = ref.watch(packageInfoProvider);
+    final isFdroid = ref.watch(settingsProvider).isFdroidBuild;
+
+    return ListTile(
+      leading: const Icon(Icons.system_update_rounded),
+      title: const Text('Check for updates'),
+      subtitle: Text(
+        'v${packageInfo.version} (${isFdroid ? 'F-Droid' : 'GitHub'})',
+      ),
+      trailing: _isChecking
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _isChecking ? null : _checkUpdate,
     );
   }
 }
