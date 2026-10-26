@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:argus/features/settings/widgets/simkl_sync_section.dart';
 import 'package:argus/features/settings/widgets/storage_cache_section.dart';
+import 'package:argus/features/settings/widgets/tvdb_settings_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -353,13 +354,15 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text(
-              'Tracking & Sync',
+              'Metadata & Sync',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
           const SimklSyncSection(),
+          const SizedBox(height: 8),
+          const TvdbSettingsSection(),
           const Divider(height: 32),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

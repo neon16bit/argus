@@ -8,7 +8,11 @@ import 'package:argus/core/utils/name_cleaner.dart';
 import 'metadata_provider.dart';
 
 class SimklProvider extends MetadataProvider {
-  static const _clientId = String.fromEnvironment('SIMKL_CLIENT_ID');
+  static const _clientId = String.fromEnvironment(
+    'SIMKL_CLIENT_ID',
+    defaultValue:
+        'ef44f87c2c230181ae532d9777d84bb2c3cf2dfbb74ad3545dcd597ff815a19e',
+  );
   static String get clientId => _clientId;
   static const _timeout = Duration(seconds: 8);
 

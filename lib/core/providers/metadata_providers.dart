@@ -3,6 +3,7 @@ import 'package:argus/core/utils/name_cleaner.dart';
 import 'package:argus/data/database/app_database.dart';
 import 'package:argus/data/remote/metadata/metadata_provider.dart';
 import 'package:argus/core/providers/simkl_providers.dart';
+import 'package:argus/core/providers/settings_provider.dart';
 import 'package:argus/data/remote/metadata/anilist_provider.dart';
 import 'package:argus/data/remote/metadata/simkl_provider.dart';
 import 'package:argus/data/remote/metadata/tvdb_provider.dart';
@@ -28,9 +29,11 @@ final simklProvider = Provider<SimklProvider>((ref) {
 
 final tvdbProvider = Provider<TvdbProvider>((ref) {
   final packageInfo = ref.watch(packageInfoProvider);
+  final settings = ref.watch(settingsProvider);
   return TvdbProvider(
     appName: packageInfo.appName,
     appVersion: packageInfo.version,
+    customApiKey: settings.tvdbApiKey,
   );
 });
 

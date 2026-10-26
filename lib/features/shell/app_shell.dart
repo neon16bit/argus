@@ -5,6 +5,7 @@ import 'package:argus/features/library/library_screen.dart';
 import 'package:argus/features/search/search_screen.dart';
 import 'package:argus/features/settings/settings_screen.dart';
 import 'package:argus/features/sources/sources_screen.dart';
+import 'package:argus/features/shell/widgets/metadata_notice_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -314,6 +315,16 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   late final GlobalKey<NavigatorState> _desktopNavKey =
       GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        showMetadataNoticeDialogIfNeeded(context, ref);
+      }
+    });
+  }
 
   void _onDestinationTapped(int index) {
     if (_desktopNavKey.currentState?.canPop() ?? false) {

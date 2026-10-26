@@ -7,6 +7,11 @@ const _kThemeFlavor = 'theme_flavor';
 const _kAccentColor = 'accent_color';
 const _kPureBlack = 'pure_black';
 const _kUseExternalPlayer = 'use_external_player';
+const _kTvdbApiKey = 'tvdb_api_key';
+
+const bool kIsFdroidBuild =
+    bool.fromEnvironment('IS_FDROID_BUILD') ||
+    String.fromEnvironment('TVDB_API_KEY') == '';
 
 class AppSettings {
   final Duration scrapeDelay;
@@ -14,6 +19,7 @@ class AppSettings {
   final String accentColor;
   final bool pureBlack;
   final bool useExternalPlayer;
+  final String tvdbApiKey;
 
   const AppSettings({
     this.scrapeDelay = kDefaultScrapeDelay,
@@ -21,7 +27,11 @@ class AppSettings {
     this.accentColor = 'mauve',
     this.pureBlack = false,
     this.useExternalPlayer = false,
+    this.tvdbApiKey = '',
   });
+
+  bool get hasCustomTvdbKey => tvdbApiKey.trim().isNotEmpty;
+  bool get isFdroidBuild => kIsFdroidBuild;
 
   AppSettings copyWith({
     Duration? scrapeDelay,
@@ -29,6 +39,7 @@ class AppSettings {
     String? accentColor,
     bool? pureBlack,
     bool? useExternalPlayer,
+    String? tvdbApiKey,
   }) {
     return AppSettings(
       scrapeDelay: scrapeDelay ?? this.scrapeDelay,
@@ -36,6 +47,7 @@ class AppSettings {
       accentColor: accentColor ?? this.accentColor,
       pureBlack: pureBlack ?? this.pureBlack,
       useExternalPlayer: useExternalPlayer ?? this.useExternalPlayer,
+      tvdbApiKey: tvdbApiKey ?? this.tvdbApiKey,
     );
   }
 }
@@ -44,6 +56,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
   @override
   AppSettings build() {
     final prefs = ref.read(sharedPreferencesProvider);
+
     return AppSettings(
       scrapeDelay: Duration(
         milliseconds:
@@ -53,6 +66,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       accentColor: prefs.getString(_kAccentColor) ?? 'mauve',
       pureBlack: prefs.getBool(_kPureBlack) ?? false,
       useExternalPlayer: prefs.getBool(_kUseExternalPlayer) ?? false,
+      tvdbApiKey: prefs.getString(_kTvdbApiKey) ?? '',
     );
   }
 
@@ -84,6 +98,25 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_kUseExternalPlayer, value);
     state = state.copyWith(useExternalPlayer: value);
+  }
+
+  Future<void> setTvdbApiKey(String apiKey) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final cleanKey = apiKey.trim();
+
+    if (cleanKey.isEmpty) {
+      await prefs.remove(_kTvdbApiKey);
+      state = state.copyWith(tvdbApiKey: '');
+    } else {
+      await prefs.setString(_kTvdbApiKey, cleanKey);
+      state = state.copyWith(tvdbApiKey: cleanKey);
+    }
+  }
+
+  Future<void> clearTvdbApiKey() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove(_kTvdbApiKey);
+    state = state.copyWith(tvdbApiKey: '');
   }
 }
 

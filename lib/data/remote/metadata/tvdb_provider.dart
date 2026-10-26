@@ -9,27 +9,80 @@ import 'tvdb_models.dart';
 export 'tvdb_models.dart';
 
 class TvdbProvider extends MetadataProvider {
-  static const _apiKey = String.fromEnvironment('TVDB_API_KEY');
-  static const _pin = String.fromEnvironment('TVDB_PIN');
+  static const _defaultApiKey = String.fromEnvironment('TVDB_API_KEY');
   static const _timeout = Duration(seconds: 10);
 
   final String? appName;
   final String? appVersion;
+  final String? customApiKey;
 
   String? _token;
   DateTime? _tokenExpiry;
 
-  TvdbProvider({this.appName, this.appVersion}) {
+  TvdbProvider({this.appName, this.appVersion, this.customApiKey}) {
     if (_apiKey.isEmpty) {
       debugPrint(
         '[TheTVDB] WARNING: TVDB_API_KEY is empty. '
-        'Pass --dart-define=TVDB_API_KEY=your_key',
+        'Pass --dart-define=TVDB_API_KEY=your_key or configure custom key in Settings.',
       );
     } else {
       debugPrint(
-        '[TheTVDB] Initialized with api_key: '
+        '[TheTVDB] Initialized with ${isCustomKey ? "custom" : "built-in"} api_key: '
         '${_apiKey.substring(0, _apiKey.length > 8 ? 8 : _apiKey.length)}...',
       );
+    }
+  }
+
+  String get _apiKey {
+    final custom = customApiKey?.trim();
+    if (custom != null && custom.isNotEmpty) return custom;
+    return _defaultApiKey;
+  }
+
+  bool get isConfigured => _apiKey.isNotEmpty;
+  bool get isCustomKey =>
+      customApiKey != null && customApiKey!.trim().isNotEmpty;
+  static bool get hasDefaultKey => _defaultApiKey.isNotEmpty;
+
+  Future<(bool, String?)> testConnection({String? testApiKey}) async {
+    final key = testApiKey?.trim() ?? _apiKey;
+    if (key.isEmpty) {
+      return (false, 'API key cannot be empty');
+    }
+    try {
+      final uri = Uri.parse('$kTvdbBaseUrl/login');
+      final body = <String, dynamic>{'apikey': key};
+
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json is Map<String, dynamic> &&
+            json['data'] is Map<String, dynamic> &&
+            json['data']['token'] != null) {
+          return (true, null);
+        }
+      }
+
+      try {
+        final json = jsonDecode(response.body);
+        if (json is Map && json['message'] != null) {
+          return (false, '${json['message']} (${response.statusCode})');
+        }
+      } catch (_) {}
+
+      return (
+        false,
+        'HTTP ${response.statusCode}: ${response.reasonPhrase ?? "Authentication failed"}',
+      );
+    } catch (e) {
+      return (false, 'Connection error: $e');
     }
   }
 
@@ -60,10 +113,7 @@ class TvdbProvider extends MetadataProvider {
     if (_apiKey.isEmpty) return null;
     try {
       final uri = Uri.parse('$kTvdbBaseUrl/login');
-      final body = <String, dynamic>{
-        'apikey': _apiKey,
-        if (_pin.isNotEmpty) 'pin': _pin,
-      };
+      final body = <String, dynamic>{'apikey': _apiKey};
 
       final response = await http
           .post(
