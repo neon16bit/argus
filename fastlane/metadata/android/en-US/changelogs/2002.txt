@@ -1,0 +1,3 @@
+- Added in-app update checker for GitHub and F-Droid releases
+- Added first-launch metadata notice for F-Droid builds
+- Added custom metadata keys for F-Droid builds

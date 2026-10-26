@@ -1,0 +1,8 @@
+- Initial public release v0.1.0
+- Open directory scanning and indexing
+- Merge and manage multiple media sources for the same show or movie
+- Fetch indexed media metadata and thumbnails
+- Media playback with progress tracking and external player support
+- Simkl watch history synchronization
+- Local media search and library management
+- Material 3 UI with Catppuccin themes, AMOLED mode, and Dynamic colors

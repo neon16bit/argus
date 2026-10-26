@@ -1,0 +1,7 @@
+Argus is an open-source media aggregator and streaming application built with Flutter.
+
+Key Features:
+- Open Directory Indexing: Scan, index, and organize media libraries hosted across open directories and HTTP file servers.
+- Fetch metadata, thumbnails, and other details for indexed media.
+- Video Player: Powered by media_kit for smooth playback across multiple formats, audio tracks, and embedded subtitles.
+- Fast Local Database: Built on SQLite and Drift for fast search, bookmarking, and progress tracking.
